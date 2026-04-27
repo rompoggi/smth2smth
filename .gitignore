@@ -3,6 +3,9 @@
 venv
 env
 
+# data
+/data/
+
 # secrets (API Keys)
 .env
 

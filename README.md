@@ -7,6 +7,9 @@ Romain Poggi
 Thomas Turkieh
 
 ## Quick Start
+
+### Environment
+
 Install requirements and set up virtual environment using uv.
 
 ```bash
@@ -17,12 +20,20 @@ uv venv --python 3.12.9
 uv sync
 ```
 
-# Track A: Closed World
+### Obtain Data
+
+Run
+
+```bash
+uv run scripts/download_data.py
+```
+
+# Track A (Closed World): Models must be trained from scratch using only the provided data. No external datasets or pretrained models are allowed.
 Acc: ??%
 ## Our Approach
 
 
-# Track B: Open World
+# Track B (Open World): Participants may use external data, pretrained models, and any additional resources, within the given computational constraints.
 Acc: ??%
 ## Our Approach
 
