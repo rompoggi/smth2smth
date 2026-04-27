@@ -1,0 +1,11 @@
+# virtual environments
+.venv
+venv
+env
+
+# secrets (API Keys)
+.env
+
+# cache
+__pycache__
+.cache
