@@ -1,0 +1,12 @@
+# @package _global_
+augment:
+  name: tsm_track_a
+  random_horizontal_flip: false
+  random_crop: true
+  crop_padding: 32
+  color_jitter: true
+  color_jitter_brightness: 0.2
+  color_jitter_contrast: 0.2
+  color_jitter_saturation: 0.2
+  color_jitter_hue: 0.0
+  sync_across_frames: true

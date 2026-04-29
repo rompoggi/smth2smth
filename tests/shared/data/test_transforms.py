@@ -91,3 +91,26 @@ def test_augment_none_matches_legacy_default() -> None:
     )
     image = Image.new("RGB", (40, 40), color=(10, 10, 10))
     assert torch.allclose(legacy(image), with_none(image))
+
+
+def test_sync_across_frames_applies_identical_crop_and_jitter() -> None:
+    augment = {
+        "random_horizontal_flip": False,
+        "random_crop": True,
+        "crop_padding": 16,
+        "color_jitter": True,
+        "color_jitter_brightness": 0.4,
+        "color_jitter_contrast": 0.4,
+        "color_jitter_saturation": 0.4,
+        "color_jitter_hue": 0.1,
+        "sync_across_frames": True,
+    }
+    pipe = build_transforms(
+        image_size=32, is_training=True, use_imagenet_norm=False, augment=augment
+    )
+    frame_a = Image.new("RGB", (80, 60), color=(90, 90, 90))
+    frame_b = Image.new("RGB", (80, 60), color=(90, 90, 90))
+    out = pipe([frame_a, frame_b])
+    assert isinstance(out, list)
+    assert len(out) == 2
+    assert torch.allclose(out[0], out[1])

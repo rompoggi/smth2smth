@@ -6,3 +6,17 @@ training:
   num_workers: 2
   checkpoint_path: ${hydra:runtime.cwd}/best_model.pt
   device: cuda
+  optimizer: adam
+  momentum: 0.9
+  nesterov: false
+  weight_decay: 0.0
+  scheduler_cosine: false
+  warmup_epochs: 0
+  min_lr: 0.0
+  label_smoothing: 0.0
+  videomix_alpha: 0.0
+  videomix_prob: 1.0
+  early_stopping_enabled: false
+  early_stopping_patience: 10
+  early_stopping_min_delta: 0.0
+  log_interval_steps: 0

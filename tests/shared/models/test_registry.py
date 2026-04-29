@@ -9,6 +9,7 @@ from omegaconf import OmegaConf
 from smth2smth.shared.models import (
     CNNLSTM,
     MODEL_REGISTRY,
+    AvancedResNet50TSM,
     CNNBaseline,
     ModelAlreadyRegisteredError,
     UnknownModelError,
@@ -25,6 +26,17 @@ _BUNDLED_MODELS = [
         "cnn_lstm",
         {"num_classes": 7, "pretrained": False, "lstm_hidden_size": 32},
     ),
+    (
+        "avanced_resnet50_tsm",
+        {
+            "num_classes": 7,
+            "pretrained": False,
+            "backbone": "resnet50",
+            "shift_div": 8,
+            "shift_place": "blockres",
+            "dropout": 0.5,
+        },
+    ),
 ]
 
 
@@ -39,6 +51,7 @@ class TestRegistry:
         registered = list_registered_models()
         assert "cnn_baseline" in registered
         assert "cnn_lstm" in registered
+        assert "avanced_resnet50_tsm" in registered
 
     def test_build_model_returns_correct_class(self) -> None:
         cfg = OmegaConf.create(
@@ -59,6 +72,22 @@ class TestRegistry:
         )
         model = build_model(cfg)
         assert isinstance(model, CNNLSTM)
+
+        cfg = OmegaConf.create(
+            {
+                "model": {
+                    "name": "avanced_resnet50_tsm",
+                    "num_classes": 5,
+                    "pretrained": False,
+                    "shift_div": 8,
+                    "shift_place": "blockres",
+                    "dropout": 0.5,
+                },
+                "dataset": {"num_frames": 4},
+            }
+        )
+        model = build_model(cfg)
+        assert isinstance(model, AvancedResNet50TSM)
 
     def test_unknown_model_raises_explicit_error(self) -> None:
         cfg = OmegaConf.create(
@@ -90,7 +119,12 @@ class TestForwardShapes:
 
     @pytest.mark.parametrize("name,overrides", _BUNDLED_MODELS)
     def test_forward_returns_correct_logits_shape(self, name: str, overrides: dict) -> None:
-        cfg = OmegaConf.create({"model": overrides | {"name": name}})
+        cfg = OmegaConf.create(
+            {
+                "model": overrides | {"name": name},
+                "dataset": {"num_frames": 4},
+            }
+        )
         model = build_model(cfg)
         model.eval()
         batch_size, num_frames = 2, 4

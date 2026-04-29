@@ -97,6 +97,26 @@ class TestTrainAndEvaluate:
         last = evaluate_epoch(model, loader, loss_fn, torch.device("cpu"))
         assert last.loss < first.loss
 
+    def test_train_one_epoch_supports_label_smoothing_and_videomix(self) -> None:
+        loader, model = _build(num_classes=3)
+        loss_fn = nn.CrossEntropyLoss()
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+        stats = train_one_epoch(
+            model,
+            loader,
+            loss_fn,
+            optimizer,
+            torch.device("cpu"),
+            num_classes=3,
+            label_smoothing=0.1,
+            videomix_alpha=1.0,
+            videomix_prob=1.0,
+        )
+        assert isinstance(stats, EpochStats)
+        assert 0.0 <= stats.top1 <= 1.0
+        assert 0.0 <= stats.top5 <= 1.0
+        assert stats.loss >= 0.0
+
 
 def _drain(it: Iterator) -> list:
     return list(it)

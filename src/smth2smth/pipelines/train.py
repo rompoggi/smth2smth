@@ -140,16 +140,63 @@ def run(cfg: DictConfig) -> Path | None:
 
     model = build_model(cfg).to(device)
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=float(cfg.training.lr))
+    optimizer_name = str(cfg.training.get("optimizer", "adam")).lower()
+    base_lr = float(cfg.training.lr)
+    weight_decay = float(cfg.training.get("weight_decay", 0.0))
+    if optimizer_name == "sgd":
+        optimizer = torch.optim.SGD(
+            model.parameters(),
+            lr=base_lr,
+            momentum=float(cfg.training.get("momentum", 0.9)),
+            weight_decay=weight_decay,
+            nesterov=bool(cfg.training.get("nesterov", False)),
+        )
+    elif optimizer_name == "adamw":
+        optimizer = torch.optim.AdamW(model.parameters(), lr=base_lr, weight_decay=weight_decay)
+    else:
+        optimizer = torch.optim.Adam(model.parameters(), lr=base_lr, weight_decay=weight_decay)
+
+    use_cosine = bool(cfg.training.get("scheduler_cosine", False))
+    warmup_epochs = int(cfg.training.get("warmup_epochs", 0))
+    cosine_scheduler = None
+    if use_cosine:
+        cosine_tmax = max(1, int(cfg.training.epochs) - warmup_epochs)
+        cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer,
+            T_max=cosine_tmax,
+            eta_min=float(cfg.training.get("min_lr", 0.0)),
+        )
+
+    label_smoothing = float(cfg.training.get("label_smoothing", 0.0))
+    videomix_alpha = float(cfg.training.get("videomix_alpha", 0.0))
+    videomix_prob = float(cfg.training.get("videomix_prob", 1.0))
+    log_interval_steps = int(cfg.training.get("log_interval_steps", 0))
+    early_stopping_enabled = bool(cfg.training.get("early_stopping_enabled", False))
+    early_stopping_patience = int(cfg.training.get("early_stopping_patience", 10))
+    early_stopping_min_delta = float(cfg.training.get("early_stopping_min_delta", 0.0))
 
     checkpoint_path = Path(cfg.training.checkpoint_path).resolve()
     best_top1 = -1.0
     best_path: Path | None = None
+    epochs_without_improvement = 0
 
     try:
         for epoch in range(int(cfg.training.epochs)):
+            if warmup_epochs > 0 and epoch < warmup_epochs:
+                warm_lr = base_lr * float(epoch + 1) / float(warmup_epochs)
+                for group in optimizer.param_groups:
+                    group["lr"] = warm_lr
             train_stats: EpochStats = train_one_epoch(
-                model, train_loader, loss_fn, optimizer, device
+                model,
+                train_loader,
+                loss_fn,
+                optimizer,
+                device,
+                num_classes=int(cfg.num_classes),
+                label_smoothing=label_smoothing,
+                videomix_alpha=videomix_alpha,
+                videomix_prob=videomix_prob,
+                log_interval_steps=log_interval_steps,
             )
             val_stats: EpochStats = evaluate_epoch(model, val_loader, loss_fn, device)
             print(
@@ -158,8 +205,9 @@ def run(cfg: DictConfig) -> Path | None:
                 f"val loss {val_stats.loss:.4f} top1 {val_stats.top1:.4f} top5 {val_stats.top5:.4f}"
             )
 
-            if val_stats.top1 > best_top1:
+            if val_stats.top1 > (best_top1 + early_stopping_min_delta):
                 best_top1 = val_stats.top1
+                epochs_without_improvement = 0
                 best_path = save_checkpoint(
                     checkpoint_path,
                     model,
@@ -172,6 +220,23 @@ def run(cfg: DictConfig) -> Path | None:
                     },
                 )
                 print(f"  Saved new best checkpoint: {best_path} (val top1={val_stats.top1:.4f})")
+            else:
+                epochs_without_improvement += 1
+                if early_stopping_enabled:
+                    print(
+                        "  No val top1 improvement "
+                        f"({epochs_without_improvement}/{early_stopping_patience}); "
+                        f"best remains {best_top1:.4f}"
+                    )
+                    if epochs_without_improvement >= early_stopping_patience:
+                        print(
+                            "  Early stopping triggered: "
+                            f"no improvement > {early_stopping_min_delta:.6f} for "
+                            f"{early_stopping_patience} consecutive epochs."
+                        )
+                        break
+            if cosine_scheduler is not None and epoch >= warmup_epochs:
+                cosine_scheduler.step()
     except torch.cuda.OutOfMemoryError as exc:
         print(f"[cuda] OOM during training: {exc}. Releasing memory and aborting this job.")
         del model, optimizer, train_loader, val_loader

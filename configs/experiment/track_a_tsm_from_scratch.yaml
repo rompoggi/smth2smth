@@ -1,0 +1,29 @@
+# @package _global_
+defaults:
+  - override /model: avanced_resnet50_tsm
+  - override /augment: tsm_track_a
+
+model:
+  pretrained: false
+
+dataset:
+  num_frames: 4
+
+training:
+  batch_size: 16
+  epochs: 50
+  lr: 0.01
+  optimizer: sgd
+  momentum: 0.9
+  nesterov: true
+  weight_decay: 0.0001
+  scheduler_cosine: true
+  warmup_epochs: 10
+  min_lr: 0.000001
+  label_smoothing: 0.1
+  videomix_alpha: 1.0
+  videomix_prob: 1.0
+  early_stopping_enabled: true
+  early_stopping_patience: 8
+  early_stopping_min_delta: 0.001
+  log_interval_steps: 100

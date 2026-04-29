@@ -1,0 +1,9 @@
+# @package _global_
+model:
+  name: avanced_resnet50_tsm
+  backbone: resnet50
+  pretrained: false
+  num_classes: ${num_classes}
+  shift_div: 8
+  shift_place: blockres
+  dropout: 0.5
