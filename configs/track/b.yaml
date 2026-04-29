@@ -1,0 +1,14 @@
+# @package _global_
+# Track B: open-world (pretrained backbone allowed).
+#
+# Same reasoning as Track A: this overlay only scopes output paths.
+# Pretrained-vs-from-scratch is selected via the experiment file.
+track:
+  name: b
+  description: "Open-world track: pretrained backbone allowed."
+
+training:
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_b/best_model.pt
+
+dataset:
+  submission_output: ${hydra:runtime.cwd}/submissions/track_b.csv

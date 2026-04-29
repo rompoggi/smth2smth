@@ -1,0 +1,7 @@
+# @package _global_
+# Baseline starting from pretrained ImageNet weights (Track B: open-world).
+defaults:
+  - override /model: cnn_baseline
+
+model:
+  pretrained: true

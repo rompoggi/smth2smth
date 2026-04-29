@@ -1,0 +1,11 @@
+- track=a
+- experiment=baseline_from_scratch
+- augment=none
+- training.lr=0.001
+- training.epochs=1
+- training.batch_size=4
+- training.num_workers=0
+- training.device=cuda
+- dataset.max_samples=8
+- dataset.image_size=64
+- training.checkpoint_path=$\{hydra\:runtime.cwd\}/checkpoints/runs/_smoke_track_a_aug-$\{augment.name\}_lr$\{training.lr\}.pt

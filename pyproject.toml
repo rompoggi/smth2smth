@@ -17,6 +17,45 @@ dependencies = [
 [tool.uv]
 package = false
 
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "slow: end-to-end / heavy tests; deselect with `-m 'not slow'`",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [
+    "external/",
+    ".venv/",
+    "outputs/",
+    "data/",
+    "notebooks/",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",   # line length (we use a generous 100, longer messages OK)
+    "B008",   # function call in default argument (used by some torchvision APIs)
+    "SIM108", # ternary vs if/else
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011"]  # asserts in tests are fine
+"scripts/**" = ["E402"]  # sys.path setup before imports is intentional
+
 # CUDA 12.8 builds: https://download.pytorch.org/whl/cu128
 # explicit = true keeps non-PyTorch deps on PyPI.
 [[tool.uv.index]]
@@ -32,4 +71,14 @@ torch = [
 ]
 torchvision = [
     { index = "pytorch-cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+[dependency-groups]
+dev = [
+    "jupyterlab>=4.5.6",
+    "matplotlib>=3.10.9",
+    "pandas>=3.0.2",
+    "pytest>=9.0.3",
+    "ruff>=0.15.12",
+    "seaborn>=0.13.2",
 ]

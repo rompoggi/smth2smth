@@ -1,0 +1,16 @@
+# @package _global_
+# Track A: closed-world (train from scratch, no ImageNet weights).
+#
+# This overlay only encodes track-specific output paths so artifacts of the two
+# tracks never collide. The "from-scratch" choice itself is encoded in the
+# experiment file (`experiment=baseline_from_scratch`), not here, so the user
+# can still mix-and-match (e.g. ablations on Track A with pretrained=true).
+track:
+  name: a
+  description: "Closed-world track: train from scratch."
+
+training:
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/best_model.pt
+
+dataset:
+  submission_output: ${hydra:runtime.cwd}/submissions/track_a.csv

@@ -1,0 +1,26 @@
+# @package _global_
+# Dataset paths. Override at the CLI when your folder layout differs.
+#
+# Layout (Option A: minimalist, single canonical dataset at the data/ root):
+#   data/
+#     train/
+#     val/
+#     test/
+#
+# Augmentation: ONLINE only (transforms applied in build_transforms at __getitem__).
+# No on-disk augmented copies => no augmented/ folder. The augmented_dirs field
+# is kept as a forward-compatible hook in case offline augmentation is ever added.
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: ${hydra:runtime.cwd}/submission.csv
+
+  num_frames: 8
+  val_ratio: 0.2
+  seed: ${seed}
+  max_samples: null
+  image_size: 224

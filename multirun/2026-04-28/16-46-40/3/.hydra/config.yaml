@@ -1,0 +1,39 @@
+model:
+  name: cnn_baseline
+  pretrained: true
+  num_classes: ${num_classes}
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: ${hydra:runtime.cwd}/submissions/track_b.csv
+  num_frames: 8
+  val_ratio: 0.2
+  seed: ${seed}
+  max_samples: null
+  image_size: 224
+training:
+  batch_size: 8
+  lr: 0.0005
+  epochs: 20
+  num_workers: 2
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/runs/track_b_aug-${augment.name}_lr${training.lr}.pt
+  device: cuda
+augment:
+  name: strong
+  random_horizontal_flip: true
+  random_crop: true
+  crop_padding: 32
+  color_jitter: true
+  color_jitter_brightness: 0.2
+  color_jitter_contrast: 0.2
+  color_jitter_saturation: 0.2
+  color_jitter_hue: 0.0
+track:
+  name: b
+  description: 'Open-world track: pretrained backbone allowed.'
+num_classes: 33
+seed: 42

@@ -1,0 +1,19 @@
+# @package _global_
+# Stronger per-frame augmentation:
+#   1. Resize to (image_size + crop_padding, image_size + crop_padding)
+#   2. RandomCrop back down to (image_size, image_size)   [train only]
+#   3. RandomHorizontalFlip                                [train only]
+#   4. ColorJitter(brightness, contrast, saturation, hue)  [train only]
+#
+# Eval/test use the same Resize but a deterministic CenterCrop, so train/eval
+# tensor shapes match exactly.
+augment:
+  name: strong
+  random_horizontal_flip: true
+  random_crop: true
+  crop_padding: 32
+  color_jitter: true
+  color_jitter_brightness: 0.2
+  color_jitter_contrast: 0.2
+  color_jitter_saturation: 0.2
+  color_jitter_hue: 0.0

@@ -1,0 +1,13 @@
+# @package _global_
+# Default augmentation policy: just a random horizontal flip on training frames.
+# Equivalent to the legacy `build_transforms(is_training=True)` behavior.
+augment:
+  name: none
+  random_horizontal_flip: true
+  random_crop: false
+  crop_padding: 0
+  color_jitter: false
+  color_jitter_brightness: 0.0
+  color_jitter_contrast: 0.0
+  color_jitter_saturation: 0.0
+  color_jitter_hue: 0.0

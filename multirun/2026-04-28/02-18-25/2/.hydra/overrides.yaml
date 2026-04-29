@@ -1,0 +1,6 @@
+- track=a
+- experiment=baseline_from_scratch
+- augment=none
+- training.lr=0.0001
+- training.epochs=20
+- training.checkpoint_path=$\{hydra\:runtime.cwd\}/checkpoints/runs/track_a_aug-$\{augment.name\}_lr$\{training.lr\}.pt

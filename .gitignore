@@ -1,14 +1,63 @@
-# virtual environments
-.venv
-venv
-env
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 
-# data
-/data/
+# --- Virtual environments ---
+.venv/
+venv/
+env/
 
-# secrets (API Keys)
+# --- uv / pip ---
+.uv/
+pip-wheel-metadata/
+
+# --- IDE / editors ---
+.idea/
+.vscode/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Secrets ---
 .env
+.env.*
 
-# cache
-__pycache__
-.cache
+# --- Data (large; not versioned) ---
+/data/
+processed_data/
+**/processed_data/
+
+# --- Model artifacts ---
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.onnx
+*.safetensors
+
+# --- Run outputs / logs ---
+outputs/
+runs/
+wandb/
+mlruns/
+logs/
+*.log
+
+# --- External baseline artifacts (do not commit baseline run outputs) ---
+external/**/outputs/
+external/**/processed_data/
+external/**/.venv/
+external/**/__pycache__/
+
+# --- Cache ---
+.cache/

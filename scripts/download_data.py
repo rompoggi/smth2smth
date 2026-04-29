@@ -1,15 +1,16 @@
-#/usr/bin/python3
+# /usr/bin/python3
 """Script to download the something 2 something dataset"""
 
-import gdown
-import zipfile
 import os
+import zipfile
+
+import gdown
 
 if __name__ == "__main__":
-    file_id = '1SlRJBD6cyXMr5772kOKe5xXAU9Scu5vR'
-    url = f'https://drive.google.com/uc?id={file_id}'
-    output_zip = 'downloaded_file.zip'
-    extract_to = './data'
+    file_id = "1SlRJBD6cyXMr5772kOKe5xXAU9Scu5vR"
+    url = f"https://drive.google.com/uc?id={file_id}"
+    output_zip = "downloaded_file.zip"
+    extract_to = "./data"
 
     if not os.path.exists(extract_to):
         os.makedirs(extract_to)
@@ -20,10 +21,10 @@ if __name__ == "__main__":
 
     print(f"Extracting to {extract_to}...")
     try:
-        with zipfile.ZipFile(output_zip, 'r') as zip_ref:
+        with zipfile.ZipFile(output_zip, "r") as zip_ref:
             zip_ref.extractall(extract_to)
         print("Extraction complete!")
-        
+
         os.remove(output_zip)
         print(f"Removed {output_zip}")
 

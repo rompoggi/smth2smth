@@ -1,0 +1,7 @@
+# @package _global_
+# Baseline trained from random weights (Track A: closed-world).
+defaults:
+  - override /model: cnn_baseline
+
+model:
+  pretrained: false

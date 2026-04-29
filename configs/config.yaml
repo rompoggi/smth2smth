@@ -1,0 +1,18 @@
+# Root Hydra config: composes model, data, train, experiment, and track bundles.
+# Run from repo root (with PYTHONPATH=src or once the package is installable):
+#   uv run python -m smth2smth.pipelines.train experiment=baseline_pretrained track=a
+defaults:
+  - model: cnn_baseline
+  - data: default
+  - train: default
+  - augment: none
+  - experiment: baseline_pretrained
+  - track: a
+  - _self_
+
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d_%H-%M-%S}
+
+num_classes: 33
+seed: 42
