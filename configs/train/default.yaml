@@ -5,6 +5,11 @@ training:
   epochs: 5
   num_workers: 2
   checkpoint_path: ${hydra:runtime.cwd}/best_model.pt
+  # Optional path to a checkpoint to resume from. When set, model weights and
+  # the epoch/best-top1 metadata recorded in `extra` are loaded; the cosine
+  # scheduler (if any) is fast-forwarded so the LR continues from the right
+  # point. Optimizer state is not stored in the schema and therefore restarts.
+  resume_from: null
   device: cuda
   optimizer: adam
   momentum: 0.9
@@ -16,6 +21,7 @@ training:
   label_smoothing: 0.0
   videomix_alpha: 0.0
   videomix_prob: 1.0
+  videomix_mode: cube_cutmix
   early_stopping_enabled: false
   early_stopping_patience: 10
   early_stopping_min_delta: 0.0

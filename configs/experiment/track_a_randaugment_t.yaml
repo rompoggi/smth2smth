@@ -1,0 +1,37 @@
+# @package _global_
+# Track A (closed-world, from scratch) running the strongest combination from
+# Kim et al. 2020 Tab. 7: RandAugment-T (temporal_plus) + FrameMixUp.
+#
+# Backbone: TSM-ResNet50 (matches the existing track_a_tsm_from_scratch preset).
+# Training schedule and optimizer follow Sec. 4.1 of the paper:
+#   * Adam, lr 1e-4, weight_decay 1e-5
+#   * Linear warmup + cosine annealing
+#   * Label smoothing 0.1
+#   * 150 epochs total
+defaults:
+  - override /model: avanced_resnet50_tsm
+  - override /augment: randaugment_t
+
+model:
+  pretrained: false
+
+dataset:
+  num_frames: 8
+
+training:
+  batch_size: 16
+  epochs: 150
+  lr: 0.0001
+  optimizer: adam
+  weight_decay: 0.00001
+  scheduler_cosine: true
+  warmup_epochs: 10
+  min_lr: 0.000001
+  label_smoothing: 0.1
+  videomix_mode: frame_mixup
+  videomix_alpha: 5.0
+  videomix_prob: 0.5
+  early_stopping_enabled: true
+  early_stopping_patience: 20
+  early_stopping_min_delta: 0.001
+  log_interval_steps: 100

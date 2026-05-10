@@ -25,7 +25,7 @@ from smth2smth.shared.data import (
     collect_video_samples,
 )
 from smth2smth.shared.engine import EpochStats, evaluate_epoch, train_one_epoch
-from smth2smth.shared.io.checkpoints import save_checkpoint
+from smth2smth.shared.io.checkpoints import load_checkpoint, save_checkpoint
 from smth2smth.shared.models import build_model
 from smth2smth.shared.utils import set_seed, split_train_val
 
@@ -170,6 +170,7 @@ def run(cfg: DictConfig) -> Path | None:
     label_smoothing = float(cfg.training.get("label_smoothing", 0.0))
     videomix_alpha = float(cfg.training.get("videomix_alpha", 0.0))
     videomix_prob = float(cfg.training.get("videomix_prob", 1.0))
+    videomix_mode = str(cfg.training.get("videomix_mode", "cube_cutmix"))
     log_interval_steps = int(cfg.training.get("log_interval_steps", 0))
     early_stopping_enabled = bool(cfg.training.get("early_stopping_enabled", False))
     early_stopping_patience = int(cfg.training.get("early_stopping_patience", 10))
@@ -179,9 +180,36 @@ def run(cfg: DictConfig) -> Path | None:
     best_top1 = -1.0
     best_path: Path | None = None
     epochs_without_improvement = 0
+    start_epoch = 0
+
+    resume_from = cfg.training.get("resume_from")
+    if resume_from:
+        resume_path = Path(str(resume_from)).resolve()
+        print(f"Resuming from checkpoint: {resume_path}")
+        payload = load_checkpoint(resume_path, map_location=device)
+        model.load_state_dict(payload["model_state_dict"])
+        extra = payload.get("extra") or {}
+        start_epoch = int(extra.get("epoch", 0))
+        if "val_top1" in extra:
+            best_top1 = float(extra["val_top1"])
+        best_path = resume_path
+        print(
+            f"  Resumed at epoch {start_epoch}/{int(cfg.training.epochs)}; "
+            f"best val top1 so far = {best_top1:.4f}"
+        )
+        if cosine_scheduler is not None:
+            ff_steps = max(0, start_epoch - warmup_epochs)
+            for _ in range(ff_steps):
+                cosine_scheduler.step()
+            if ff_steps > 0:
+                current_lr = optimizer.param_groups[0]["lr"]
+                print(
+                    f"  Cosine scheduler fast-forwarded {ff_steps} step(s); "
+                    f"resumed LR={current_lr:.6g}"
+                )
 
     try:
-        for epoch in range(int(cfg.training.epochs)):
+        for epoch in range(start_epoch, int(cfg.training.epochs)):
             if warmup_epochs > 0 and epoch < warmup_epochs:
                 warm_lr = base_lr * float(epoch + 1) / float(warmup_epochs)
                 for group in optimizer.param_groups:
@@ -196,6 +224,7 @@ def run(cfg: DictConfig) -> Path | None:
                 label_smoothing=label_smoothing,
                 videomix_alpha=videomix_alpha,
                 videomix_prob=videomix_prob,
+                videomix_mode=videomix_mode,
                 log_interval_steps=log_interval_steps,
             )
             val_stats: EpochStats = evaluate_epoch(model, val_loader, loss_fn, device)

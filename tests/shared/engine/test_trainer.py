@@ -8,12 +8,15 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
+import pytest
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 
 from smth2smth.shared.engine import (
+    VIDEOMIX_MODES,
     EpochStats,
+    apply_video_mixing,
     evaluate_epoch,
     predict_argmax,
     train_one_epoch,
@@ -120,3 +123,95 @@ class TestTrainAndEvaluate:
 
 def _drain(it: Iterator) -> list:
     return list(it)
+
+
+# --- Video-mixing dispatcher tests -----------------------------------------
+
+
+_NUM_CLASSES = 4
+
+
+def _make_videos(
+    b: int = 4, t: int = 6, c: int = 3, h: int = 8, w: int = 8
+) -> tuple[torch.Tensor, torch.Tensor]:
+    torch.manual_seed(0)
+    videos = torch.rand(b, t, c, h, w)
+    labels = torch.arange(b) % _NUM_CLASSES
+    return videos, labels
+
+
+@pytest.mark.parametrize("mode", sorted(VIDEOMIX_MODES - {"none"}))
+def test_apply_video_mixing_shapes_and_label_simplex(mode: str) -> None:
+    """Every mode must preserve the video shape and produce a valid soft-label."""
+    videos, labels = _make_videos()
+    torch.manual_seed(123)
+    mixed, returned_labels, soft = apply_video_mixing(
+        videos, labels, num_classes=_NUM_CLASSES, alpha=1.0, mode=mode
+    )
+    assert mixed.shape == videos.shape
+    assert returned_labels.shape == labels.shape
+    assert soft.shape == (videos.size(0), _NUM_CLASSES)
+    # Soft targets must be non-negative and sum to 1 along the class axis.
+    assert torch.all(soft >= -1e-6)
+    sums = soft.sum(dim=1)
+    assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5)
+
+
+def test_apply_video_mixing_none_is_identity() -> None:
+    videos, labels = _make_videos()
+    mixed, _, soft = apply_video_mixing(
+        videos, labels, num_classes=_NUM_CLASSES, alpha=1.0, mode="none"
+    )
+    assert torch.equal(mixed, videos)
+    # ``none`` produces hard one-hot labels.
+    assert torch.equal(soft.argmax(dim=1), labels)
+
+
+def test_apply_video_mixing_unknown_mode_raises() -> None:
+    videos, labels = _make_videos()
+    with pytest.raises(ValueError):
+        apply_video_mixing(videos, labels, num_classes=_NUM_CLASSES, alpha=1.0, mode="bogus")
+
+
+def test_apply_cutout_zeros_a_region_without_changing_labels() -> None:
+    videos, labels = _make_videos(b=2)
+    mixed, returned_labels, soft = apply_video_mixing(
+        videos, labels, num_classes=_NUM_CLASSES, alpha=1.0, mode="cube_cutout"
+    )
+    assert torch.any(mixed == 0.0)
+    # CutOut: labels are exactly the originals (one-hot).
+    assert torch.equal(soft.argmax(dim=1), labels)
+    assert torch.equal(returned_labels, labels)
+
+
+def test_fade_mixup_label_matches_uniform_mixup() -> None:
+    """FadeMixUp's soft label depends on lam only (γ averages out by symmetry)."""
+    videos, labels = _make_videos(b=4, t=6)
+    torch.manual_seed(7)
+    _, _, soft_fade = apply_video_mixing(
+        videos, labels, num_classes=_NUM_CLASSES, alpha=1.0, mode="fade_mixup"
+    )
+    # Two label rows must sum to 1 each and have at most 2 non-zero entries.
+    nz_per_row = (soft_fade > 1e-6).sum(dim=1)
+    assert torch.all(nz_per_row <= 2)
+
+
+def test_train_one_epoch_supports_each_videomix_mode() -> None:
+    """Smoke-test the trainer through every supported video-mixing mode."""
+    for mode in sorted(VIDEOMIX_MODES):
+        loader, model = _build(num_classes=_NUM_CLASSES)
+        loss_fn = nn.CrossEntropyLoss()
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+        stats = train_one_epoch(
+            model,
+            loader,
+            loss_fn,
+            optimizer,
+            torch.device("cpu"),
+            num_classes=_NUM_CLASSES,
+            videomix_alpha=1.0,
+            videomix_prob=1.0,
+            videomix_mode=mode,
+        )
+        assert isinstance(stats, EpochStats), f"mode={mode!r} returned {type(stats)}"
+        assert stats.loss >= 0.0, f"mode={mode!r} produced negative loss"

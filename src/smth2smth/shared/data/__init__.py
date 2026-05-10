@@ -1,5 +1,6 @@
 """Shared data layer: dataset and image transforms."""
 
+from smth2smth.shared.data.randaugment import RA_OPS, RandAugment
 from smth2smth.shared.data.transforms import build_transforms
 from smth2smth.shared.data.video_dataset import (
     VideoFrameDataset,
@@ -10,6 +11,8 @@ from smth2smth.shared.data.video_dataset import (
 )
 
 __all__ = [
+    "RA_OPS",
+    "RandAugment",
     "VideoFrameDataset",
     "VideoSample",
     "build_transforms",

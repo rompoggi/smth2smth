@@ -1,0 +1,31 @@
+# @package _global_
+# RandAugment-T (Kim et al. 2020, Sec. 3.1) -- temporally-varying RandAugment.
+#
+# For each clip:
+#   * the same N op identities are chosen and applied to every frame;
+#   * the magnitude for frame t comes from linspace(M1, M2, T).
+#
+# Mode selects the (M1, M2) sampling strategy (Sec. 4.2):
+#   * spatial        : M1 = M2 = m   (equivalent to randaugment.yaml)
+#   * temporal       : M1 ~ Uniform(0.1, m), M2 = m
+#   * temporal_plus  : M1 = m - delta, M2 = m + delta,
+#                      delta ~ Uniform(0, 0.5 * m)            <-- Tab. 2 best
+#   * mix            : per-clip, randomly pick spatial or temporal_plus
+augment:
+  name: randaugment_t
+  random_horizontal_flip: true
+  random_crop: true
+  crop_padding: 32
+  color_jitter: false
+  color_jitter_brightness: 0.0
+  color_jitter_contrast: 0.0
+  color_jitter_saturation: 0.0
+  color_jitter_hue: 0.0
+  sync_across_frames: true
+  randaugment:
+    enabled: true
+    n: 2
+    m: 9.0
+    mode: temporal_plus
+    magnitude_max: 30.0
+    ops: null

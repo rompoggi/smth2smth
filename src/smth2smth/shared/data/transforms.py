@@ -20,6 +20,8 @@ from PIL import Image
 from torchvision.transforms import ColorJitter, Normalize
 from torchvision.transforms import functional as F
 
+from smth2smth.shared.data.randaugment import DEFAULT_MAGNITUDE_MAX, RandAugment
+
 _IMAGENET_MEAN = (0.485, 0.456, 0.406)
 _IMAGENET_STD = (0.229, 0.224, 0.225)
 
@@ -92,7 +94,9 @@ def build_transforms(
     use_hflip = bool(_augment_get(augment, "random_horizontal_flip", True))
     use_color_jitter = bool(_augment_get(augment, "color_jitter", False))
 
-    resize_size = image_size + crop_padding if (use_random_crop and crop_padding > 0) else image_size
+    resize_size = (
+        image_size + crop_padding if (use_random_crop and crop_padding > 0) else image_size
+    )
     sync_across_frames = bool(_augment_get(augment, "sync_across_frames", False))
     color_jitter = ColorJitter(
         brightness=float(_augment_get(augment, "color_jitter_brightness", 0.0)),
@@ -100,6 +104,9 @@ def build_transforms(
         saturation=float(_augment_get(augment, "color_jitter_saturation", 0.0)),
         hue=float(_augment_get(augment, "color_jitter_hue", 0.0)),
     )
+
+    randaugment = _build_randaugment(augment) if is_training else None
+
     return _FrameOrClipTransform(
         image_size=image_size,
         resize_size=resize_size,
@@ -110,7 +117,29 @@ def build_transforms(
         use_color_jitter=use_color_jitter,
         color_jitter=color_jitter,
         sync_across_frames=sync_across_frames,
+        randaugment=randaugment,
     )
+
+
+def _build_randaugment(augment: Mapping[str, Any] | None) -> RandAugment | None:
+    """Build a :class:`RandAugment` instance from an augment cfg, or ``None``.
+
+    Reads the optional ``augment.randaugment`` sub-config. If it's missing, or
+    ``enabled`` is falsy, returns ``None`` and downstream code skips it.
+    """
+    ra_cfg = _augment_get(augment, "randaugment", None)
+    if ra_cfg is None:
+        return None
+    if not bool(_augment_get(ra_cfg, "enabled", False)):
+        return None
+    n = int(_augment_get(ra_cfg, "n", 2))
+    m = float(_augment_get(ra_cfg, "m", 9.0))
+    mode = str(_augment_get(ra_cfg, "mode", "temporal_plus"))
+    magnitude_max = float(_augment_get(ra_cfg, "magnitude_max", DEFAULT_MAGNITUDE_MAX))
+    ops = _augment_get(ra_cfg, "ops", None)
+    if ops is not None:
+        ops = list(ops)
+    return RandAugment(n=n, m=m, mode=mode, magnitude_max=magnitude_max, ops=ops)
 
 
 class _FrameOrClipTransform:
@@ -125,6 +154,7 @@ class _FrameOrClipTransform:
         use_color_jitter: bool,
         color_jitter: ColorJitter,
         sync_across_frames: bool,
+        randaugment: RandAugment | None = None,
     ) -> None:
         self.image_size = image_size
         self.resize_size = resize_size
@@ -135,20 +165,55 @@ class _FrameOrClipTransform:
         self.use_color_jitter = use_color_jitter
         self.color_jitter = color_jitter
         self.sync_across_frames = sync_across_frames
+        self.randaugment = randaugment
 
-    def __call__(self, image_or_images: Image.Image | Sequence[Image.Image]) -> torch.Tensor | list[torch.Tensor]:
+    def __call__(
+        self, image_or_images: Image.Image | Sequence[Image.Image]
+    ) -> torch.Tensor | list[torch.Tensor]:
         if isinstance(image_or_images, Image.Image):
-            return self._apply_single(image_or_images, self._sample_params())
+            params = self._sample_params(num_frames=1)
+            return self._apply_single(image_or_images, params, frame_index=0)
         if len(image_or_images) == 0:
             return []
 
+        num_frames = len(image_or_images)
         if self.sync_across_frames:
-            params = self._sample_params()
-            return [self._apply_single(image, params) for image in image_or_images]
-        return [self._apply_single(image, self._sample_params()) for image in image_or_images]
+            params = self._sample_params(num_frames=num_frames)
+            return [
+                self._apply_single(image, params, frame_index=t)
+                for t, image in enumerate(image_or_images)
+            ]
+        # Independent geometric/photometric randomness per frame, but RandAugment
+        # always uses the same op identities and magnitude schedule across the
+        # whole clip (otherwise temporal interpolation is meaningless).
+        ra_params = self._sample_randaugment_params(num_frames=num_frames)
+        outputs: list[torch.Tensor] = []
+        for t, image in enumerate(image_or_images):
+            params = self._sample_params(num_frames=num_frames, randaugment_params=ra_params)
+            outputs.append(self._apply_single(image, params, frame_index=t))
+        return outputs
 
-    def _sample_params(self) -> dict[str, Any]:
-        params: dict[str, Any] = {"flip": False, "crop_ijhw": None, "jitter_fn": None}
+    def _sample_randaugment_params(self, num_frames: int) -> dict[str, Any] | None:
+        """Sample RandAugment op identities and per-frame magnitudes for one clip."""
+        if self.randaugment is None or not self.is_training or self.randaugment.n == 0:
+            return None
+        op_names = self.randaugment._sample_op_names()
+        levels = self.randaugment.magnitudes(num_frames=num_frames)
+        return {"op_names": op_names, "levels": levels}
+
+    def _sample_params(
+        self,
+        num_frames: int = 1,
+        randaugment_params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {
+            "flip": False,
+            "crop_ijhw": None,
+            "jitter_fn": None,
+            "randaugment": randaugment_params
+            if randaugment_params is not None
+            else self._sample_randaugment_params(num_frames=num_frames),
+        }
         if self.use_random_crop:
             if self.is_training:
                 top = random.randint(0, self.resize_size - self.image_size)
@@ -169,7 +234,19 @@ class _FrameOrClipTransform:
             )
         return params
 
-    def _apply_single(self, image: Image.Image, params: Mapping[str, Any]) -> torch.Tensor:
+    def _apply_single(
+        self,
+        image: Image.Image,
+        params: Mapping[str, Any],
+        frame_index: int = 0,
+    ) -> torch.Tensor:
+        ra = params.get("randaugment")
+        if ra is not None and self.randaugment is not None:
+            op_names = ra["op_names"]
+            levels = ra["levels"]
+            if len(levels) > 0:
+                level = levels[min(frame_index, len(levels) - 1)]
+                image = self.randaugment._apply_ops_to_frame(image, op_names, level)
         x = F.resize(image, [self.resize_size, self.resize_size])
         crop = params.get("crop_ijhw")
         if crop is not None:

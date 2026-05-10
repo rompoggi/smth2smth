@@ -1,0 +1,26 @@
+# @package _global_
+# Spatial RandAugment (Cubuk et al. 2019), applied per frame with the same
+# magnitude across all frames in a clip.
+#
+# Layered on top of the paper-baseline geometric augmentations: random crop
+# with a small padding plus a random horizontal flip (Sec. 4.1 of
+# Kim et al. 2020). The 14-op set is the standard RandAugment palette;
+# magnitudes are scaled to [0, magnitude_max].
+augment:
+  name: randaugment
+  random_horizontal_flip: true
+  random_crop: true
+  crop_padding: 32
+  color_jitter: false
+  color_jitter_brightness: 0.0
+  color_jitter_contrast: 0.0
+  color_jitter_saturation: 0.0
+  color_jitter_hue: 0.0
+  sync_across_frames: true
+  randaugment:
+    enabled: true
+    n: 2
+    m: 9.0
+    mode: spatial
+    magnitude_max: 30.0
+    ops: null
