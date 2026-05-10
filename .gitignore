@@ -38,12 +38,12 @@ processed_data/
 **/processed_data/
 
 # --- Model artifacts ---
-*.pt
-*.pth
-*.ckpt
-*.bin
-*.onnx
-*.safetensors
+# *.pt
+# *.pth
+# *.ckpt
+# *.bin
+# *.onnx
+# *.safetensors
 
 # --- Run outputs / logs ---
 outputs/
