@@ -7,7 +7,7 @@ pretrain:
   # 100-200 epochs is typical; SSL benefits from longer schedules. With ~3000
   # videos x 4 frames = 12k frames at batch_size=128 that's ~94 steps/epoch,
   # so 100 epochs = ~9k steps, ~1-2 hours on a single Ampere GPU.
-  epochs: 50
+  epochs: 100
   batch_size: 64
   lr: 0.0005
   weight_decay: 0.04

@@ -18,7 +18,7 @@ model:
 
 # Override the SSL pretrain defaults to taste here.
 pretrain:
-  epochs: 50
+  epochs: 150
   batch_size: 64
   lr: 0.0005
   weight_decay: 0.04
