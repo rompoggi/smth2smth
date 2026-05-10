@@ -1,0 +1,356 @@
+model:
+  name: avanced_resnet50_tsm
+  backbone: resnet50
+  pretrained: false
+  num_classes: ${num_classes}
+  shift_div: 8
+  shift_place: blockres
+  dropout: 0.5
+  drop_path_rate: 0.0
+  head: mean
+  head_num_heads: 4
+  init_from: null
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: ${hydra:runtime.cwd}/submissions/track_a.csv
+  num_frames: 8
+  val_ratio: 0.2
+  use_official_val: false
+  seed: ${seed}
+  max_samples: null
+  image_size: 224
+training:
+  batch_size: 64
+  lr: 0.0001
+  epochs: 20
+  num_workers: 2
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/best_model.pt
+  resume_from: null
+  amp: true
+  device: cuda
+  optimizer: adam
+  momentum: 0.9
+  nesterov: false
+  weight_decay: 0.0
+  scheduler_cosine: false
+  warmup_epochs: 0
+  min_lr: 0.0
+  label_smoothing: 0.0
+  videomix_alpha: 0.0
+  videomix_prob: 1.0
+  videomix_mode: cube_cutmix
+  early_stopping_enabled: false
+  early_stopping_patience: 10
+  early_stopping_min_delta: 0.0
+  log_interval_steps: 0
+  ema_enabled: false
+  ema_decay: 0.999
+  tta: false
+  tta_flip: true
+  tta_temporal_shift: 0
+augment:
+  name: none
+  random_horizontal_flip: true
+  random_crop: false
+  crop_padding: 0
+  color_jitter: false
+  color_jitter_brightness: 0.0
+  color_jitter_contrast: 0.0
+  color_jitter_saturation: 0.0
+  color_jitter_hue: 0.0
+pretrain:
+  epochs: 50
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 50
+  checkpoint_path: /Data/thomas.turkieh/project_modal_P3/checkpoints/track_a/ssl_trunk.pt
+  max_frames: null
+  image_size: 224
+  local_image_size: 96
+  num_local_views: 6
+  out_dim: 4096
+  hidden_dim: 2048
+  bottleneck_dim: 256
+  n_layers: 3
+  teacher_temp: 0.04
+  student_temp: 0.1
+  center_momentum: 0.9
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
+track:
+  name: a
+  description: 'Closed-world track: train from scratch.'
+num_classes: 33
+seed: 42
+
+[cuda] cache emptied (pretrain-start). Free: 19.23 / 19.53 GiB
+[ssl] scanning frame paths from /Data/thomas.turkieh/project_modal_P3/data/train, /Data/thomas.turkieh/project_modal_P3/data/val, /Data/thomas.turkieh/project_modal_P3/data/test
+[ssl] using 234587 still frames for pretraining.
+[ssl] student params: 33,477,952 (trunk + head, out_dim=4096)
+[ssl] AMP (fp16 + GradScaler) enabled.
+[ssl] epoch 1/50 step 0/3665 loss 8.0934 momentum 0.99600
+[ssl] epoch 1/50 step 50/3665 loss 8.3163 momentum 0.99600
+[ssl] epoch 1/50 step 100/3665 loss 8.3165 momentum 0.99600
+[ssl] epoch 1/50 step 150/3665 loss 8.3172 momentum 0.99600
+[ssl] epoch 1/50 step 200/3665 loss 8.3175 momentum 0.99600
+[ssl] epoch 1/50 step 250/3665 loss 8.3176 momentum 0.99600
+[ssl] epoch 1/50 step 300/3665 loss 8.3176 momentum 0.99600
+[ssl] epoch 1/50 step 350/3665 loss 8.3177 momentum 0.99600
+[ssl] epoch 1/50 step 400/3665 loss 8.3177 momentum 0.99600
+[ssl] epoch 1/50 step 450/3665 loss 8.3177 momentum 0.99600
+[ssl] epoch 1/50 step 500/3665 loss 8.3177 momentum 0.99600
+[ssl] epoch 1/50 step 550/3665 loss 8.3176 momentum 0.99600
+[ssl] epoch 1/50 step 600/3665 loss 8.3176 momentum 0.99600
+[ssl] epoch 1/50 step 650/3665 loss 8.3176 momentum 0.99600
+[ssl] epoch 1/50 step 700/3665 loss 8.3175 momentum 0.99600
+[ssl] epoch 1/50 step 750/3665 loss 8.3174 momentum 0.99600
+[ssl] epoch 1/50 step 800/3665 loss 8.3172 momentum 0.99600
+[ssl] epoch 1/50 step 850/3665 loss 8.3172 momentum 0.99600
+[ssl] epoch 1/50 step 900/3665 loss 8.3170 momentum 0.99600
+[ssl] epoch 1/50 step 950/3665 loss 8.3162 momentum 0.99600
+[ssl] epoch 1/50 step 1000/3665 loss 8.3163 momentum 0.99600
+[ssl] epoch 1/50 step 1050/3665 loss 8.3154 momentum 0.99600
+[ssl] epoch 1/50 step 1100/3665 loss 8.3145 momentum 0.99600
+[ssl] epoch 1/50 step 1150/3665 loss 8.3135 momentum 0.99600
+[ssl] epoch 1/50 step 1200/3665 loss 8.3110 momentum 0.99600
+[ssl] epoch 1/50 step 1250/3665 loss 8.3103 momentum 0.99600
+[ssl] epoch 1/50 step 1300/3665 loss 8.3056 momentum 0.99600
+[ssl] epoch 1/50 step 1350/3665 loss 8.3019 momentum 0.99600
+[ssl] epoch 1/50 step 1400/3665 loss 8.2889 momentum 0.99600
+[ssl] epoch 1/50 step 1450/3665 loss 8.2738 momentum 0.99600
+[ssl] epoch 1/50 step 1500/3665 loss 8.2619 momentum 0.99600
+[ssl] epoch 1/50 step 1550/3665 loss 8.2390 momentum 0.99600
+[ssl] epoch 1/50 step 1600/3665 loss 8.2258 momentum 0.99600
+[ssl] epoch 1/50 step 1650/3665 loss 8.1718 momentum 0.99600
+[ssl] epoch 1/50 step 1700/3665 loss 8.0913 momentum 0.99600
+[ssl] epoch 1/50 step 1750/3665 loss 7.9802 momentum 0.99600
+[ssl] epoch 1/50 step 1800/3665 loss 7.9279 momentum 0.99600
+[ssl] epoch 1/50 step 1850/3665 loss 7.9518 momentum 0.99600
+[ssl] epoch 1/50 step 1900/3665 loss 7.8620 momentum 0.99600
+[ssl] epoch 1/50 step 1950/3665 loss 7.6619 momentum 0.99600
+[ssl] epoch 1/50 step 2000/3665 loss 7.6578 momentum 0.99600
+[ssl] epoch 1/50 step 2050/3665 loss 7.6797 momentum 0.99600
+[ssl] epoch 1/50 step 2100/3665 loss 7.4485 momentum 0.99600
+[ssl] epoch 1/50 step 2150/3665 loss 7.5917 momentum 0.99600
+[ssl] epoch 1/50 step 2200/3665 loss 7.5834 momentum 0.99600
+[ssl] epoch 1/50 step 2250/3665 loss 7.4473 momentum 0.99600
+[ssl] epoch 1/50 step 2300/3665 loss 7.5112 momentum 0.99600
+[ssl] epoch 1/50 step 2350/3665 loss 7.3064 momentum 0.99600
+[ssl] epoch 1/50 step 2400/3665 loss 7.2776 momentum 0.99600
+[ssl] epoch 1/50 step 2450/3665 loss 7.4052 momentum 0.99600
+[ssl] epoch 1/50 step 2500/3665 loss 7.5027 momentum 0.99600
+[ssl] epoch 1/50 step 2550/3665 loss 7.3318 momentum 0.99600
+[ssl] epoch 1/50 step 2600/3665 loss 7.1608 momentum 0.99600
+[ssl] epoch 1/50 step 2650/3665 loss 7.2881 momentum 0.99600
+[ssl] epoch 1/50 step 2700/3665 loss 6.9393 momentum 0.99600
+[ssl] epoch 1/50 step 2750/3665 loss 7.1663 momentum 0.99600
+[ssl] epoch 1/50 step 2800/3665 loss 7.1694 momentum 0.99600
+[ssl] epoch 1/50 step 2850/3665 loss 7.1502 momentum 0.99600
+[ssl] epoch 1/50 step 2900/3665 loss 6.8327 momentum 0.99600
+[ssl] epoch 1/50 step 2950/3665 loss 6.7917 momentum 0.99600
+[ssl] epoch 1/50 step 3000/3665 loss 7.1400 momentum 0.99600
+[ssl] epoch 1/50 step 3050/3665 loss 6.7205 momentum 0.99600
+[ssl] epoch 1/50 step 3100/3665 loss 6.9833 momentum 0.99600
+[ssl] epoch 1/50 step 3150/3665 loss 6.8362 momentum 0.99600
+[ssl] epoch 1/50 step 3200/3665 loss 6.7917 momentum 0.99600
+[ssl] epoch 1/50 step 3250/3665 loss 6.7557 momentum 0.99600
+[ssl] epoch 1/50 step 3300/3665 loss 6.5700 momentum 0.99600
+[ssl] epoch 1/50 step 3350/3665 loss 6.5362 momentum 0.99600
+[ssl] epoch 1/50 step 3400/3665 loss 6.8492 momentum 0.99600
+[ssl] epoch 1/50 step 3450/3665 loss 6.5449 momentum 0.99600
+[ssl] epoch 1/50 step 3500/3665 loss 6.8294 momentum 0.99600
+[ssl] epoch 1/50 step 3550/3665 loss 6.6098 momentum 0.99600
+[ssl] epoch 1/50 step 3600/3665 loss 6.4950 momentum 0.99600
+[ssl] epoch 1/50 step 3650/3665 loss 6.3652 momentum 0.99600
+[ssl] epoch 1/50 avg loss 7.7111
+[ssl] wrote trunk checkpoint -> /Data/thomas.turkieh/project_modal_P3/checkpoints/track_a/ssl_trunk.pt
+[ssl] epoch 2/50 step 0/3665 loss 6.5582 momentum 0.99600
+[ssl] epoch 2/50 step 50/3665 loss 6.5607 momentum 0.99600
+[ssl] epoch 2/50 step 100/3665 loss 6.3233 momentum 0.99600
+[ssl] epoch 2/50 step 150/3665 loss 6.5169 momentum 0.99600
+[ssl] epoch 2/50 step 200/3665 loss 6.2851 momentum 0.99600
+[ssl] epoch 2/50 step 250/3665 loss 6.5609 momentum 0.99600
+[ssl] epoch 2/50 step 300/3665 loss 6.4894 momentum 0.99600
+[ssl] epoch 2/50 step 350/3665 loss 6.5947 momentum 0.99600
+[ssl] epoch 2/50 step 400/3665 loss 6.4933 momentum 0.99600
+[ssl] epoch 2/50 step 450/3665 loss 6.3761 momentum 0.99600
+[ssl] epoch 2/50 step 500/3665 loss 6.2077 momentum 0.99601
+[ssl] epoch 2/50 step 550/3665 loss 6.3428 momentum 0.99601
+[ssl] epoch 2/50 step 600/3665 loss 6.3769 momentum 0.99601
+[ssl] epoch 2/50 step 650/3665 loss 6.2300 momentum 0.99601
+[ssl] epoch 2/50 step 700/3665 loss 6.1387 momentum 0.99601
+[ssl] epoch 2/50 step 750/3665 loss 6.3330 momentum 0.99601
+[ssl] epoch 2/50 step 800/3665 loss 6.1893 momentum 0.99601
+[ssl] epoch 2/50 step 850/3665 loss 6.3140 momentum 0.99601
+[ssl] epoch 2/50 step 900/3665 loss 6.0348 momentum 0.99601
+[ssl] epoch 2/50 step 950/3665 loss 6.1328 momentum 0.99601
+[ssl] epoch 2/50 step 1000/3665 loss 6.1387 momentum 0.99601
+[ssl] epoch 2/50 step 1050/3665 loss 6.2981 momentum 0.99601
+[ssl] epoch 2/50 step 1100/3665 loss 6.1915 momentum 0.99601
+[ssl] epoch 2/50 step 1150/3665 loss 6.0801 momentum 0.99601
+[ssl] epoch 2/50 step 1200/3665 loss 6.0630 momentum 0.99601
+[ssl] epoch 2/50 step 1250/3665 loss 6.2064 momentum 0.99601
+[ssl] epoch 2/50 step 1300/3665 loss 6.3501 momentum 0.99601
+[ssl] epoch 2/50 step 1350/3665 loss 6.3384 momentum 0.99601
+[ssl] epoch 2/50 step 1400/3665 loss 6.1908 momentum 0.99601
+[ssl] epoch 2/50 step 1450/3665 loss 6.0163 momentum 0.99601
+[ssl] epoch 2/50 step 1500/3665 loss 6.5147 momentum 0.99601
+[ssl] epoch 2/50 step 1550/3665 loss 6.3345 momentum 0.99601
+[ssl] epoch 2/50 step 1600/3665 loss 6.3325 momentum 0.99601
+[ssl] epoch 2/50 step 1650/3665 loss 6.1446 momentum 0.99601
+[ssl] epoch 2/50 step 1700/3665 loss 6.3667 momentum 0.99601
+[ssl] epoch 2/50 step 1750/3665 loss 6.0969 momentum 0.99601
+[ssl] epoch 2/50 step 1800/3665 loss 6.0232 momentum 0.99601
+[ssl] epoch 2/50 step 1850/3665 loss 6.1429 momentum 0.99601
+[ssl] epoch 2/50 step 1900/3665 loss 6.3459 momentum 0.99601
+[ssl] epoch 2/50 step 1950/3665 loss 5.9064 momentum 0.99601
+[ssl] epoch 2/50 step 2000/3665 loss 5.8810 momentum 0.99601
+[ssl] epoch 2/50 step 2050/3665 loss 6.0592 momentum 0.99601
+[ssl] epoch 2/50 step 2100/3665 loss 6.1037 momentum 0.99601
+[ssl] epoch 2/50 step 2150/3665 loss 6.0212 momentum 0.99601
+[ssl] epoch 2/50 step 2200/3665 loss 6.1571 momentum 0.99601
+[ssl] epoch 2/50 step 2250/3665 loss 6.5584 momentum 0.99601
+[ssl] epoch 2/50 step 2300/3665 loss 6.4295 momentum 0.99601
+[ssl] epoch 2/50 step 2350/3665 loss 6.1040 momentum 0.99601
+[ssl] epoch 2/50 step 2400/3665 loss 6.1053 momentum 0.99601
+[ssl] epoch 2/50 step 2450/3665 loss 5.9882 momentum 0.99601
+[ssl] epoch 2/50 step 2500/3665 loss 6.1076 momentum 0.99601
+[ssl] epoch 2/50 step 2550/3665 loss 6.3035 momentum 0.99601
+[ssl] epoch 2/50 step 2600/3665 loss 6.2674 momentum 0.99601
+[ssl] epoch 2/50 step 2650/3665 loss 6.2867 momentum 0.99601
+[ssl] epoch 2/50 step 2700/3665 loss 6.0920 momentum 0.99601
+[ssl] epoch 2/50 step 2750/3665 loss 6.2679 momentum 0.99601
+[ssl] epoch 2/50 step 2800/3665 loss 6.1172 momentum 0.99601
+[ssl] epoch 2/50 step 2850/3665 loss 6.0473 momentum 0.99601
+[ssl] epoch 2/50 step 2900/3665 loss 6.0697 momentum 0.99601
+[ssl] epoch 2/50 step 2950/3665 loss 6.5421 momentum 0.99601
+[ssl] epoch 2/50 step 3000/3665 loss 6.2998 momentum 0.99601
+[ssl] epoch 2/50 step 3050/3665 loss 6.0026 momentum 0.99601
+[ssl] epoch 2/50 step 3100/3665 loss 5.9766 momentum 0.99601
+[ssl] epoch 2/50 step 3150/3665 loss 6.0321 momentum 0.99601
+[ssl] epoch 2/50 step 3200/3665 loss 6.2535 momentum 0.99601
+[ssl] epoch 2/50 step 3250/3665 loss 6.2456 momentum 0.99601
+[ssl] epoch 2/50 step 3300/3665 loss 5.9742 momentum 0.99601
+[ssl] epoch 2/50 step 3350/3665 loss 6.2536 momentum 0.99601
+[ssl] epoch 2/50 step 3400/3665 loss 6.0850 momentum 0.99601
+[ssl] epoch 2/50 step 3450/3665 loss 6.0857 momentum 0.99601
+[ssl] epoch 2/50 step 3500/3665 loss 5.9714 momentum 0.99602
+[ssl] epoch 2/50 step 3550/3665 loss 5.8903 momentum 0.99602
+[ssl] epoch 2/50 step 3600/3665 loss 6.2453 momentum 0.99602
+[ssl] epoch 2/50 step 3650/3665 loss 6.2193 momentum 0.99602
+[ssl] epoch 2/50 avg loss 6.2520
+[ssl] wrote trunk checkpoint -> /Data/thomas.turkieh/project_modal_P3/checkpoints/track_a/ssl_trunk.pt
+[ssl] epoch 3/50 step 0/3665 loss 6.0332 momentum 0.99602
+[ssl] epoch 3/50 step 50/3665 loss 6.2719 momentum 0.99602
+[ssl] epoch 3/50 step 100/3665 loss 6.2887 momentum 0.99602
+[ssl] epoch 3/50 step 150/3665 loss 6.0905 momentum 0.99602
+[ssl] epoch 3/50 step 200/3665 loss 6.1731 momentum 0.99602
+[ssl] epoch 3/50 step 250/3665 loss 5.9911 momentum 0.99602
+[ssl] epoch 3/50 step 300/3665 loss 6.2141 momentum 0.99602
+[ssl] epoch 3/50 step 350/3665 loss 6.2390 momentum 0.99602
+[ssl] epoch 3/50 step 400/3665 loss 5.9605 momentum 0.99602
+[ssl] epoch 3/50 step 450/3665 loss 5.9565 momentum 0.99602
+[ssl] epoch 3/50 step 500/3665 loss 6.0463 momentum 0.99602
+[ssl] epoch 3/50 step 550/3665 loss 5.9331 momentum 0.99602
+[ssl] epoch 3/50 step 600/3665 loss 5.9561 momentum 0.99602
+[ssl] epoch 3/50 step 650/3665 loss 6.3405 momentum 0.99602
+[ssl] epoch 3/50 step 700/3665 loss 6.0130 momentum 0.99602
+[ssl] epoch 3/50 step 750/3665 loss 6.0377 momentum 0.99602
+[ssl] epoch 3/50 step 800/3665 loss 6.1071 momentum 0.99602
+[ssl] epoch 3/50 step 850/3665 loss 6.1053 momentum 0.99602
+[ssl] epoch 3/50 step 900/3665 loss 5.9975 momentum 0.99602
+[ssl] epoch 3/50 step 950/3665 loss 6.0474 momentum 0.99602
+[ssl] epoch 3/50 step 1000/3665 loss 5.8115 momentum 0.99602
+[ssl] epoch 3/50 step 1050/3665 loss 6.0405 momentum 0.99602
+[ssl] epoch 3/50 step 1100/3665 loss 5.9930 momentum 0.99602
+[ssl] epoch 3/50 step 1150/3665 loss 5.9079 momentum 0.99602
+[ssl] epoch 3/50 step 1200/3665 loss 6.0610 momentum 0.99602
+[ssl] epoch 3/50 step 1250/3665 loss 5.9431 momentum 0.99602
+[ssl] epoch 3/50 step 1300/3665 loss 5.9539 momentum 0.99602
+[ssl] epoch 3/50 step 1350/3665 loss 6.1076 momentum 0.99602
+[ssl] epoch 3/50 step 1400/3665 loss 5.8101 momentum 0.99602
+[ssl] epoch 3/50 step 1450/3665 loss 5.8547 momentum 0.99602
+[ssl] epoch 3/50 step 1500/3665 loss 5.8734 momentum 0.99602
+[ssl] epoch 3/50 step 1550/3665 loss 6.2232 momentum 0.99602
+[ssl] epoch 3/50 step 1600/3665 loss 5.5393 momentum 0.99602
+[ssl] epoch 3/50 step 1650/3665 loss 5.6144 momentum 0.99602
+[ssl] epoch 3/50 step 1700/3665 loss 5.7656 momentum 0.99602
+[ssl] epoch 3/50 step 1750/3665 loss 5.8072 momentum 0.99602
+[ssl] epoch 3/50 step 1800/3665 loss 6.0363 momentum 0.99602
+[ssl] epoch 3/50 step 1850/3665 loss 6.0935 momentum 0.99602
+[ssl] epoch 3/50 step 1900/3665 loss 5.5092 momentum 0.99602
+[ssl] epoch 3/50 step 1950/3665 loss 5.9531 momentum 0.99603
+[ssl] epoch 3/50 step 2000/3665 loss 5.8202 momentum 0.99603
+[ssl] epoch 3/50 step 2050/3665 loss 6.0459 momentum 0.99603
+[ssl] epoch 3/50 step 2100/3665 loss 5.6381 momentum 0.99603
+[ssl] epoch 3/50 step 2150/3665 loss 5.9929 momentum 0.99603
+[ssl] epoch 3/50 step 2200/3665 loss 5.9135 momentum 0.99603
+[ssl] epoch 3/50 step 2250/3665 loss 5.3220 momentum 0.99603
+[ssl] epoch 3/50 step 2300/3665 loss 5.9961 momentum 0.99603
+[ssl] epoch 3/50 step 2350/3665 loss 5.7553 momentum 0.99603
+[ssl] epoch 3/50 step 2400/3665 loss 5.8910 momentum 0.99603
+[ssl] epoch 3/50 step 2450/3665 loss 5.3891 momentum 0.99603
+[ssl] epoch 3/50 step 2500/3665 loss 5.8019 momentum 0.99603
+[ssl] epoch 3/50 step 2550/3665 loss 5.5593 momentum 0.99603
+[ssl] epoch 3/50 step 2600/3665 loss 5.6100 momentum 0.99603
+[ssl] epoch 3/50 step 2650/3665 loss 5.5106 momentum 0.99603
+[ssl] epoch 3/50 step 2700/3665 loss 6.1434 momentum 0.99603
+[ssl] epoch 3/50 step 2750/3665 loss 5.7834 momentum 0.99603
+[ssl] epoch 3/50 step 2800/3665 loss 5.8104 momentum 0.99603
+[ssl] epoch 3/50 step 2850/3665 loss 5.8634 momentum 0.99603
+[ssl] epoch 3/50 step 2900/3665 loss 5.8521 momentum 0.99603
+[ssl] epoch 3/50 step 2950/3665 loss 5.8247 momentum 0.99603
+[ssl] epoch 3/50 step 3000/3665 loss 5.2892 momentum 0.99603
+[ssl] epoch 3/50 step 3050/3665 loss 5.6122 momentum 0.99603
+[ssl] epoch 3/50 step 3100/3665 loss 5.9451 momentum 0.99603
+[ssl] epoch 3/50 step 3150/3665 loss 5.8336 momentum 0.99603
+[ssl] epoch 3/50 step 3200/3665 loss 5.5039 momentum 0.99603
+[ssl] epoch 3/50 step 3250/3665 loss 5.7793 momentum 0.99603
+[ssl] epoch 3/50 step 3300/3665 loss 5.4001 momentum 0.99603
+[ssl] epoch 3/50 step 3350/3665 loss 5.1062 momentum 0.99603
+[ssl] epoch 3/50 step 3400/3665 loss 5.3403 momentum 0.99603
+[ssl] epoch 3/50 step 3450/3665 loss 5.4531 momentum 0.99603
+[ssl] epoch 3/50 step 3500/3665 loss 5.6096 momentum 0.99603
+[ssl] epoch 3/50 step 3550/3665 loss 5.5589 momentum 0.99603
+[ssl] epoch 3/50 step 3600/3665 loss 5.4462 momentum 0.99604
+[ssl] epoch 3/50 step 3650/3665 loss 5.5908 momentum 0.99604
+[ssl] epoch 3/50 avg loss 5.8845
+[ssl] wrote trunk checkpoint -> /Data/thomas.turkieh/project_modal_P3/checkpoints/track_a/ssl_trunk.pt
+[ssl] epoch 4/50 step 0/3665 loss 5.2785 momentum 0.99604
+[ssl] epoch 4/50 step 50/3665 loss 5.6251 momentum 0.99604
+[ssl] epoch 4/50 step 100/3665 loss 5.5358 momentum 0.99604
+[ssl] epoch 4/50 step 150/3665 loss 5.5463 momentum 0.99604
+[ssl] epoch 4/50 step 200/3665 loss 5.7753 momentum 0.99604
+[ssl] epoch 4/50 step 250/3665 loss 5.7259 momentum 0.99604
+[ssl] epoch 4/50 step 300/3665 loss 5.4343 momentum 0.99604
+[ssl] epoch 4/50 step 350/3665 loss 5.6121 momentum 0.99604
+[ssl] epoch 4/50 step 400/3665 loss 5.6326 momentum 0.99604
+[ssl] epoch 4/50 step 450/3665 loss 5.0954 momentum 0.99604
+[ssl] epoch 4/50 step 500/3665 loss 5.5756 momentum 0.99604
+[ssl] epoch 4/50 step 550/3665 loss 5.5752 momentum 0.99604
+[ssl] epoch 4/50 step 600/3665 loss 5.1965 momentum 0.99604
+[ssl] epoch 4/50 step 650/3665 loss 5.3648 momentum 0.99604
+[ssl] epoch 4/50 step 700/3665 loss 5.5151 momentum 0.99604
+[ssl] epoch 4/50 step 750/3665 loss 5.6355 momentum 0.99604
+[ssl] epoch 4/50 step 800/3665 loss 5.6355 momentum 0.99604
+[ssl] epoch 4/50 step 850/3665 loss 5.2539 momentum 0.99604
+[ssl] epoch 4/50 step 900/3665 loss 5.2882 momentum 0.99604
+[ssl] epoch 4/50 step 950/3665 loss 5.4739 momentum 0.99604
+[ssl] epoch 4/50 step 1000/3665 loss 5.2934 momentum 0.99604
+[ssl] epoch 4/50 step 1050/3665 loss 5.6825 momentum 0.99604
+[ssl] epoch 4/50 step 1100/3665 loss 5.3189 momentum 0.99604
+[ssl] epoch 4/50 step 1150/3665 loss 5.5498 momentum 0.99604
+[ssl] epoch 4/50 step 1200/3665 loss 5.7824 momentum 0.99604
+[ssl] epoch 4/50 step 1250/3665 loss 5.4692 momentum 0.99604
+[ssl] epoch 4/50 step 1300/3665 loss 5.2740 momentum 0.99604
+[ssl] epoch 4/50 step 1350/3665 loss 5.3008 momentum 0.99604
+[ssl] epoch 4/50 step 1400/3665 loss 5.2976 momentum 0.99604
+[ssl] epoch 4/50 step 1450/3665 loss 5.1664 momentum 0.99605
+[ssl] epoch 4/50 step 1500/3665 loss 5.6634 momentum 0.99605
+[ssl] epoch 4/50 step 1550/3665 loss 5.1682 momentum 0.99605
