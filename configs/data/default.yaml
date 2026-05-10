@@ -21,6 +21,11 @@ dataset:
 
   num_frames: 8
   val_ratio: 0.2
+  # When true, validate on the *official* held-out folder ``${dataset.val_dir}``
+  # instead of carving an in-distribution slice out of ``${dataset.train_dir}``.
+  # The 80/20 internal split (``val_ratio``) is ignored when this is on.
+  # Default stays false to preserve historical run reproducibility.
+  use_official_val: false
   seed: ${seed}
   max_samples: null
   image_size: 224

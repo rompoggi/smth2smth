@@ -1,0 +1,35 @@
+# @package _global_
+# Track-A-compliant self-supervised pretraining with DINO-v1.
+#
+# This run trains a ResNet-50 trunk *from scratch* on the unlabeled still
+# frames of the provided dataset (train + val + test). It uses no external
+# data and no pretrained weights, so it remains within Track A's closed-world
+# rules.
+#
+# Output: a small trunk-only checkpoint (~95 MiB). Feed it back into the
+# supervised trainer with ``model.init_from=<path>`` (see
+# ``track_a_ssl_finetune.yaml``).
+defaults:
+  - override /model: avanced_resnet50_tsm
+  - override /augment: none
+
+model:
+  pretrained: false
+
+# Override the SSL pretrain defaults to taste here.
+pretrain:
+  epochs: 50
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.04
+  num_local_views: 6
+  log_interval_steps: 50
+
+# These are read by ``pretrain_ssl.run`` only for ``training.device``,
+# ``training.num_workers`` and ``training.amp``; the supervised-only knobs
+# below are ignored during pretraining.
+training:
+  num_workers: 2
+  device: cuda
+  amp: true
+  batch_size: 64

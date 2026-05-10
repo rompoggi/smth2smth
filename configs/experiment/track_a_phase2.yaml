@@ -1,0 +1,49 @@
+# @package _global_
+# Track A (closed-world, from scratch) -- Phase-2 super-set of
+# ``track_a_randaugment_t``: same data pipeline (RandAugment-T + FrameMixUp,
+# 4 frames, official val split) but with the new opt-ins layered on:
+#   * AdamW (Loshchilov & Hutter 2019) instead of plain Adam
+#   * Stochastic Depth ``drop_path_rate=0.1`` (Huang et al. 2016)
+#   * Attention-pool head over the T frame features (strict superset of mean)
+#   * EMA model averaging (decay 0.999) -- evaluated each epoch, the better of
+#     (live, ema) is checkpointed.
+#   * AMP (mixed precision) -- ~1.5x throughput on Ampere+ GPUs.
+#
+# Test-Time Augmentation (h-flip + auto left/right class remap) is enabled in
+# this config too; it has no effect during training but is read by ``submit.py``.
+defaults:
+  - override /model: avanced_resnet50_tsm
+  - override /augment: randaugment_t
+
+model:
+  pretrained: false
+  drop_path_rate: 0.1
+  head: attn
+  head_num_heads: 4
+
+dataset:
+  num_frames: 4
+  use_official_val: true
+
+training:
+  batch_size: 16
+  epochs: 50
+  lr: 0.0001
+  optimizer: adamw
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 10
+  min_lr: 0.000001
+  label_smoothing: 0.1
+  videomix_mode: frame_mixup
+  videomix_alpha: 5.0
+  videomix_prob: 0.5
+  amp: true
+  ema_enabled: true
+  ema_decay: 0.999
+  tta: true
+  tta_flip: true
+  early_stopping_enabled: true
+  early_stopping_patience: 25
+  early_stopping_min_delta: 0.001
+  log_interval_steps: 100

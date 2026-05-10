@@ -2,7 +2,7 @@
 training:
   batch_size: 8
   lr: 0.0001
-  epochs: 5
+  epochs: 20
   num_workers: 2
   checkpoint_path: ${hydra:runtime.cwd}/best_model.pt
   # Optional path to a checkpoint to resume from. When set, model weights and
@@ -10,6 +10,10 @@ training:
   # scheduler (if any) is fast-forwarded so the LR continues from the right
   # point. Optimizer state is not stored in the schema and therefore restarts.
   resume_from: null
+  # When true and the device is CUDA, training and evaluation forward passes
+  # run under ``torch.amp.autocast`` (mixed FP16/BF16 + GradScaler). Off by
+  # default for byte-for-byte parity with historical runs.
+  amp: false
   device: cuda
   optimizer: adam
   momentum: 0.9
@@ -26,3 +30,25 @@ training:
   early_stopping_patience: 10
   early_stopping_min_delta: 0.0
   log_interval_steps: 0
+  # Exponential Moving Average of model weights (Polyak averaging).
+  # When enabled, an ``AveragedModel`` is updated after every optimizer step
+  # and evaluated alongside the live model each epoch; whichever achieves the
+  # higher val top1 is the one saved to ``checkpoint_path``. ``checkpoint_kind``
+  # in the saved ``extra`` records which copy won.
+  ema_enabled: false
+  ema_decay: 0.999
+  # Test-Time Augmentation. Used by ``submit.py`` only (no effect on train).
+  # ``tta: false``                 -> single deterministic forward pass.
+  # ``tta_flip: true``             -> also evaluate horizontally-flipped clips
+  #                                   and average softmaxes (with auto class-pair
+  #                                   remap for left/right semantically-paired
+  #                                   classes; the remap is derived from class
+  #                                   folder names so it generalizes to any new
+  #                                   class set).
+  # ``tta_temporal_shift: int``    -> additionally evaluate ``k`` temporal
+  #                                   start-offsets per clip (re-samples frame
+  #                                   indices) and averages those too. ``0``
+  #                                   disables it.
+  tta: false
+  tta_flip: true
+  tta_temporal_shift: 0

@@ -7,3 +7,20 @@ model:
   shift_div: 8
   shift_place: blockres
   dropout: 0.5
+  # Phase-2 opt-ins. Defaults are no-ops (legacy behavior preserved).
+  #
+  # Stochastic Depth (Huang et al. 2016). Linear schedule from 0 (first block)
+  # to ``drop_path_rate`` (last block). Typical: 0.1 for ResNet-50 + 4 frames.
+  drop_path_rate: 0.0
+  # Temporal aggregation: ``mean`` (legacy: average over T frame features) or
+  # ``attn`` (1-query MultiHeadAttention pool). With T=4, ``attn`` is a strict
+  # superset of ``mean`` and has tens of millions fewer params than a full
+  # transformer encoder.
+  head: mean
+  head_num_heads: 4
+  # Optional path to a self-supervised trunk checkpoint produced by
+  # ``smth2smth.pipelines.pretrain_ssl``. When set, the supervised trainer
+  # loads only the ResNet-50 trunk weights (non-strict) into ``model.backbone``
+  # before training starts. Track-A safe (no external weights). ``null`` ⇒
+  # the trunk is initialised from scratch as before.
+  init_from: null

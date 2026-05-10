@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import gc
 from pathlib import Path
+from typing import Any
 
 import hydra
 import torch
@@ -38,6 +39,35 @@ def _resolve_device(device_str: str) -> torch.device:
         print("CUDA not available; using CPU.")
         return torch.device("cpu")
     return torch.device(device_str)
+
+
+def _ssl_trunk_to_supervised_keys(trunk_state: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+    """Adapt a plain-ResNet-50 SSL trunk state_dict to the supervised model's
+    backbone state_dict layout.
+
+    :func:`AvancedResNet50TSM` wraps every bottleneck block's ``conv1`` in a
+    ``nn.Sequential(TemporalShift, conv1)``, which renames the parameter key
+    from ``layerN.M.conv1.weight`` to ``layerN.M.conv1.1.weight``. SSL
+    pretraining has no temporal axis so its trunk has plain ``conv1``; this
+    helper performs the renaming so the SSL weights drop into the supervised
+    model's ``backbone`` directly. Other keys (``conv2``, ``conv3``, batchnorms,
+    stem, etc.) are passed through unchanged.
+
+    The returned dict is also prefixed with ``backbone.`` so it can be passed
+    straight to ``AvancedResNet50TSM.load_state_dict(..., strict=False)``.
+    """
+    import re
+
+    block_conv1_re = re.compile(r"^(layer[1-4]\.\d+\.conv1)\.(weight|bias)$")
+    out: dict[str, torch.Tensor] = {}
+    for k, v in trunk_state.items():
+        match = block_conv1_re.match(k)
+        if match is not None:
+            new_k = f"{match.group(1)}.1.{match.group(2)}"
+        else:
+            new_k = k
+        out[f"backbone.{new_k}"] = v
+    return out
 
 
 def _free_cuda_memory(reason: str = "") -> None:
@@ -87,11 +117,32 @@ def run(cfg: DictConfig) -> Path | None:
     if max_samples is not None:
         all_samples = all_samples[: int(max_samples)]
 
-    train_samples, val_samples = split_train_val(
-        all_samples,
-        val_ratio=float(cfg.dataset.val_ratio),
-        seed=int(cfg.dataset.seed),
-    )
+    use_official_val = bool(cfg.dataset.get("use_official_val", False))
+    if use_official_val:
+        # Validate on the official held-out folder. The internal 80/20 split is
+        # bypassed: training uses *all* of ``train_dir``, validation uses
+        # *all* of ``val_dir``.
+        val_dir_for_val = Path(cfg.dataset.val_dir).resolve()
+        val_samples = collect_video_samples(val_dir_for_val)
+        if max_samples is not None:
+            val_samples = val_samples[: int(max_samples)]
+        train_samples = all_samples
+        print(
+            f"[data] use_official_val=true: train={len(train_samples)} "
+            f"(from {train_dir}), val={len(val_samples)} (from {val_dir_for_val})"
+        )
+    else:
+        train_samples, val_samples = split_train_val(
+            all_samples,
+            val_ratio=float(cfg.dataset.val_ratio),
+            seed=int(cfg.dataset.seed),
+        )
+
+    # Class indices that actually have at least one training sample. Recorded
+    # in the checkpoint so :mod:`smth2smth.pipelines.submit` can mask logits
+    # for never-trained classes (e.g. the missing class 27 in the Track A
+    # dataset would otherwise win a fraction of test predictions by accident).
+    trained_class_indices: list[int] = sorted({int(label) for _, label in train_samples})
 
     use_imagenet_norm = bool(cfg.model.pretrained)
     augment_cfg = cfg.get("augment") if hasattr(cfg, "get") else None
@@ -139,6 +190,37 @@ def run(cfg: DictConfig) -> Path | None:
     )
 
     model = build_model(cfg).to(device)
+
+    # Optional: warm-start the trunk from a self-supervised checkpoint produced
+    # by ``pretrain_ssl.py``. Track-A safe: the SSL trunk was trained from
+    # random init on the *provided* unlabeled frames only, so loading it here
+    # introduces no external knowledge. The hook is opt-in (``model.init_from``
+    # null by default) and the load is non-strict so slight architectural
+    # mismatches (e.g. extra BN buffers) don't fail the supervised run.
+    init_from = cfg.model.get("init_from") if hasattr(cfg.model, "get") else None
+    if init_from:
+        init_path = Path(str(init_from)).resolve()
+        if not init_path.is_file():
+            raise SystemExit(f"model.init_from points to a missing file: {init_path}")
+        payload = torch.load(init_path, map_location=device, weights_only=False)
+        trunk_state = payload.get("trunk_state_dict") if isinstance(payload, dict) else None
+        if trunk_state is None:
+            raise SystemExit(
+                f"{init_path} does not contain a 'trunk_state_dict' key; "
+                "expected an SSL checkpoint produced by pretrain_ssl.py."
+            )
+        prefixed = _ssl_trunk_to_supervised_keys(trunk_state)
+        missing, unexpected = model.load_state_dict(prefixed, strict=False)
+        # ``missing`` will include classifier / attn_pool keys -- expected.
+        backbone_missing = [k for k in missing if k.startswith("backbone.")]
+        print(
+            f"[init_from] loaded {len(prefixed)} trunk tensors from {init_path}. "
+            f"backbone-missing={len(backbone_missing)}, unexpected={len(unexpected)}"
+        )
+        if backbone_missing:
+            # If the SSL trunk doesn't cover every backbone key, we want to know.
+            print(f"[init_from] backbone keys NOT covered by SSL: {backbone_missing[:8]}...")
+
     loss_fn = nn.CrossEntropyLoss()
     optimizer_name = str(cfg.training.get("optimizer", "adam")).lower()
     base_lr = float(cfg.training.lr)
@@ -176,6 +258,34 @@ def run(cfg: DictConfig) -> Path | None:
     early_stopping_patience = int(cfg.training.get("early_stopping_patience", 10))
     early_stopping_min_delta = float(cfg.training.get("early_stopping_min_delta", 0.0))
 
+    amp_enabled = bool(cfg.training.get("amp", False)) and device.type == "cuda"
+    scaler: torch.amp.GradScaler | None = (
+        torch.amp.GradScaler("cuda", enabled=True) if amp_enabled else None
+    )
+    if amp_enabled:
+        print("[amp] mixed-precision (fp16 + GradScaler) enabled.")
+
+    # EMA (Exponential Moving Average) of model weights, à la PyTorch's
+    # ``AveragedModel(use_buffers=True)``. When enabled, every optimizer step
+    # we update the EMA copy, and at each epoch boundary we evaluate *both*
+    # the live model and the EMA model. The checkpoint stores whichever
+    # achieved the best val_top1; the corresponding state_dict is recorded so
+    # ``submit.py`` always loads the right weights without code changes.
+    ema_enabled = bool(cfg.training.get("ema_enabled", False))
+    ema_decay = float(cfg.training.get("ema_decay", 0.999))
+    ema_model: torch.optim.swa_utils.AveragedModel | None = None
+    if ema_enabled:
+
+        def _ema_avg_fn(
+            avg_param: torch.Tensor, model_param: torch.Tensor, _num_averaged: int
+        ) -> torch.Tensor:
+            return ema_decay * avg_param + (1.0 - ema_decay) * model_param
+
+        ema_model = torch.optim.swa_utils.AveragedModel(
+            model, avg_fn=_ema_avg_fn, use_buffers=True
+        ).to(device)
+        print(f"[ema] enabled (decay={ema_decay}); will eval both live and EMA each epoch.")
+
     checkpoint_path = Path(cfg.training.checkpoint_path).resolve()
     best_top1 = -1.0
     best_path: Path | None = None
@@ -197,7 +307,31 @@ def run(cfg: DictConfig) -> Path | None:
             f"  Resumed at epoch {start_epoch}/{int(cfg.training.epochs)}; "
             f"best val top1 so far = {best_top1:.4f}"
         )
-        if cosine_scheduler is not None:
+
+        # Optimizer / scheduler / scaler are stored inside ``extra`` so the
+        # checkpoint schema (``schema_version=1``) stays untouched. Older
+        # checkpoints that don't carry these keys fall back to the legacy
+        # cosine fast-forward path so we keep resuming runs created before
+        # this change.
+        opt_state = extra.get("optimizer_state_dict")
+        if opt_state is not None:
+            try:
+                optimizer.load_state_dict(opt_state)
+                print("  Optimizer state restored from checkpoint.")
+            except Exception as exc:
+                print(f"  [warn] could not restore optimizer state: {exc}")
+
+        sched_state = extra.get("scheduler_state_dict")
+        if cosine_scheduler is not None and sched_state is not None:
+            try:
+                cosine_scheduler.load_state_dict(sched_state)
+                current_lr = optimizer.param_groups[0]["lr"]
+                print(f"  Cosine scheduler state restored; resumed LR={current_lr:.6g}")
+            except Exception as exc:
+                print(f"  [warn] could not restore scheduler state: {exc}")
+                sched_state = None  # trigger fast-forward fallback below
+
+        if cosine_scheduler is not None and sched_state is None:
             ff_steps = max(0, start_epoch - warmup_epochs)
             for _ in range(ff_steps):
                 cosine_scheduler.step()
@@ -207,6 +341,14 @@ def run(cfg: DictConfig) -> Path | None:
                     f"  Cosine scheduler fast-forwarded {ff_steps} step(s); "
                     f"resumed LR={current_lr:.6g}"
                 )
+
+        scaler_state = extra.get("scaler_state_dict")
+        if scaler is not None and scaler_state is not None:
+            try:
+                scaler.load_state_dict(scaler_state)
+                print("  GradScaler state restored from checkpoint.")
+            except Exception as exc:
+                print(f"  [warn] could not restore GradScaler state: {exc}")
 
     try:
         for epoch in range(start_epoch, int(cfg.training.epochs)):
@@ -226,29 +368,76 @@ def run(cfg: DictConfig) -> Path | None:
                 videomix_prob=videomix_prob,
                 videomix_mode=videomix_mode,
                 log_interval_steps=log_interval_steps,
+                scaler=scaler,
+                ema_model=ema_model,
             )
-            val_stats: EpochStats = evaluate_epoch(model, val_loader, loss_fn, device)
-            print(
-                f"Epoch {epoch + 1}/{cfg.training.epochs} | "
-                f"train loss {train_stats.loss:.4f} top1 {train_stats.top1:.4f} | "
-                f"val loss {val_stats.loss:.4f} top1 {val_stats.top1:.4f} top5 {val_stats.top5:.4f}"
+            val_stats: EpochStats = evaluate_epoch(
+                model, val_loader, loss_fn, device, amp_enabled=amp_enabled
             )
+            ema_stats: EpochStats | None = None
+            if ema_model is not None:
+                ema_stats = evaluate_epoch(
+                    ema_model, val_loader, loss_fn, device, amp_enabled=amp_enabled
+                )
+                print(
+                    f"Epoch {epoch + 1}/{cfg.training.epochs} | "
+                    f"train loss {train_stats.loss:.4f} top1 {train_stats.top1:.4f} | "
+                    f"val loss {val_stats.loss:.4f} top1 {val_stats.top1:.4f} "
+                    f"top5 {val_stats.top5:.4f} | "
+                    f"ema val top1 {ema_stats.top1:.4f} top5 {ema_stats.top5:.4f}"
+                )
+            else:
+                print(
+                    f"Epoch {epoch + 1}/{cfg.training.epochs} | "
+                    f"train loss {train_stats.loss:.4f} top1 {train_stats.top1:.4f} | "
+                    f"val loss {val_stats.loss:.4f} top1 {val_stats.top1:.4f} "
+                    f"top5 {val_stats.top5:.4f}"
+                )
 
-            if val_stats.top1 > (best_top1 + early_stopping_min_delta):
-                best_top1 = val_stats.top1
+            # Pick the better of (live, EMA) for checkpointing. The chosen
+            # state_dict is saved as ``model_state_dict`` so ``submit.py`` /
+            # ``evaluate.py`` keep working without any "is this EMA?" branching.
+            if ema_stats is not None and ema_stats.top1 > val_stats.top1:
+                ckpt_stats, ckpt_module, ckpt_kind = ema_stats, ema_model, "ema"
+            else:
+                ckpt_stats, ckpt_module, ckpt_kind = val_stats, model, "live"
+
+            if ckpt_stats.top1 > (best_top1 + early_stopping_min_delta):
+                best_top1 = ckpt_stats.top1
                 epochs_without_improvement = 0
+                ckpt_extra: dict[str, Any] = {
+                    "val_top1": ckpt_stats.top1,
+                    "val_top5": ckpt_stats.top5,
+                    "val_loss": ckpt_stats.loss,
+                    "epoch": epoch + 1,
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "trained_class_indices": trained_class_indices,
+                    "checkpoint_kind": ckpt_kind,
+                }
+                if cosine_scheduler is not None:
+                    ckpt_extra["scheduler_state_dict"] = cosine_scheduler.state_dict()
+                if scaler is not None:
+                    ckpt_extra["scaler_state_dict"] = scaler.state_dict()
+                # ``AveragedModel`` wraps the underlying network in a ``.module``
+                # attribute. Saving ``ema_model.module`` instead of ``ema_model``
+                # keeps the state_dict shape identical to the live model so
+                # downstream loading (which reconstructs via :func:`build_model`)
+                # works without special cases.
+                module_to_save = (
+                    ckpt_module.module
+                    if isinstance(ckpt_module, torch.optim.swa_utils.AveragedModel)
+                    else ckpt_module
+                )
                 best_path = save_checkpoint(
                     checkpoint_path,
-                    model,
+                    module_to_save,
                     cfg,
-                    extra={
-                        "val_top1": val_stats.top1,
-                        "val_top5": val_stats.top5,
-                        "val_loss": val_stats.loss,
-                        "epoch": epoch + 1,
-                    },
+                    extra=ckpt_extra,
                 )
-                print(f"  Saved new best checkpoint: {best_path} (val top1={val_stats.top1:.4f})")
+                print(
+                    f"  Saved new best checkpoint ({ckpt_kind}): "
+                    f"{best_path} (val top1={ckpt_stats.top1:.4f})"
+                )
             else:
                 epochs_without_improvement += 1
                 if early_stopping_enabled:

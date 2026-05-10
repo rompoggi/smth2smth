@@ -37,6 +37,9 @@ def train_one_epoch(
     videomix_prob: float = 1.0,
     videomix_mode: str = "cube_cutmix",
     log_interval_steps: int = 0,
+    scaler: torch.amp.GradScaler | None = None,
+    amp_dtype: torch.dtype = torch.float16,
+    ema_model: torch.optim.swa_utils.AveragedModel | None = None,
 ) -> EpochStats:
     """Run one training epoch and return aggregated metrics.
 
@@ -47,6 +50,16 @@ def train_one_epoch(
         loss_fn: A standard classification loss (e.g. ``nn.CrossEntropyLoss``).
         optimizer: Optimizer driving the parameter updates.
         device: Target device for batches and loss computation.
+        scaler: Optional :class:`torch.amp.GradScaler`. When provided and the
+            device is CUDA, the forward pass runs under ``autocast(amp_dtype)``
+            and gradients are scaled before ``backward``. When ``None`` (default),
+            training is full-precision -- byte-for-byte identical to the legacy
+            code path.
+        amp_dtype: Autocast dtype (``torch.float16`` or ``torch.bfloat16``).
+            Ignored when ``scaler`` is ``None``.
+        ema_model: Optional :class:`torch.optim.swa_utils.AveragedModel`. When
+            provided, ``ema_model.update_parameters(model)`` is called after
+            every optimizer step so the EMA copy tracks the live weights.
 
     Returns:
         :class:`EpochStats` with sample-weighted average loss, top-1, top-5.
@@ -56,6 +69,8 @@ def train_one_epoch(
     running_top1_correct = 0.0
     running_top5_correct = 0.0
     total = 0
+
+    use_amp = scaler is not None and device.type == "cuda"
 
     total_steps = len(data_loader)
     for step_idx, (video_batch, labels) in enumerate(data_loader, start=1):
@@ -79,19 +94,29 @@ def train_one_epoch(
                 mode=videomix_mode,
             )
 
-        logits = model(video_batch)
-        if mixed_labels is not None:
-            loss = _soft_target_cross_entropy(logits, mixed_labels)
-        else:
-            if label_smoothing > 0.0:
-                smoothed = _one_hot_targets(
-                    train_labels, num_classes=int(num_classes), smoothing=label_smoothing
-                )
-                loss = _soft_target_cross_entropy(logits, smoothed)
+        with torch.amp.autocast(device_type="cuda", dtype=amp_dtype, enabled=use_amp):
+            logits = model(video_batch)
+            if mixed_labels is not None:
+                loss = _soft_target_cross_entropy(logits, mixed_labels)
             else:
-                loss = loss_fn(logits, train_labels)
-        loss.backward()
-        optimizer.step()
+                if label_smoothing > 0.0:
+                    smoothed = _one_hot_targets(
+                        train_labels, num_classes=int(num_classes), smoothing=label_smoothing
+                    )
+                    loss = _soft_target_cross_entropy(logits, smoothed)
+                else:
+                    loss = loss_fn(logits, train_labels)
+
+        if use_amp:
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            loss.backward()
+            optimizer.step()
+
+        if ema_model is not None:
+            ema_model.update_parameters(model)
 
         batch_size = labels.size(0)
         top1, top5 = accuracy_topk(logits.detach(), train_labels, topk=(1, 5))
@@ -434,6 +459,9 @@ def evaluate_epoch(
     data_loader: DataLoader,
     loss_fn: nn.Module,
     device: torch.device,
+    *,
+    amp_enabled: bool = False,
+    amp_dtype: torch.dtype = torch.float16,
 ) -> EpochStats:
     """Run one evaluation pass over ``data_loader``.
 
@@ -442,6 +470,10 @@ def evaluate_epoch(
         data_loader: Same contract as in :func:`train_one_epoch`.
         loss_fn: Loss used for monitoring (no gradients flow).
         device: Target device for batches and loss computation.
+        amp_enabled: When ``True`` and ``device`` is CUDA, run the forward
+            pass under :func:`torch.amp.autocast`. Default ``False`` keeps the
+            legacy full-precision path bit-for-bit identical.
+        amp_dtype: Autocast dtype. Ignored when ``amp_enabled`` is ``False``.
 
     Returns:
         :class:`EpochStats` with sample-weighted average loss, top-1, top-5.
@@ -452,11 +484,14 @@ def evaluate_epoch(
     running_top5_correct = 0.0
     total = 0
 
+    use_amp = amp_enabled and device.type == "cuda"
+
     for video_batch, labels in data_loader:
         video_batch = video_batch.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
-        logits = model(video_batch)
-        loss = loss_fn(logits, labels)
+        with torch.amp.autocast(device_type="cuda", dtype=amp_dtype, enabled=use_amp):
+            logits = model(video_batch)
+            loss = loss_fn(logits, labels)
 
         batch_size = labels.size(0)
         top1, top5 = accuracy_topk(logits, labels, topk=(1, 5))

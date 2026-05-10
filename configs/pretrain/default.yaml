@@ -1,0 +1,40 @@
+# @package _global_
+# Defaults for the SSL (DINO-v1) pretraining pipeline.
+# Read by ``smth2smth.pipelines.pretrain_ssl.run``; ignored by the supervised
+# trainer.
+pretrain:
+  # Number of pretraining epochs over the still-frame dataset (train+val+test).
+  # 100-200 epochs is typical; SSL benefits from longer schedules. With ~3000
+  # videos x 4 frames = 12k frames at batch_size=128 that's ~94 steps/epoch,
+  # so 100 epochs = ~9k steps, ~1-2 hours on a single Ampere GPU.
+  epochs: 50
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 50
+
+  # Where to write the trunk-only checkpoint. Read by the supervised trainer
+  # via ``model.init_from``.
+  checkpoint_path: ${hydra:runtime.cwd}/ssl_trunk.pt
+
+  # Optional cap on the number of frames used (handy for smoke runs).
+  max_frames: null
+
+  # DINO multi-crop. Two global crops at ``image_size`` plus
+  # ``num_local_views`` smaller crops at ``local_image_size``.
+  image_size: 224
+  local_image_size: 96
+  num_local_views: 6
+
+  # DINO head dimensions.
+  out_dim: 4096
+  hidden_dim: 2048
+  bottleneck_dim: 256
+  n_layers: 3
+
+  # DINO loss + teacher EMA hyperparameters (Caron et al. 2021 Table 4 defaults).
+  teacher_temp: 0.04
+  student_temp: 0.1
+  center_momentum: 0.9
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
