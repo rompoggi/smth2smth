@@ -1092,3 +1092,4 @@ seed: 42
 [ssl] epoch 14/50 step 350/3665 loss 2.3011 momentum 0.99664
 [ssl] epoch 14/50 step 400/3665 loss 2.5693 momentum 0.99664
 [ssl] epoch 14/50 step 450/3665 loss 2.4745 momentum 0.99664
+[ssl] epoch 14/50 step 500/3665 loss 2.4430 momentum 0.99664
