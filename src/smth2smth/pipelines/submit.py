@@ -17,11 +17,12 @@ from pathlib import Path
 import hydra
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader
 
 from smth2smth.pipelines.train import CONFIGS_DIR, _resolve_device
-from smth2smth.shared.data import VideoFrameDataset, build_transforms
+from smth2smth.shared.data import VideoFrameDataset, build_transforms, collect_video_samples
 from smth2smth.shared.data.video_dataset import parse_class_index
 from smth2smth.shared.io.checkpoints import cfg_from_checkpoint, load_checkpoint
 from smth2smth.shared.io.submission import (
@@ -31,7 +32,7 @@ from smth2smth.shared.io.submission import (
     write_submission_csv,
 )
 from smth2smth.shared.models import build_model
-from smth2smth.shared.utils import set_seed
+from smth2smth.shared.utils import class_counts, set_seed
 
 
 def _resolve_test_videos(
@@ -128,6 +129,31 @@ def run(cfg: DictConfig) -> Path:
             device=device,
         )
 
+    # Multi-scale TTA. Default ``[1.0]`` is a no-op (single forward at the
+    # training resolution). Adding e.g. ``[0.875, 1.0, 1.125]`` evaluates the
+    # clip at three input sizes (centred around the trained ``image_size``)
+    # and averages the softmaxes. ResNet-50 + GAP is fully convolutional so
+    # this is well-defined; the cost is a linear-in-len(scales) forward pass.
+    tta_scales_cfg = cfg.training.get("tta_scales", None) if tta_enabled else None
+    tta_scales: list[float] = (
+        [float(s) for s in tta_scales_cfg] if tta_scales_cfg else [1.0]
+    )
+
+    # Logit adjustment for long-tailed inference (Menon et al. 2021).
+    # ``tta_logit_adjust > 0`` subtracts ``tau * log(p_c)`` from each logit,
+    # where ``p_c`` is the empirical class frequency in the training folder.
+    # Cheap and complementary to class-balanced training. Off by default.
+    tau = float(cfg.training.get("tta_logit_adjust", 0.0)) if tta_enabled else 0.0
+    logit_adjust: torch.Tensor | None = None
+    if tau > 0.0:
+        train_dir = Path(str(cfg.dataset.train_dir)).resolve()
+        logit_adjust = _build_logit_adjustment(
+            train_dir=train_dir,
+            num_classes=int(cfg.num_classes),
+            tau=tau,
+            device=device,
+        )
+
     predictions = _predict(
         model=model,
         loader=loader,
@@ -136,6 +162,8 @@ def run(cfg: DictConfig) -> Path:
         tta_enabled=tta_enabled,
         tta_flip=tta_flip,
         flip_perm=flip_perm,
+        tta_scales=tta_scales,
+        logit_adjust=logit_adjust,
     )
     if len(predictions) != len(video_names):
         raise RuntimeError(f"Prediction count {len(predictions)} != video count {len(video_names)}")
@@ -236,11 +264,31 @@ def _logits_for_batch(
     model: nn.Module,
     video_batch: torch.Tensor,
     untrained_mask: torch.Tensor | None,
+    logit_adjust: torch.Tensor | None = None,
 ) -> torch.Tensor:
     logits = model(video_batch)
     if untrained_mask is not None:
         logits = logits + untrained_mask
+    if logit_adjust is not None:
+        logits = logits + logit_adjust
     return logits
+
+
+def _rescale_video(video_batch: torch.Tensor, scale: float) -> torch.Tensor:
+    """Bilinear rescale a ``(B, T, C, H, W)`` clip in the spatial dims.
+
+    ``scale == 1.0`` is a no-op (returns the input unchanged).
+    """
+    if abs(scale - 1.0) < 1e-6:
+        return video_batch
+    b, t, c, h, w = video_batch.shape
+    new_h = max(8, int(round(h * scale)))
+    new_w = max(8, int(round(w * scale)))
+    flat = video_batch.reshape(b * t, c, h, w)
+    flat = F.interpolate(
+        flat, size=(new_h, new_w), mode="bilinear", align_corners=False
+    )
+    return flat.reshape(b, t, c, new_h, new_w)
 
 
 @torch.no_grad()
@@ -253,43 +301,105 @@ def _predict(
     tta_enabled: bool,
     tta_flip: bool,
     flip_perm: torch.Tensor | None,
+    tta_scales: list[float] | None = None,
+    logit_adjust: torch.Tensor | None = None,
 ) -> list[int]:
-    """Argmax inference, optionally with horizontal-flip TTA.
+    """Argmax inference, optionally with multi-view TTA.
 
     With ``tta_enabled=False`` (default), behavior is byte-for-byte identical
     to the legacy :func:`_predict_with_optional_mask` path: a single forward
     pass, optional ``-inf`` masking on never-trained classes, then argmax.
 
-    With ``tta_enabled=True`` and ``tta_flip=True``, each clip is also passed
-    through the model after a horizontal flip; the corresponding softmax is
-    permuted by ``flip_perm`` (to remap left/right-paired classes back to the
-    original frame) and averaged with the original softmax before argmax.
+    With ``tta_enabled=True``, the prediction is the argmax of a softmax
+    average over up to ``2 * len(tta_scales)`` views (each scale ×
+    ``{original, h-flipped}``). The flipped softmax is permuted by
+    ``flip_perm`` so left/right-paired classes (e.g. 018 ↔ 019) collapse
+    back into agreement. ``logit_adjust`` is added once per forward to
+    correct for long-tail bias if set.
     """
+    if tta_scales is None or len(tta_scales) == 0:
+        tta_scales = [1.0]
+
     model.eval()
     predictions: list[int] = []
     for video_batch, _ in loader:
         video_batch = video_batch.to(device, non_blocking=True)
-        logits = _logits_for_batch(model, video_batch, untrained_mask)
         if not tta_enabled:
+            logits = _logits_for_batch(
+                model, video_batch, untrained_mask, logit_adjust=logit_adjust
+            )
             predictions.extend(int(p) for p in logits.argmax(dim=1).cpu().tolist())
             continue
 
-        probs_total = torch.softmax(logits, dim=1)
-        n_views = 1
-        if tta_flip:
-            flipped = torch.flip(video_batch, dims=[-1])
-            flipped_logits = _logits_for_batch(model, flipped, untrained_mask)
-            flipped_probs = torch.softmax(flipped_logits, dim=1)
-            if flip_perm is not None:
-                # ``softmax_orig[c] ~= softmax_flipped[perm[c]]``, so to align
-                # the flipped softmax with the original frame's class indexing
-                # we index into the flipped vector at position ``perm[c]``.
-                flipped_probs = flipped_probs.index_select(dim=1, index=flip_perm)
-            probs_total = probs_total + flipped_probs
+        probs_total: torch.Tensor | None = None
+        n_views = 0
+        for scale in tta_scales:
+            scaled = _rescale_video(video_batch, scale)
+            scaled_logits = _logits_for_batch(
+                model, scaled, untrained_mask, logit_adjust=logit_adjust
+            )
+            scaled_probs = torch.softmax(scaled_logits, dim=1)
+            probs_total = scaled_probs if probs_total is None else probs_total + scaled_probs
             n_views += 1
+            if tta_flip:
+                flipped = torch.flip(scaled, dims=[-1])
+                flipped_logits = _logits_for_batch(
+                    model, flipped, untrained_mask, logit_adjust=logit_adjust
+                )
+                flipped_probs = torch.softmax(flipped_logits, dim=1)
+                if flip_perm is not None:
+                    flipped_probs = flipped_probs.index_select(dim=1, index=flip_perm)
+                probs_total = probs_total + flipped_probs
+                n_views += 1
+        assert probs_total is not None  # at least one scale
         probs_total = probs_total / float(n_views)
         predictions.extend(int(p) for p in probs_total.argmax(dim=1).cpu().tolist())
     return predictions
+
+
+def _build_logit_adjustment(
+    train_dir: Path,
+    num_classes: int,
+    tau: float,
+    device: torch.device,
+) -> torch.Tensor | None:
+    """Build the additive logit-adjustment vector for long-tailed inference.
+
+    From Menon et al. 2021, *Long-tail learning via logit adjustment* (ICLR):
+    at inference time, subtract ``tau * log(p_c)`` from each logit, where
+    ``p_c`` is the empirical training class frequency. This shifts mass
+    from over-represented classes to under-represented ones with zero
+    training cost. ``tau ∈ [0.5, 1.5]`` typically works well; smaller
+    values are gentler.
+
+    Args:
+        train_dir: Path to the training folder (used to count per-class
+            video folders).
+        num_classes: Width of the classifier head.
+        tau: Strength of the adjustment.
+        device: Device the returned vector lives on.
+
+    Returns:
+        ``(num_classes,)`` float tensor or ``None`` if the train folder is
+        unavailable.
+    """
+    if not train_dir.is_dir():
+        print(
+            f"[tta] logit-adjust disabled: train_dir not found ({train_dir})."
+        )
+        return None
+    samples = collect_video_samples(train_dir)
+    counts = class_counts(samples, num_classes=num_classes)
+    total = sum(counts)
+    if total == 0:
+        return None
+    probs = [max(n, 1) / float(total) for n in counts]  # avoid log(0)
+    adjust = -tau * torch.log(torch.tensor(probs, dtype=torch.float32, device=device))
+    print(
+        f"[tta] logit-adjust enabled: tau={tau}, min={float(adjust.min()):.3f}, "
+        f"max={float(adjust.max()):.3f} (rare classes get boosted)."
+    )
+    return adjust
 
 
 @hydra.main(version_base=None, config_path=CONFIGS_DIR, config_name="config")

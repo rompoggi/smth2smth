@@ -1,0 +1,409 @@
+nohup: ignoring input
+model:
+  name: avanced_resnet50_tsm
+  backbone: resnet50
+  pretrained: false
+  num_classes: ${num_classes}
+  shift_div: 8
+  shift_place: blockres
+  dropout: 0.5
+  drop_path_rate: 0.0
+  head: mean
+  head_num_heads: 4
+  init_from: null
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: ${hydra:runtime.cwd}/submissions/track_a.csv
+  num_frames: 8
+  val_ratio: 0.2
+  use_official_val: false
+  seed: ${seed}
+  max_samples: null
+  image_size: 224
+  time_reversal_prob: 0.0
+training:
+  batch_size: 32
+  lr: 0.0001
+  epochs: 5
+  num_workers: 2
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/best_model.pt
+  resume_from: null
+  amp: true
+  device: cuda
+  optimizer: adam
+  momentum: 0.9
+  nesterov: false
+  weight_decay: 0.0
+  scheduler_cosine: false
+  warmup_epochs: 0
+  min_lr: 0.0
+  label_smoothing: 0.0
+  videomix_alpha: 0.0
+  videomix_prob: 1.0
+  videomix_mode: cube_cutmix
+  early_stopping_enabled: false
+  early_stopping_patience: 10
+  early_stopping_min_delta: 0.0
+  log_interval_steps: 0
+  ema_enabled: false
+  ema_decay: 0.999
+  tta: false
+  tta_flip: true
+  tta_temporal_shift: 0
+  tta_scales: null
+  tta_logit_adjust: 0.0
+  class_balance_sampler: none
+  class_balance_loss: none
+  class_balance_beta: 0.999
+augment:
+  name: randaugment_t
+  random_horizontal_flip: true
+  random_crop: true
+  crop_padding: 32
+  color_jitter: false
+  color_jitter_brightness: 0.0
+  color_jitter_contrast: 0.0
+  color_jitter_saturation: 0.0
+  color_jitter_hue: 0.0
+  sync_across_frames: true
+  randaugment:
+    enabled: true
+    'n': 2
+    m: 5.0
+    mode: temporal_plus
+    magnitude_max: 30.0
+    ops: null
+pretrain:
+  epochs: 50
+  batch_size: 32
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 100
+  checkpoint_path: /Data/thomas.turkieh/smth2smth/vjepa_trunk.pt
+  max_videos: null
+  image_size: 224
+  num_frames: 4
+  mask_prob: 0.5
+  min_mask: 1
+  max_mask: 2
+  predictor_hidden_dim: 2048
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
+track:
+  name: a
+  description: 'Closed-world track: train from scratch.'
+num_classes: 33
+seed: 42
+
+[cuda] cache emptied (vjepa-pretrain-start). Free: 23.15 / 23.54 GiB
+[vjepa] scanning video folders from /Data/thomas.turkieh/smth2smth/data/train, /Data/thomas.turkieh/smth2smth/data/val, /Data/thomas.turkieh/smth2smth/data/test
+[vjepa] using 58651 unlabeled clips (T=4).
+[vjepa] student params: 31,900,736 (trunk + predictor); predictor_hidden_dim=2048
+[vjepa] AMP (fp16 + GradScaler) enabled.
+[vjepa] epoch 1/50 step 0/1832 loss 0.9847 momentum 0.99600 masked-frames 46
+[vjepa] epoch 1/50 step 100/1832 loss 0.2453 momentum 0.99600 masked-frames 50
+[vjepa] epoch 1/50 step 200/1832 loss 0.3000 momentum 0.99600 masked-frames 53
+[vjepa] epoch 1/50 step 300/1832 loss 0.1464 momentum 0.99600 masked-frames 52
+[vjepa] epoch 1/50 step 400/1832 loss 0.2828 momentum 0.99600 masked-frames 45
+[vjepa] epoch 1/50 step 500/1832 loss 0.1151 momentum 0.99600 masked-frames 45
+[vjepa] epoch 1/50 step 600/1832 loss 0.0167 momentum 0.99600 masked-frames 53
+[vjepa] epoch 1/50 step 700/1832 loss 0.0204 momentum 0.99600 masked-frames 51
+[vjepa] epoch 1/50 step 800/1832 loss 0.0555 momentum 0.99600 masked-frames 50
+[vjepa] epoch 1/50 step 900/1832 loss 0.1683 momentum 0.99600 masked-frames 46
+[vjepa] epoch 1/50 step 1000/1832 loss 0.1049 momentum 0.99600 masked-frames 48
+[vjepa] epoch 1/50 step 1100/1832 loss 0.1991 momentum 0.99600 masked-frames 45
+[vjepa] epoch 1/50 step 1200/1832 loss 0.0341 momentum 0.99600 masked-frames 47
+[vjepa] epoch 1/50 step 1300/1832 loss 0.2034 momentum 0.99600 masked-frames 45
+[vjepa] epoch 1/50 step 1400/1832 loss 0.2339 momentum 0.99600 masked-frames 51
+[vjepa] epoch 1/50 step 1500/1832 loss 0.2854 momentum 0.99600 masked-frames 48
+[vjepa] epoch 1/50 step 1600/1832 loss 0.2228 momentum 0.99600 masked-frames 50
+[vjepa] epoch 1/50 step 1700/1832 loss 0.0528 momentum 0.99600 masked-frames 46
+[vjepa] epoch 1/50 step 1800/1832 loss 0.3004 momentum 0.99600 masked-frames 45
+[vjepa] epoch 1/50 avg loss 0.1432
+[vjepa] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/vjepa_trunk.pt (318 tensors)
+[vjepa] epoch 2/50 step 0/1832 loss 0.2171 momentum 0.99600 masked-frames 51
+[vjepa] epoch 2/50 step 100/1832 loss 0.1701 momentum 0.99600 masked-frames 47
+[vjepa] epoch 2/50 step 200/1832 loss 0.1547 momentum 0.99600 masked-frames 47
+[vjepa] epoch 2/50 step 300/1832 loss 0.0797 momentum 0.99601 masked-frames 55
+[vjepa] epoch 2/50 step 400/1832 loss 0.0954 momentum 0.99601 masked-frames 49
+[vjepa] epoch 2/50 step 500/1832 loss 0.1262 momentum 0.99601 masked-frames 51
+[vjepa] epoch 2/50 step 600/1832 loss 0.1264 momentum 0.99601 masked-frames 49
+[vjepa] epoch 2/50 step 700/1832 loss 0.1193 momentum 0.99601 masked-frames 48
+[vjepa] epoch 2/50 step 800/1832 loss 0.1158 momentum 0.99601 masked-frames 48
+[vjepa] epoch 2/50 step 900/1832 loss 0.1787 momentum 0.99601 masked-frames 50
+[vjepa] epoch 2/50 step 1000/1832 loss 0.1977 momentum 0.99601 masked-frames 49
+[vjepa] epoch 2/50 step 1100/1832 loss 0.2219 momentum 0.99601 masked-frames 50
+[vjepa] epoch 2/50 step 1200/1832 loss 0.1065 momentum 0.99601 masked-frames 50
+[vjepa] epoch 2/50 step 1300/1832 loss 0.0900 momentum 0.99601 masked-frames 47
+[vjepa] epoch 2/50 step 1400/1832 loss 0.0778 momentum 0.99601 masked-frames 46
+[vjepa] epoch 2/50 step 1500/1832 loss 0.0920 momentum 0.99601 masked-frames 45
+[vjepa] epoch 2/50 step 1600/1832 loss 0.0967 momentum 0.99601 masked-frames 44
+[vjepa] epoch 2/50 step 1700/1832 loss 0.0766 momentum 0.99601 masked-frames 48
+[vjepa] epoch 2/50 step 1800/1832 loss 0.1614 momentum 0.99602 masked-frames 45
+[vjepa] epoch 2/50 avg loss 0.1768
+[vjepa] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/vjepa_trunk.pt (318 tensors)
+[vjepa] epoch 3/50 step 0/1832 loss 0.0780 momentum 0.99602 masked-frames 49
+[vjepa] epoch 3/50 step 100/1832 loss 0.1519 momentum 0.99602 masked-frames 51
+[vjepa] epoch 3/50 step 200/1832 loss 0.1135 momentum 0.99602 masked-frames 51
+[vjepa] epoch 3/50 step 300/1832 loss 0.1640 momentum 0.99602 masked-frames 47
+[vjepa] epoch 3/50 step 400/1832 loss 0.1604 momentum 0.99602 masked-frames 44
+[vjepa] epoch 3/50 step 500/1832 loss 0.2585 momentum 0.99602 masked-frames 48
+[vjepa] epoch 3/50 step 600/1832 loss 0.1870 momentum 0.99602 masked-frames 49
+[vjepa] epoch 3/50 step 700/1832 loss 0.3082 momentum 0.99602 masked-frames 43
+[vjepa] epoch 3/50 step 800/1832 loss 0.1705 momentum 0.99602 masked-frames 48
+[vjepa] epoch 3/50 step 900/1832 loss 0.1533 momentum 0.99602 masked-frames 48
+[vjepa] epoch 3/50 step 1000/1832 loss 0.1035 momentum 0.99603 masked-frames 50
+[vjepa] epoch 3/50 step 1100/1832 loss 0.2438 momentum 0.99603 masked-frames 50
+[vjepa] epoch 3/50 step 1200/1832 loss 0.0348 momentum 0.99603 masked-frames 52
+[vjepa] epoch 3/50 step 1300/1832 loss 0.2300 momentum 0.99603 masked-frames 48
+[vjepa] epoch 3/50 step 1400/1832 loss 0.0692 momentum 0.99603 masked-frames 51
+[vjepa] epoch 3/50 step 1500/1832 loss 0.0154 momentum 0.99603 masked-frames 47
+[vjepa] epoch 3/50 step 1600/1832 loss 0.0959 momentum 0.99603 masked-frames 45
+[vjepa] epoch 3/50 step 1700/1832 loss 0.3288 momentum 0.99603 masked-frames 55
+[vjepa] epoch 3/50 step 1800/1832 loss 0.2487 momentum 0.99604 masked-frames 50
+[vjepa] epoch 3/50 avg loss 0.1248
+[vjepa] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/vjepa_trunk.pt (318 tensors)
+[vjepa] epoch 4/50 step 0/1832 loss 0.0998 momentum 0.99604 masked-frames 47
+[vjepa] epoch 4/50 step 100/1832 loss 0.0208 momentum 0.99604 masked-frames 50
+[vjepa] epoch 4/50 step 200/1832 loss 0.0209 momentum 0.99604 masked-frames 48
+[vjepa] epoch 4/50 step 300/1832 loss 0.0268 momentum 0.99604 masked-frames 49
+[vjepa] epoch 4/50 step 400/1832 loss 0.0234 momentum 0.99604 masked-frames 46
+[vjepa] epoch 4/50 step 500/1832 loss 0.1435 momentum 0.99604 masked-frames 49
+[vjepa] epoch 4/50 step 600/1832 loss 0.3376 momentum 0.99604 masked-frames 48
+[vjepa] epoch 4/50 step 700/1832 loss 0.1516 momentum 0.99604 masked-frames 49
+[vjepa] epoch 4/50 step 800/1832 loss 0.0547 momentum 0.99605 masked-frames 52
+[vjepa] epoch 4/50 step 900/1832 loss 0.0743 momentum 0.99605 masked-frames 51
+[vjepa] epoch 4/50 step 1000/1832 loss 0.0775 momentum 0.99605 masked-frames 48
+[vjepa] epoch 4/50 step 1100/1832 loss 0.0857 momentum 0.99605 masked-frames 49
+[vjepa] epoch 4/50 step 1200/1832 loss 0.0718 momentum 0.99605 masked-frames 50
+[vjepa] epoch 4/50 step 1300/1832 loss 0.1273 momentum 0.99605 masked-frames 42
+[vjepa] epoch 4/50 step 1400/1832 loss 0.0636 momentum 0.99606 masked-frames 47
+[vjepa] epoch 4/50 step 1500/1832 loss 0.0736 momentum 0.99606 masked-frames 49
+[vjepa] epoch 4/50 step 1600/1832 loss 0.0873 momentum 0.99606 masked-frames 50
+[vjepa] epoch 4/50 step 1700/1832 loss 0.1812 momentum 0.99606 masked-frames 43
+[vjepa] epoch 4/50 step 1800/1832 loss 0.0528 momentum 0.99606 masked-frames 49
+[vjepa] epoch 4/50 avg loss 0.0801
+[vjepa] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/vjepa_trunk.pt (318 tensors)
+[vjepa] epoch 5/50 step 0/1832 loss 0.1080 momentum 0.99606 masked-frames 48
+[vjepa] epoch 5/50 step 100/1832 loss 0.0325 momentum 0.99606 masked-frames 48
+[vjepa] epoch 5/50 step 200/1832 loss 0.1037 momentum 0.99607 masked-frames 49
+[vjepa] epoch 5/50 step 300/1832 loss 0.0435 momentum 0.99607 masked-frames 47
+[vjepa] epoch 5/50 step 400/1832 loss 0.0335 momentum 0.99607 masked-frames 53
+[vjepa] epoch 5/50 step 500/1832 loss 0.2350 momentum 0.99607 masked-frames 49
+[vjepa] epoch 5/50 step 600/1832 loss 0.1170 momentum 0.99607 masked-frames 48
+[vjepa] epoch 5/50 step 700/1832 loss 0.0148 momentum 0.99608 masked-frames 43
+[vjepa] epoch 5/50 step 800/1832 loss 0.1327 momentum 0.99608 masked-frames 44
+[vjepa] epoch 5/50 step 900/1832 loss 0.0078 momentum 0.99608 masked-frames 49
+[vjepa] epoch 5/50 step 1000/1832 loss 0.0991 momentum 0.99608 masked-frames 43
+[vjepa] epoch 5/50 step 1100/1832 loss 0.0462 momentum 0.99608 masked-frames 43
+[vjepa] epoch 5/50 step 1200/1832 loss 0.0666 momentum 0.99608 masked-frames 46
+[vjepa] epoch 5/50 step 1300/1832 loss 0.1418 momentum 0.99609 masked-frames 50
+[vjepa] epoch 5/50 step 1400/1832 loss 0.0570 momentum 0.99609 masked-frames 47
+[vjepa] epoch 5/50 step 1500/1832 loss 0.0318 momentum 0.99609 masked-frames 47
+[vjepa] epoch 5/50 step 1600/1832 loss 0.0773 momentum 0.99609 masked-frames 50
+[vjepa] epoch 5/50 step 1700/1832 loss 0.0441 momentum 0.99610 masked-frames 47
+[vjepa] epoch 5/50 step 1800/1832 loss 0.1181 momentum 0.99610 masked-frames 46
+[vjepa] epoch 5/50 avg loss 0.0699
+[vjepa] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/vjepa_trunk.pt (318 tensors)
+[vjepa] epoch 6/50 step 0/1832 loss 0.0253 momentum 0.99610 masked-frames 45
+[vjepa] epoch 6/50 step 100/1832 loss 0.0466 momentum 0.99610 masked-frames 50
+[vjepa] epoch 6/50 step 200/1832 loss 0.0946 momentum 0.99610 masked-frames 49
+[vjepa] epoch 6/50 step 300/1832 loss 0.0685 momentum 0.99610 masked-frames 44
+[vjepa] epoch 6/50 step 400/1832 loss 0.0598 momentum 0.99611 masked-frames 45
+[vjepa] epoch 6/50 step 500/1832 loss 0.0663 momentum 0.99611 masked-frames 50
+[vjepa] epoch 6/50 step 600/1832 loss 0.1752 momentum 0.99611 masked-frames 50
+[vjepa] epoch 6/50 step 700/1832 loss 0.1564 momentum 0.99611 masked-frames 49
+[vjepa] epoch 6/50 step 800/1832 loss 0.0297 momentum 0.99612 masked-frames 46
+[vjepa] epoch 6/50 step 900/1832 loss 0.0572 momentum 0.99612 masked-frames 41
+[vjepa] epoch 6/50 step 1000/1832 loss 0.0572 momentum 0.99612 masked-frames 49
+[vjepa] epoch 6/50 step 1100/1832 loss 0.0716 momentum 0.99612 masked-frames 50
+[vjepa] epoch 6/50 step 1200/1832 loss 0.0454 momentum 0.99612 masked-frames 50
+[vjepa] epoch 6/50 step 1300/1832 loss 0.0583 momentum 0.99613 masked-frames 48
+[vjepa] epoch 6/50 step 1400/1832 loss 0.0141 momentum 0.99613 masked-frames 49
+[vjepa] epoch 6/50 step 1500/1832 loss 0.0679 momentum 0.99613 masked-frames 48
+[vjepa] epoch 6/50 step 1600/1832 loss 0.0298 momentum 0.99613 masked-frames 46
+[vjepa] epoch 6/50 step 1700/1832 loss 0.1295 momentum 0.99614 masked-frames 48
+[vjepa] epoch 6/50 step 1800/1832 loss 0.0146 momentum 0.99614 masked-frames 47
+[vjepa] epoch 6/50 avg loss 0.0701
+[vjepa] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/vjepa_trunk.pt (318 tensors)
+[vjepa] epoch 7/50 step 0/1832 loss 0.0594 momentum 0.99614 masked-frames 47
+[vjepa] epoch 7/50 step 100/1832 loss 0.0111 momentum 0.99614 masked-frames 52
+[vjepa] epoch 7/50 step 200/1832 loss 0.0590 momentum 0.99615 masked-frames 47
+[vjepa] epoch 7/50 step 300/1832 loss 0.0273 momentum 0.99615 masked-frames 44
+[vjepa] epoch 7/50 step 400/1832 loss 0.0186 momentum 0.99615 masked-frames 49
+[vjepa] epoch 7/50 step 500/1832 loss 0.0118 momentum 0.99615 masked-frames 47
+[vjepa] epoch 7/50 step 600/1832 loss 0.0578 momentum 0.99616 masked-frames 47
+[vjepa] epoch 7/50 step 700/1832 loss 0.1823 momentum 0.99616 masked-frames 50
+[vjepa] epoch 7/50 step 800/1832 loss 0.0058 momentum 0.99616 masked-frames 45
+[vjepa] epoch 7/50 step 900/1832 loss 0.0237 momentum 0.99616 masked-frames 46
+[vjepa] epoch 7/50 step 1000/1832 loss 0.0675 momentum 0.99617 masked-frames 48
+[vjepa] epoch 7/50 step 1100/1832 loss 0.0432 momentum 0.99617 masked-frames 46
+[vjepa] epoch 7/50 step 1200/1832 loss 0.0098 momentum 0.99617 masked-frames 44
+[vjepa] epoch 7/50 step 1300/1832 loss 0.1282 momentum 0.99618 masked-frames 47
+[vjepa] epoch 7/50 step 1400/1832 loss 0.0440 momentum 0.99618 masked-frames 47
+[vjepa] epoch 7/50 step 1500/1832 loss 0.0272 momentum 0.99618 masked-frames 50
+[vjepa] epoch 7/50 step 1600/1832 loss 0.0161 momentum 0.99618 masked-frames 44
+[vjepa] epoch 7/50 step 1700/1832 loss 0.0494 momentum 0.99619 masked-frames 47
+[vjepa] epoch 7/50 step 1800/1832 loss 0.0797 momentum 0.99619 masked-frames 48
+[vjepa] epoch 7/50 avg loss 0.0522
+[vjepa] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/vjepa_trunk.pt (318 tensors)
+[vjepa] epoch 8/50 step 0/1832 loss 0.0268 momentum 0.99619 masked-frames 47
+[vjepa] epoch 8/50 step 100/1832 loss 0.0401 momentum 0.99619 masked-frames 47
+[vjepa] epoch 8/50 step 200/1832 loss 0.0422 momentum 0.99620 masked-frames 49
+[vjepa] epoch 8/50 step 300/1832 loss 0.0509 momentum 0.99620 masked-frames 48
+[vjepa] epoch 8/50 step 400/1832 loss 0.0299 momentum 0.99620 masked-frames 49
+[vjepa] epoch 8/50 step 500/1832 loss 0.0447 momentum 0.99621 masked-frames 50
+[vjepa] epoch 8/50 step 600/1832 loss 0.0276 momentum 0.99621 masked-frames 50
+[vjepa] epoch 8/50 step 700/1832 loss 0.0233 momentum 0.99621 masked-frames 51
+[vjepa] epoch 8/50 step 800/1832 loss 0.0565 momentum 0.99621 masked-frames 52
+[vjepa] epoch 8/50 step 900/1832 loss 0.0342 momentum 0.99622 masked-frames 46
+[vjepa] epoch 8/50 step 1000/1832 loss 0.0425 momentum 0.99622 masked-frames 45
+[vjepa] epoch 8/50 step 1100/1832 loss 0.0327 momentum 0.99622 masked-frames 50
+[vjepa] epoch 8/50 step 1200/1832 loss 0.0596 momentum 0.99623 masked-frames 51
+[vjepa] epoch 8/50 step 1300/1832 loss 0.0268 momentum 0.99623 masked-frames 51
+[vjepa] epoch 8/50 step 1400/1832 loss 0.0491 momentum 0.99623 masked-frames 50
+[vjepa] epoch 8/50 step 1500/1832 loss 0.0165 momentum 0.99624 masked-frames 48
+[vjepa] epoch 8/50 step 1600/1832 loss 0.0547 momentum 0.99624 masked-frames 51
+[vjepa] epoch 8/50 step 1700/1832 loss 0.0637 momentum 0.99624 masked-frames 48
+[vjepa] epoch 8/50 step 1800/1832 loss 0.0212 momentum 0.99625 masked-frames 49
+[vjepa] epoch 8/50 avg loss 0.0459
+[vjepa] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/vjepa_trunk.pt (318 tensors)
+[vjepa] epoch 9/50 step 0/1832 loss 0.0187 momentum 0.99625 masked-frames 44
+[vjepa] epoch 9/50 step 100/1832 loss 0.0871 momentum 0.99625 masked-frames 47
+[vjepa] epoch 9/50 step 200/1832 loss 0.0319 momentum 0.99625 masked-frames 44
+[vjepa] epoch 9/50 step 300/1832 loss 0.0508 momentum 0.99626 masked-frames 49
+[vjepa] epoch 9/50 step 400/1832 loss 0.0926 momentum 0.99626 masked-frames 50
+[vjepa] epoch 9/50 step 500/1832 loss 0.0254 momentum 0.99626 masked-frames 47
+[vjepa] epoch 9/50 step 600/1832 loss 0.0344 momentum 0.99627 masked-frames 46
+[vjepa] epoch 9/50 step 700/1832 loss 0.0316 momentum 0.99627 masked-frames 51
+[vjepa] epoch 9/50 step 800/1832 loss 0.0396 momentum 0.99627 masked-frames 52
+[vjepa] epoch 9/50 step 900/1832 loss 0.0501 momentum 0.99628 masked-frames 52
+[vjepa] epoch 9/50 step 1000/1832 loss 0.0332 momentum 0.99628 masked-frames 48
+[vjepa] epoch 9/50 step 1100/1832 loss 0.0446 momentum 0.99628 masked-frames 43
+[vjepa] epoch 9/50 step 1200/1832 loss 0.0246 momentum 0.99629 masked-frames 46
+[vjepa] epoch 9/50 step 1300/1832 loss 0.0133 momentum 0.99629 masked-frames 52
+[vjepa] epoch 9/50 step 1400/1832 loss 0.0430 momentum 0.99630 masked-frames 47
+[vjepa] epoch 9/50 step 1500/1832 loss 0.0248 momentum 0.99630 masked-frames 43
+[vjepa] epoch 9/50 step 1600/1832 loss 0.0539 momentum 0.99630 masked-frames 51
+[vjepa] epoch 9/50 step 1700/1832 loss 0.0337 momentum 0.99631 masked-frames 46
+[vjepa] epoch 9/50 step 1800/1832 loss 0.0608 momentum 0.99631 masked-frames 47
+[vjepa] epoch 9/50 avg loss 0.0436
+[vjepa] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/vjepa_trunk.pt (318 tensors)
+[vjepa] epoch 10/50 step 0/1832 loss 0.0575 momentum 0.99631 masked-frames 49
+[vjepa] epoch 10/50 step 100/1832 loss 0.0344 momentum 0.99632 masked-frames 47
+[vjepa] epoch 10/50 step 200/1832 loss 0.0292 momentum 0.99632 masked-frames 45
+[vjepa] epoch 10/50 step 300/1832 loss 0.0772 momentum 0.99632 masked-frames 50
+[vjepa] epoch 10/50 step 400/1832 loss 0.0393 momentum 0.99633 masked-frames 50
+[vjepa] epoch 10/50 step 500/1832 loss 0.0241 momentum 0.99633 masked-frames 47
+[vjepa] epoch 10/50 step 600/1832 loss 0.0421 momentum 0.99633 masked-frames 51
+[vjepa] epoch 10/50 step 700/1832 loss 0.0368 momentum 0.99634 masked-frames 55
+[vjepa] epoch 10/50 step 800/1832 loss 0.0214 momentum 0.99634 masked-frames 43
+[vjepa] epoch 10/50 step 900/1832 loss 0.0191 momentum 0.99635 masked-frames 45
+[vjepa] epoch 10/50 step 1000/1832 loss 0.0422 momentum 0.99635 masked-frames 46
+[vjepa] epoch 10/50 step 1100/1832 loss 0.0324 momentum 0.99635 masked-frames 47
+[vjepa] epoch 10/50 step 1200/1832 loss 0.0195 momentum 0.99636 masked-frames 53
+[vjepa] epoch 10/50 step 1300/1832 loss 0.0483 momentum 0.99636 masked-frames 51
+[vjepa] epoch 10/50 step 1400/1832 loss 0.0561 momentum 0.99636 masked-frames 45
+[vjepa] epoch 10/50 step 1500/1832 loss 0.0188 momentum 0.99637 masked-frames 54
+[vjepa] epoch 10/50 step 1600/1832 loss 0.0365 momentum 0.99637 masked-frames 47
+[vjepa] epoch 10/50 step 1700/1832 loss 0.0930 momentum 0.99638 masked-frames 46
+[vjepa] epoch 10/50 step 1800/1832 loss 0.0296 momentum 0.99638 masked-frames 45
+[vjepa] epoch 10/50 avg loss 0.0406
+[vjepa] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/vjepa_trunk.pt (318 tensors)
+[vjepa] epoch 11/50 step 0/1832 loss 0.0198 momentum 0.99638 masked-frames 44
+[vjepa] epoch 11/50 step 100/1832 loss 0.0187 momentum 0.99639 masked-frames 45
+[vjepa] epoch 11/50 step 200/1832 loss 0.0257 momentum 0.99639 masked-frames 48
+[vjepa] epoch 11/50 step 300/1832 loss 0.0140 momentum 0.99639 masked-frames 47
+[vjepa] epoch 11/50 step 400/1832 loss 0.0437 momentum 0.99640 masked-frames 50
+[vjepa] epoch 11/50 step 500/1832 loss 0.0230 momentum 0.99640 masked-frames 46
+[vjepa] epoch 11/50 step 600/1832 loss 0.0489 momentum 0.99641 masked-frames 44
+[vjepa] epoch 11/50 step 700/1832 loss 0.0372 momentum 0.99641 masked-frames 53
+[vjepa] epoch 11/50 step 800/1832 loss 0.0853 momentum 0.99641 masked-frames 49
+[vjepa] epoch 11/50 step 900/1832 loss 0.0505 momentum 0.99642 masked-frames 50
+[vjepa] epoch 11/50 step 1000/1832 loss 0.0822 momentum 0.99642 masked-frames 50
+[vjepa] epoch 11/50 step 1100/1832 loss 0.0332 momentum 0.99643 masked-frames 50
+[vjepa] epoch 11/50 step 1200/1832 loss 0.0476 momentum 0.99643 masked-frames 47
+[vjepa] epoch 11/50 step 1300/1832 loss 0.0531 momentum 0.99644 masked-frames 51
+[vjepa] epoch 11/50 step 1400/1832 loss 0.0361 momentum 0.99644 masked-frames 50
+[vjepa] epoch 11/50 step 1500/1832 loss 0.0404 momentum 0.99644 masked-frames 49
+[vjepa] epoch 11/50 step 1600/1832 loss 0.0511 momentum 0.99645 masked-frames 47
+[vjepa] epoch 11/50 step 1700/1832 loss 0.0599 momentum 0.99645 masked-frames 48
+[vjepa] epoch 11/50 step 1800/1832 loss 0.0430 momentum 0.99646 masked-frames 46
+[vjepa] epoch 11/50 avg loss 0.0455
+[vjepa] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/vjepa_trunk.pt (318 tensors)
+[vjepa] epoch 12/50 step 0/1832 loss 0.1057 momentum 0.99646 masked-frames 51
+[vjepa] epoch 12/50 step 100/1832 loss 0.0456 momentum 0.99646 masked-frames 50
+[vjepa] epoch 12/50 step 200/1832 loss 0.0190 momentum 0.99647 masked-frames 48
+[vjepa] epoch 12/50 step 300/1832 loss 0.0389 momentum 0.99647 masked-frames 48
+[vjepa] epoch 12/50 step 400/1832 loss 0.0509 momentum 0.99648 masked-frames 44
+[vjepa] epoch 12/50 step 500/1832 loss 0.0360 momentum 0.99648 masked-frames 50
+[vjepa] epoch 12/50 step 600/1832 loss 0.0312 momentum 0.99649 masked-frames 41
+[vjepa] epoch 12/50 step 700/1832 loss 0.0225 momentum 0.99649 masked-frames 49
+[vjepa] epoch 12/50 step 800/1832 loss 0.0209 momentum 0.99649 masked-frames 48
+[vjepa] epoch 12/50 step 900/1832 loss 0.0542 momentum 0.99650 masked-frames 48
+[vjepa] epoch 12/50 step 1000/1832 loss 0.0565 momentum 0.99650 masked-frames 48
+[vjepa] epoch 12/50 step 1100/1832 loss 0.0220 momentum 0.99651 masked-frames 51
+[vjepa] epoch 12/50 step 1200/1832 loss 0.0547 momentum 0.99651 masked-frames 45
+[vjepa] epoch 12/50 step 1300/1832 loss 0.0368 momentum 0.99652 masked-frames 53
+[vjepa] epoch 12/50 step 1400/1832 loss 0.0334 momentum 0.99652 masked-frames 49
+[vjepa] epoch 12/50 step 1500/1832 loss 0.0226 momentum 0.99653 masked-frames 48
+[vjepa] epoch 12/50 step 1600/1832 loss 0.0379 momentum 0.99653 masked-frames 53
+[vjepa] epoch 12/50 step 1700/1832 loss 0.0291 momentum 0.99654 masked-frames 47
+[vjepa] epoch 12/50 step 1800/1832 loss 0.0380 momentum 0.99654 masked-frames 45
+[vjepa] epoch 12/50 avg loss 0.0434
+[vjepa] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/vjepa_trunk.pt (318 tensors)
+[vjepa] epoch 13/50 step 0/1832 loss 0.0361 momentum 0.99654 masked-frames 46
+[vjepa] epoch 13/50 step 100/1832 loss 0.0542 momentum 0.99655 masked-frames 51
+[vjepa] epoch 13/50 step 200/1832 loss 0.0430 momentum 0.99655 masked-frames 52
+[vjepa] epoch 13/50 step 300/1832 loss 0.0192 momentum 0.99656 masked-frames 51
+[vjepa] epoch 13/50 step 400/1832 loss 0.0263 momentum 0.99656 masked-frames 50
+[vjepa] epoch 13/50 step 500/1832 loss 0.0181 momentum 0.99657 masked-frames 48
+[vjepa] epoch 13/50 step 600/1832 loss 0.0960 momentum 0.99657 masked-frames 52
+[vjepa] epoch 13/50 step 700/1832 loss 0.0782 momentum 0.99658 masked-frames 48
+[vjepa] epoch 13/50 step 800/1832 loss 0.0276 momentum 0.99658 masked-frames 50
+[vjepa] epoch 13/50 step 900/1832 loss 0.0282 momentum 0.99659 masked-frames 49
+[vjepa] epoch 13/50 step 1000/1832 loss 0.0507 momentum 0.99659 masked-frames 47
+[vjepa] epoch 13/50 step 1100/1832 loss 0.0119 momentum 0.99659 masked-frames 44
+[vjepa] epoch 13/50 step 1200/1832 loss 0.0129 momentum 0.99660 masked-frames 52
+[vjepa] epoch 13/50 step 1300/1832 loss 0.0048 momentum 0.99660 masked-frames 45
+[vjepa] epoch 13/50 step 1400/1832 loss 0.0088 momentum 0.99661 masked-frames 51
+[vjepa] epoch 13/50 step 1500/1832 loss 0.0461 momentum 0.99661 masked-frames 44
+[vjepa] epoch 13/50 step 1600/1832 loss 0.0398 momentum 0.99662 masked-frames 52
+[vjepa] epoch 13/50 step 1700/1832 loss 0.0839 momentum 0.99662 masked-frames 47
+[vjepa] epoch 13/50 step 1800/1832 loss 0.0071 momentum 0.99663 masked-frames 45
+[vjepa] epoch 13/50 avg loss 0.0441
+[vjepa] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/vjepa_trunk.pt (318 tensors)
+[vjepa] epoch 14/50 step 0/1832 loss 0.0115 momentum 0.99663 masked-frames 47
+[vjepa] epoch 14/50 step 100/1832 loss 0.0253 momentum 0.99664 masked-frames 48
+[vjepa] epoch 14/50 step 200/1832 loss 0.0538 momentum 0.99664 masked-frames 46
+[vjepa] epoch 14/50 step 300/1832 loss 0.0306 momentum 0.99665 masked-frames 46
+[vjepa] epoch 14/50 step 400/1832 loss 0.1044 momentum 0.99665 masked-frames 44
+[vjepa] epoch 14/50 step 500/1832 loss 0.0518 momentum 0.99666 masked-frames 47
+[vjepa] epoch 14/50 step 600/1832 loss 0.0722 momentum 0.99666 masked-frames 45
+[vjepa] epoch 14/50 step 700/1832 loss 0.0347 momentum 0.99667 masked-frames 50
+[vjepa] epoch 14/50 step 800/1832 loss 0.0409 momentum 0.99667 masked-frames 49
+[vjepa] epoch 14/50 step 900/1832 loss 0.0481 momentum 0.99668 masked-frames 52
+[vjepa] epoch 14/50 step 1000/1832 loss 0.0162 momentum 0.99668 masked-frames 43
+[vjepa] epoch 14/50 step 1100/1832 loss 0.0419 momentum 0.99669 masked-frames 46
+[vjepa] epoch 14/50 step 1200/1832 loss 0.0507 momentum 0.99669 masked-frames 47
+[vjepa] epoch 14/50 step 1300/1832 loss 0.0075 momentum 0.99670 masked-frames 46
+[vjepa] epoch 14/50 step 1400/1832 loss 0.1113 momentum 0.99670 masked-frames 44
+[vjepa] epoch 14/50 step 1500/1832 loss 0.0582 momentum 0.99671 masked-frames 51
+[vjepa] epoch 14/50 step 1600/1832 loss 0.0176 momentum 0.99671 masked-frames 46
+[vjepa] epoch 14/50 step 1700/1832 loss 0.0287 momentum 0.99672 masked-frames 43
+[vjepa] epoch 14/50 step 1800/1832 loss 0.1142 momentum 0.99672 masked-frames 48
+[vjepa] epoch 14/50 avg loss 0.0475
+[vjepa] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/vjepa_trunk.pt (318 tensors)
+[vjepa] epoch 15/50 step 0/1832 loss 0.0947 momentum 0.99673 masked-frames 51
+[vjepa] epoch 15/50 step 100/1832 loss 0.0954 momentum 0.99673 masked-frames 45
+[vjepa] epoch 15/50 step 200/1832 loss 0.0663 momentum 0.99674 masked-frames 47
+[vjepa] epoch 15/50 step 300/1832 loss 0.0744 momentum 0.99674 masked-frames 47
+[vjepa] epoch 15/50 step 400/1832 loss 0.0491 momentum 0.99675 masked-frames 50
+[vjepa] epoch 15/50 step 500/1832 loss 0.0787 momentum 0.99675 masked-frames 52
+[vjepa] epoch 15/50 step 600/1832 loss 0.0662 momentum 0.99676 masked-frames 50
+[vjepa] epoch 15/50 step 700/1832 loss 0.0653 momentum 0.99676 masked-frames 50

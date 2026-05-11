@@ -48,7 +48,35 @@ training:
   # ``tta_temporal_shift: int``    -> additionally evaluate ``k`` temporal
   #                                   start-offsets per clip (re-samples frame
   #                                   indices) and averages those too. ``0``
-  #                                   disables it.
+  #                                   disables it. (No-op when each video has
+  #                                   exactly num_frames frames on disk.)
+  # ``tta_scales: list[float]``    -> bilinear rescale the clip's spatial dims
+  #                                   by each factor and evaluate. ``null`` or
+  #                                   ``[1.0]`` ⇒ no multi-scale TTA. Typical:
+  #                                   ``[0.875, 1.0, 1.125]``.
+  # ``tta_logit_adjust: float``    -> long-tail correction (Menon et al. 2021).
+  #                                   Subtract ``tau * log(p_c)`` from each
+  #                                   logit, where p_c is the training-class
+  #                                   frequency. ``0`` disables it. Typical
+  #                                   range: 0.5..1.5.
   tta: false
   tta_flip: true
   tta_temporal_shift: 0
+  tta_scales: null
+  tta_logit_adjust: 0.0
+  # Class-imbalance handling (Track-A train set has ~20x head/tail ratio).
+  # ``class_balance_sampler``:
+  #   "none"          -> uniform shuffle (legacy).
+  #   "sqrt_inverse"  -> per-sample weight = 1 / sqrt(n_c). Recommended.
+  #   "inverse"       -> 1 / n_c. Aggressive; risks hurting head-class accuracy.
+  # ``class_balance_loss``:
+  #   "none"          -> unweighted CE (legacy).
+  #   "sqrt_inverse"  -> weight = 1 / sqrt(n_c), normalised to mean 1.
+  #   "inverse"       -> weight = 1 / n_c, normalised to mean 1.
+  #   "cb"            -> Cui et al. 2019 class-balanced loss:
+  #                      w_c = (1 - beta) / (1 - beta^n_c), normalised.
+  # ``class_balance_beta`` is the ``beta`` in the ``cb`` policy (0.999 default
+  # is the paper's recommendation; closer to 1.0 ⇒ more aggressive).
+  class_balance_sampler: none
+  class_balance_loss: none
+  class_balance_beta: 0.999

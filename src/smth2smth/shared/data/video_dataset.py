@@ -154,6 +154,17 @@ class VideoFrameDataset(Dataset):
             ``(C, H, W)`` tensor (typically ``Resize`` + ``ToTensor`` + ``Normalize``).
         sample_list: Optional pre-built list of ``(video_dir, label)`` pairs.
             Useful for train/val splits.
+        time_reversal_prob: When ``> 0``, with this probability and only for
+            classes whose ``time_reversal_allow_mask`` entry is ``True``, the
+            sampled frame sequence is reversed in time *and* the label is
+            looked up in ``time_reversal_perm``. Defaults to ``0.0`` (no-op,
+            byte-for-byte identical to the legacy behaviour).
+        time_reversal_perm: 1-D ``LongTensor`` of length ``num_classes``
+            mapping class indices to their reversed counterpart. Required
+            when ``time_reversal_prob > 0``.
+        time_reversal_allow_mask: 1-D ``BoolTensor`` of length
+            ``num_classes``; only classes with ``True`` are eligible for
+            reversal. Required when ``time_reversal_prob > 0``.
     """
 
     def __init__(
@@ -162,6 +173,10 @@ class VideoFrameDataset(Dataset):
         num_frames: int,
         transform: Callable[[Image.Image | Sequence[Image.Image]], torch.Tensor | list[torch.Tensor]],
         sample_list: list[VideoSample] | None = None,
+        *,
+        time_reversal_prob: float = 0.0,
+        time_reversal_perm: torch.Tensor | None = None,
+        time_reversal_allow_mask: torch.Tensor | None = None,
     ) -> None:
         self.root_dir = Path(root_dir)
         self.num_frames = num_frames
@@ -172,6 +187,21 @@ class VideoFrameDataset(Dataset):
         else:
             self.samples = list(sample_list)
 
+        self.time_reversal_prob = float(time_reversal_prob)
+        if self.time_reversal_prob < 0.0 or self.time_reversal_prob > 1.0:
+            raise ValueError(
+                f"time_reversal_prob must be in [0, 1], got {self.time_reversal_prob}."
+            )
+        if self.time_reversal_prob > 0.0 and (
+            time_reversal_perm is None or time_reversal_allow_mask is None
+        ):
+            raise ValueError(
+                "time_reversal_perm and time_reversal_allow_mask are required when "
+                "time_reversal_prob > 0."
+            )
+        self.time_reversal_perm = time_reversal_perm
+        self.time_reversal_allow_mask = time_reversal_allow_mask
+
     def __len__(self) -> int:
         return len(self.samples)
 
@@ -179,6 +209,11 @@ class VideoFrameDataset(Dataset):
         video_dir, label = self.samples[index]
         frame_paths = _list_frame_paths(video_dir)
         indices = pick_frame_indices(len(frame_paths), self.num_frames)
+
+        reverse_now = self._should_reverse(label)
+        if reverse_now:
+            indices = list(reversed(indices))
+            label = int(self.time_reversal_perm[int(label)].item())  # type: ignore[index]
 
         raw_frames: list[Image.Image] = []
         for frame_index in indices:
@@ -198,3 +233,15 @@ class VideoFrameDataset(Dataset):
         video_tensor = torch.stack(frames, dim=0)
         label_tensor = torch.tensor(label, dtype=torch.long)
         return video_tensor, label_tensor
+
+    def _should_reverse(self, label: int) -> bool:
+        """Return whether the current sample should be time-reversed.
+
+        Returns ``False`` when reversal is disabled, the class is not in the
+        allow-list, or the per-sample bernoulli draw says ``no``.
+        """
+        if self.time_reversal_prob <= 0.0 or self.time_reversal_allow_mask is None:
+            return False
+        if not bool(self.time_reversal_allow_mask[int(label)].item()):
+            return False
+        return bool(torch.rand(1).item() < self.time_reversal_prob)

@@ -18,17 +18,24 @@ import hydra
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig, OmegaConf
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 
 from smth2smth.shared.data import (
     VideoFrameDataset,
+    build_time_reversal_table,
     build_transforms,
     collect_video_samples,
+    describe_time_reversal_table,
 )
 from smth2smth.shared.engine import EpochStats, evaluate_epoch, train_one_epoch
 from smth2smth.shared.io.checkpoints import load_checkpoint, save_checkpoint
 from smth2smth.shared.models import build_model
-from smth2smth.shared.utils import set_seed, split_train_val
+from smth2smth.shared.utils import (
+    compute_class_weights,
+    compute_sample_weights,
+    set_seed,
+    split_train_val,
+)
 
 CONFIGS_DIR = str(Path(__file__).resolve().parents[3] / "configs")
 
@@ -160,11 +167,28 @@ def run(cfg: DictConfig) -> Path | None:
     )
 
     num_frames = int(cfg.dataset.num_frames)
+
+    # Time-reversal augmentation (label-aware). Default ``time_reversal_prob=0``
+    # is a no-op. When > 0, we build a per-class remap from the class folder
+    # names and pass it to the train dataset only; the val dataset never
+    # reverses (we want unbiased val numbers).
+    time_reversal_prob = float(cfg.dataset.get("time_reversal_prob", 0.0))
+    tr_perm: torch.Tensor | None = None
+    tr_allow: torch.Tensor | None = None
+    if time_reversal_prob > 0.0:
+        tr_perm, tr_allow = build_time_reversal_table(
+            train_dir=train_dir, num_classes=int(cfg.num_classes)
+        )
+        print(f"[time-reversal] prob={time_reversal_prob}. " + describe_time_reversal_table(tr_perm, tr_allow))
+
     train_dataset = VideoFrameDataset(
         root_dir=train_dir,
         num_frames=num_frames,
         transform=train_transform,
         sample_list=train_samples,
+        time_reversal_prob=time_reversal_prob,
+        time_reversal_perm=tr_perm,
+        time_reversal_allow_mask=tr_allow,
     )
     val_dataset = VideoFrameDataset(
         root_dir=train_dir,
@@ -173,11 +197,34 @@ def run(cfg: DictConfig) -> Path | None:
         sample_list=val_samples,
     )
 
+    # Class-balanced sampler (opt-in). When the policy is ``"none"`` we keep
+    # ``shuffle=True`` so the legacy run path is byte-for-byte identical.
+    cb_sampler_policy = str(cfg.training.get("class_balance_sampler", "none")).lower()
+    sampler: WeightedRandomSampler | None = None
+    if cb_sampler_policy != "none":
+        sample_weights = compute_sample_weights(
+            samples=train_samples,
+            num_classes=int(cfg.num_classes),
+            policy=cb_sampler_policy,
+        )
+        sampler = WeightedRandomSampler(
+            weights=sample_weights.tolist(),
+            num_samples=len(train_samples),
+            replacement=True,
+        )
+        n_train_by_class = sorted({int(label) for _, label in train_samples})
+        print(
+            f"[class-balance] sampler={cb_sampler_policy!r}; "
+            f"trained classes={len(n_train_by_class)}, "
+            f"effective per-class draw equalised by {cb_sampler_policy}."
+        )
+
     pin_memory = device.type == "cuda"
     train_loader = DataLoader(
         train_dataset,
         batch_size=int(cfg.training.batch_size),
-        shuffle=True,
+        shuffle=(sampler is None),
+        sampler=sampler,
         num_workers=int(cfg.training.num_workers),
         pin_memory=pin_memory,
     )
@@ -221,7 +268,28 @@ def run(cfg: DictConfig) -> Path | None:
             # If the SSL trunk doesn't cover every backbone key, we want to know.
             print(f"[init_from] backbone keys NOT covered by SSL: {backbone_missing[:8]}...")
 
-    loss_fn = nn.CrossEntropyLoss()
+    # Class-balanced cross-entropy weights (opt-in). Composes with
+    # label-smoothing and video-mixing: the same tensor is passed both to
+    # ``nn.CrossEntropyLoss(weight=...)`` (plain-CE path) and to the
+    # soft-target CE used by the mixing augmentations.
+    cb_loss_policy = str(cfg.training.get("class_balance_loss", "none")).lower()
+    cb_loss_beta = float(cfg.training.get("class_balance_beta", 0.999))
+    class_weights = compute_class_weights(
+        samples=train_samples,
+        num_classes=int(cfg.num_classes),
+        policy=cb_loss_policy,
+        beta=cb_loss_beta,
+    )
+    if class_weights is not None:
+        class_weights = class_weights.to(device)
+        masked = (class_weights == 0).sum().item()
+        print(
+            f"[class-balance] loss policy={cb_loss_policy!r}, beta={cb_loss_beta}; "
+            f"min={float(class_weights[class_weights > 0].min()):.3f}, "
+            f"max={float(class_weights.max()):.3f}, "
+            f"never-trained classes set to 0: {int(masked)}."
+        )
+    loss_fn = nn.CrossEntropyLoss(weight=class_weights)
     optimizer_name = str(cfg.training.get("optimizer", "adam")).lower()
     base_lr = float(cfg.training.lr)
     weight_decay = float(cfg.training.get("weight_decay", 0.0))
@@ -370,6 +438,7 @@ def run(cfg: DictConfig) -> Path | None:
                 log_interval_steps=log_interval_steps,
                 scaler=scaler,
                 ema_model=ema_model,
+                class_weights=class_weights,
             )
             val_stats: EpochStats = evaluate_epoch(
                 model, val_loader, loss_fn, device, amp_enabled=amp_enabled

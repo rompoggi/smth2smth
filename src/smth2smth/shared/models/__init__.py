@@ -20,6 +20,15 @@ from smth2smth.shared.models.registry import (
     list_registered_models,
     register_model,
 )
+from smth2smth.shared.models.vjepa_ssl import (
+    VJepaModel,
+    VJepaPredictor,
+    VJepaTrunk,
+    apply_frame_mask,
+    make_frame_mask,
+    update_vjepa_teacher_ema,
+    vjepa_feature_loss,
+)
 
 __all__ = [
     "CNNBaseline",
@@ -28,7 +37,14 @@ __all__ = [
     "MODEL_REGISTRY",
     "ModelAlreadyRegisteredError",
     "UnknownModelError",
+    "VJepaModel",
+    "VJepaPredictor",
+    "VJepaTrunk",
+    "apply_frame_mask",
     "build_model",
     "list_registered_models",
+    "make_frame_mask",
     "register_model",
+    "update_vjepa_teacher_ema",
+    "vjepa_feature_loss",
 ]
