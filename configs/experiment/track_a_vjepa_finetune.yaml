@@ -1,0 +1,54 @@
+# @package _global_
+# Phase-2 (+ class balance + time-reversal aug + multi-view TTA) supervised
+# fine-tuning, warm-started from the V-JEPA trunk checkpoint produced by
+# ``track_a_vjepa_pretrain``.
+#
+# Set ``model.init_from=<path-to-vjepa_trunk.pt>`` at the CLI (or override
+# here) before launching. The supervised pipeline loads only the trunk
+# weights (non-strict); the classifier head and attention pool stay at
+# their fresh-init values.
+defaults:
+  - override /model: avanced_resnet50_tsm
+  - override /augment: randaugment_t
+
+model:
+  pretrained: false
+  drop_path_rate: 0.1
+  head: attn
+  head_num_heads: 4
+  # Override at the CLI: model.init_from=<path>/vjepa_trunk.pt
+  init_from: null
+
+dataset:
+  num_frames: 4
+  use_official_val: true
+  time_reversal_prob: 0.3
+
+training:
+  batch_size: 16
+  # V-JEPA warm-start typically needs fewer fine-tuning epochs.
+  epochs: 80
+  lr: 0.00005
+  optimizer: adamw
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 5
+  min_lr: 0.000001
+  label_smoothing: 0.1
+  videomix_mode: frame_mixup
+  videomix_alpha: 5.0
+  videomix_prob: 0.5
+  amp: true
+  ema_enabled: true
+  ema_decay: 0.999
+  tta: true
+  tta_flip: true
+  tta_scales: [0.875, 1.0, 1.125]
+  tta_logit_adjust: 1.0
+  class_balance_sampler: sqrt_inverse
+  class_balance_loss: cb
+  class_balance_beta: 0.999
+  early_stopping_enabled: true
+  early_stopping_patience: 20
+  early_stopping_min_delta: 0.001
+  log_interval_steps: 100

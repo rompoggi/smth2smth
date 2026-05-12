@@ -1,0 +1,60 @@
+# @package _global_
+# Track A (closed-world, from scratch) -- Phase-2 *plus* class-imbalance and
+# motion-aware augmentation fixes. Strictly a super-set of
+# ``track_a_phase2.yaml``: same architecture, same optimizer, same
+# RandAugment-T + FrameMixUp, same EMA + AMP, same TTA flip; with the new
+# Tier-1 improvements layered on:
+#
+#   * Class-balanced sampler  ("sqrt_inverse")
+#   * Class-balanced CE loss  ("cb", beta=0.999)
+#   * Motion-aware time-reversal augmentation (prob=0.3)
+#   * Multi-scale TTA at submit time           ([0.875, 1.0, 1.125])
+#   * Long-tail logit adjustment at submit time (tau=1.0)
+#
+# Why these knobs: the Track-A train set has a ~20x ratio between the
+# smallest (162 samples) and the largest (3170 samples) class, and the
+# original RandAugment-T pipeline has no temporal augmentations -- so half
+# the 32 classes have a clean temporal mirror (Opening<->Closing,
+# Folding<->Unfolding, etc.) we are leaving on the table.
+defaults:
+  - override /model: avanced_resnet50_tsm
+  - override /augment: randaugment_t
+
+model:
+  pretrained: false
+  drop_path_rate: 0.1
+  head: attn
+  head_num_heads: 4
+
+dataset:
+  num_frames: 4
+  use_official_val: true
+  time_reversal_prob: 0.3
+
+training:
+  batch_size: 16
+  epochs: 150
+  lr: 0.0001
+  optimizer: adamw
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 10
+  min_lr: 0.000001
+  label_smoothing: 0.1
+  videomix_mode: frame_mixup
+  videomix_alpha: 5.0
+  videomix_prob: 0.5
+  amp: true
+  ema_enabled: true
+  ema_decay: 0.999
+  tta: true
+  tta_flip: true
+  tta_scales: [0.875, 1.0, 1.125]
+  tta_logit_adjust: 1.0
+  class_balance_sampler: sqrt_inverse
+  class_balance_loss: cb
+  class_balance_beta: 0.999
+  early_stopping_enabled: true
+  early_stopping_patience: 25
+  early_stopping_min_delta: 0.001
+  log_interval_steps: 100

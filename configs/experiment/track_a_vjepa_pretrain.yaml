@@ -1,0 +1,59 @@
+# @package _global_
+# Track-A-compliant V-JEPA-style self-supervised pretraining.
+#
+# This run trains a TSM-equipped ResNet-50 trunk *from scratch* on the
+# unlabeled video clips of the provided dataset (train + val + test). It
+# uses no external data and no pretrained weights, so it remains within
+# Track A's closed-world rules.
+#
+# Output: a small trunk-only checkpoint (~95 MiB, same layout as
+# AvancedResNet50TSM.backbone.state_dict()). Feed it back into the
+# supervised trainer with ``model.init_from=<path>`` (see
+# ``track_a_vjepa_finetune.yaml``).
+#
+# Key difference vs. ``track_a_ssl_pretrain.yaml`` (DINO on still frames):
+#   * The trunk sees clips, not isolated frames -- the TemporalShift
+#     modules are exercised by the SSL loss.
+#   * The objective is V-JEPA's L1 feature prediction on *masked frames*,
+#     directly aligned with action anticipation (predicting features for
+#     temporally adjacent context).
+defaults:
+  - override /model: avanced_resnet50_tsm
+  - override /augment: randaugment_t
+  - override /pretrain: vjepa
+
+model:
+  pretrained: false
+
+# Mild RandAugment-T during SSL so the trunk learns invariance to typical
+# spatial perturbations without destroying motion cues. Same recipe as the
+# supervised side.
+augment:
+  randaugment:
+    enabled: true
+    n: 2
+    m: 5.0
+    mode: temporal_plus
+  random_crop: true
+  crop_padding: 32
+
+pretrain:
+  epochs: 50
+  batch_size: 32
+  lr: 0.0005
+  weight_decay: 0.04
+  num_frames: 4
+  image_size: 224
+  mask_prob: 0.5
+  min_mask: 1
+  max_mask: 2
+  log_interval_steps: 100
+
+# These are read by ``pretrain_vjepa.run`` only for ``training.device``,
+# ``training.num_workers`` and ``training.amp``; the supervised-only knobs
+# below are ignored during pretraining.
+training:
+  num_workers: 2
+  device: cuda
+  amp: true
+  batch_size: 32

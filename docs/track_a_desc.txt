@@ -1,0 +1,56 @@
+Overview
+Can a model predict the future?
+
+In this challenge, you will build a system that anticipates human actions from short video clips. Given only the beginning of a video, your task is to predict what action will happen next. Is someone about to pour, throw, fold, or drop an object? The answer is often intuitive for humans—but surprisingly difficult for machines.
+
+This competition is based on a curated subset of the Something-Something V2 dataset, focusing on 50 carefully selected action classes. Success in this task requires more than recognizing objects: models must capture motion, intent, and temporal cues from limited visual information.
+
+Whether you train a model from scratch or leverage powerful pretrained representations, this challenge will test your ability to reason about visual actions in time.
+
+Start
+
+a month ago
+Close
+
+10 days to go
+Description
+Participants are given short video clips represented as sequences of frames. Each clip corresponds to an action involving everyday objects, such as “Pouring something into something” or “Pretending to throw something”. However, only the first portion of each video is provided, making the task one of action anticipation rather than simple recognition.
+
+The dataset has been preprocessed to ensure accessibility: each sample consists of a fixed number of frames extracted from the early part of the video. The goal is to assign the correct action label among 50 possible classes.
+
+The competition features two tracks:
+
+Track A (Closed World): Models must be trained from scratch using only the provided data. No external datasets or pretrained models are allowed.
+Track B (Open World): Participants may use external data, pretrained models, and any additional resources, within the given computational constraints.
+This dual setup allows both a focus on fundamental learning principles and exploration of modern large-scale approaches.
+
+Participants are encouraged to explore temporal modeling, frame aggregation strategies, and creative approaches to extract meaningful signals from partial observations.
+
+Evaluation
+Evaluation
+Submissions are evaluated based on Top-1 classification accuracy on a held-out test set. For each video clip, the model must predict a single action label among the 50 possible classes. The primary metric measures the percentage of correctly predicted labels.
+
+A secondary metric, Top-5 accuracy, will also be reported. This measures whether the correct label is among the model’s top five predictions and provides additional insight into model performance.
+
+To ensure a fair and robust evaluation, the test set is split into a public and a private subset. The public leaderboard reflects performance on a portion of the test data, while final rankings will be determined using the private test set.
+
+Submission Format
+Participants must submit a CSV file containing their predictions for each test sample.
+
+The file must have the following format:
+
+video_id,label
+video_000001,12
+video_000002,3
+video_000003,45
+...
+video_id: the unique identifier of the sample (as provided in the test set)
+label: the predicted class index (an integer between 0 and 49)
+A sample submission file will be provided to illustrate the expected format.
+
+Important Notes
+Each video_id must appear exactly once in the submission file.
+The order of rows does not matter.
+Submissions with missing or extra entries will be rejected.
+Class indices must match the provided class_to_idx.json mapping.
+Participants should note that only the early frames of each video are available, meaning that models must rely on partial temporal information to make accurate predictions. This makes the task inherently challenging and rewards approaches that effectively capture motion cues and anticipate future actions.

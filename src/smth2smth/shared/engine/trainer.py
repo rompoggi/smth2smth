@@ -40,6 +40,7 @@ def train_one_epoch(
     scaler: torch.amp.GradScaler | None = None,
     amp_dtype: torch.dtype = torch.float16,
     ema_model: torch.optim.swa_utils.AveragedModel | None = None,
+    class_weights: torch.Tensor | None = None,
 ) -> EpochStats:
     """Run one training epoch and return aggregated metrics.
 
@@ -60,6 +61,10 @@ def train_one_epoch(
         ema_model: Optional :class:`torch.optim.swa_utils.AveragedModel`. When
             provided, ``ema_model.update_parameters(model)`` is called after
             every optimizer step so the EMA copy tracks the live weights.
+        class_weights: Optional ``(num_classes,)`` float tensor used in the
+            soft-target cross-entropy path (label-smoothing and video-mixing).
+            The plain ``loss_fn`` is already class-weighted by its own
+            constructor when needed. ``None`` ⇒ unweighted soft CE.
 
     Returns:
         :class:`EpochStats` with sample-weighted average loss, top-1, top-5.
@@ -97,13 +102,17 @@ def train_one_epoch(
         with torch.amp.autocast(device_type="cuda", dtype=amp_dtype, enabled=use_amp):
             logits = model(video_batch)
             if mixed_labels is not None:
-                loss = _soft_target_cross_entropy(logits, mixed_labels)
+                loss = _soft_target_cross_entropy(
+                    logits, mixed_labels, class_weights=class_weights
+                )
             else:
                 if label_smoothing > 0.0:
                     smoothed = _one_hot_targets(
                         train_labels, num_classes=int(num_classes), smoothing=label_smoothing
                     )
-                    loss = _soft_target_cross_entropy(logits, smoothed)
+                    loss = _soft_target_cross_entropy(
+                        logits, smoothed, class_weights=class_weights
+                    )
                 else:
                     loss = loss_fn(logits, train_labels)
 
@@ -152,9 +161,29 @@ def _one_hot_targets(
     return target
 
 
-def _soft_target_cross_entropy(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+def _soft_target_cross_entropy(
+    logits: torch.Tensor,
+    targets: torch.Tensor,
+    *,
+    class_weights: torch.Tensor | None = None,
+) -> torch.Tensor:
+    """Cross-entropy with soft targets, optionally class-reweighted.
+
+    When ``class_weights`` is provided, each sample's loss is scaled by
+    ``sum_c (class_weights[c] * targets[i, c])``. For pure one-hot targets
+    this recovers the canonical per-class weighting used by
+    :class:`torch.nn.CrossEntropyLoss(weight=...)`. For soft targets
+    (label smoothing, MixUp, CutMix) it is the natural extension: rare
+    classes still get higher influence proportional to their mass in the
+    soft target distribution.
+    """
     log_probs = torch.log_softmax(logits, dim=1)
-    return -(targets * log_probs).sum(dim=1).mean()
+    per_sample = -(targets * log_probs).sum(dim=1)
+    if class_weights is None:
+        return per_sample.mean()
+    w = (targets * class_weights.unsqueeze(0)).sum(dim=1)
+    denom = w.sum().clamp_min(1e-12)
+    return (per_sample * w).sum() / denom
 
 
 VIDEOMIX_MODES: frozenset[str] = frozenset(

@@ -29,3 +29,12 @@ dataset:
   seed: ${seed}
   max_samples: null
   image_size: 224
+  # Motion-aware time-reversal augmentation (only applied to the train set).
+  # With this probability, the sampled frame sequence is reversed *and* the
+  # label is remapped via the canonical pair table (Opening<->Closing,
+  # Putting-into<->Taking-out-of, Folding<->Unfolding, Covering<->Uncovering,
+  # Moving-up<->Moving-down, Moving-closer<->Moving-away,
+  # Pouring-in<->Pouring-out, plus Holding which is symmetric). Classes with
+  # no clean temporal mirror are *not* reversed -- they would corrupt the
+  # supervision signal otherwise. Default 0.0 is a no-op.
+  time_reversal_prob: 0.0

@@ -1,0 +1,49 @@
+# @package _global_
+# V-JEPA-style clip-level self-supervised pretraining (Assran et al. 2025,
+# adapted for ResNet-50 + TSM). Read by
+# ``smth2smth.pipelines.pretrain_vjepa.run``; ignored by the supervised
+# trainer and by the DINO ``pretrain_ssl`` pipeline.
+pretrain:
+  # Number of pretraining epochs over the clip dataset (train + val + test
+  # videos). With ~58k unlabeled clips at batch_size=32 that's ~1800
+  # steps/epoch; 40-80 epochs is typically sufficient.
+  epochs: 50
+  batch_size: 32
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 100
+
+  # Where to write the trunk-only checkpoint. Read by the supervised trainer
+  # via ``model.init_from``.
+  checkpoint_path: ${hydra:runtime.cwd}/vjepa_trunk.pt
+
+  # Optional cap on the number of clips used (handy for smoke runs).
+  max_videos: null
+
+  # Clip resolution and number of frames. Default values mirror the
+  # supervised pipeline so the trunk sees the same input distribution at
+  # both stages.
+  image_size: 224
+  num_frames: 4
+
+  # Frame-masking probabilities. For each clip, ``n_masked`` is sampled
+  # uniformly from ``[min_mask, max_mask]`` (capped at num_frames - 1 so
+  # the student always has at least one unmasked frame to propagate
+  # through the TSM channels).
+  #   * mask_prob: average target mask fraction; only used to derive a
+  #     default ``max_mask`` when not set explicitly.
+  #   * min_mask: 1 keeps every clip informative.
+  #   * max_mask: null ⇒ ``round(mask_prob * num_frames)`` capped at T-1.
+  #
+  # For T=4 frames, the recommended setting (mask 1-2 frames per clip) is
+  # mask_prob=0.5 with min_mask=1, max_mask=2.
+  mask_prob: 0.5
+  min_mask: 1
+  max_mask: 2
+
+  # Predictor MLP hidden dim. Defaults to the trunk feature dim (2048).
+  predictor_hidden_dim: 2048
+
+  # Teacher EMA momentum schedule (V-JEPA default: cosine from 0.996 to 1.0).
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
