@@ -12,6 +12,11 @@ dependencies = [
     "omegaconf>=2.3.0",
     "pillow>=10.0.0",
     "gdown>=6.0.0",
+    # Track B: V-JEPA 2 backbone is loaded via ``transformers.AutoModel``.
+    # 4.45 is the first release that ships the ``VJEPA2Model`` class.
+    "transformers>=4.45.0",
+    "peft>=0.13.0",
+    "scikit-learn>=1.8.0",
 ]
 
 [tool.uv]
