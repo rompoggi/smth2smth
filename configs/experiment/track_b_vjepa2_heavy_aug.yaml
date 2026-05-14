@@ -1,0 +1,69 @@
+# @package _global_
+# Track B (open-world), Phase 4.2: heavy data augmentation for the V-JEPA 2
+# attentive probe.
+#
+# Mirrors Track A's RandAugment-T + FrameMixUp recipe (Kim et al. 2020)
+# while keeping the V-JEPA encoder frozen. The encoder is the smallest
+# SSv2-finetuned V-JEPA 2 checkpoint publicly available on HF Hub --
+# ``facebook/vjepa2-vitl-fpc16-256-ssv2`` (0.4 B params); V-JEPA 2.1 ViT-B
+# (80 M) is not on the Hub yet.
+#
+# Design knobs that differ from ``track_b_vjepa2.yaml``:
+#   - ``augment=vjepa2_heavy`` -- RandAugment-T + crop + flip + jitter
+#   - ``videomix_mode=cube_cutmix`` (clip-level CubeCutMix)
+#   - balanced subsample (~50 clips/class) so a single run finishes in
+#     ~3 h on the A4000 and we can compare augment policies quickly.
+#   - ``eval_every_n_epochs=3`` + ``eval_ema=false`` -- avoids the dominant
+#     12 min/epoch val cost we measured in the timing run.
+defaults:
+  - override /model: vjepa2
+  - override /augment: vjepa2_heavy
+
+model:
+  pretrained: true
+  hf_repo: facebook/vjepa2-vitl-fpc16-256-ssv2
+  head_type: attentive
+  head_num_heads: 8
+  head_dropout: 0.1
+  freeze_backbone: true
+  attn_implementation: sdpa
+
+dataset:
+  num_frames: 16
+  image_size: 256
+  use_official_val: true
+  # Balanced subset for fast iteration: 50 clips/class * 32 classes = 1600
+  # training clips. Mid-range subset that gives stable accuracy estimates
+  # while keeping wall time bounded.
+  max_samples_per_class: 50
+
+training:
+  batch_size: 8
+  epochs: 12
+  num_workers: 4
+  lr: 0.0003
+  optimizer: adamw
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 1
+  min_lr: 0.00001
+  label_smoothing: 0.1
+  amp: true
+  # EMA disabled on Track B: the deepcopy of a frozen ViT-L (0.3 B params)
+  # doubles the resident GPU memory and we never read the EMA eval back
+  # under ``eval_ema: false`` anyway.
+  ema_enabled: false
+  # Slim val: only every 3 epochs. This shaves ~50 min of wall time off
+  # a 12-epoch run vs. the legacy "val every epoch" behaviour.
+  eval_every_n_epochs: 3
+  eval_ema: false
+  # CubeCutMix: sample a 3-D spatio-temporal sub-volume from another clip
+  # in the same batch, paste it onto the current one, mix labels by
+  # volume. Stronger than naive MixUp on motion-sensitive datasets.
+  videomix_mode: cube_cutmix
+  videomix_alpha: 1.0
+  videomix_prob: 0.5
+  tta: true
+  tta_flip: true
+  early_stopping_enabled: false
+  log_interval_steps: 20

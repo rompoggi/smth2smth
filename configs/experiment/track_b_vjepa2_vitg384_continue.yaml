@@ -1,0 +1,22 @@
+# @package _global_
+# Continue ViT-g 384 heavy-aug training from vitg384_heavy_aug.last.pt:
+# - validate every epoch (val loss + top1/top5)
+# - no warmup (warmup_epochs=0)
+# - scheduler_cosine=false so the cosine schedule is NOT recreated with a new
+#   T_max (which would break load_state_dict); optimizer LR stays at the value
+#   stored in the checkpoint (typically min_lr == 1e-6 after the first run).
+#
+# Increase ``training.epochs`` beyond the checkpoint epoch count so the loop
+# ``range(start_epoch, epochs)`` is non-empty (e.g. finished 10/10 → set epochs=20).
+defaults:
+  - track_b_vjepa2_vitg384_heavy_aug
+
+training:
+  checkpoint_path: checkpoints/track_b/vitg384_heavy_aug.pt
+  resume_from: checkpoints/track_b/vitg384_heavy_aug.last.pt
+  warmup_epochs: 0
+  eval_every_n_epochs: 1
+  scheduler_cosine: false
+  # Total epoch budget *including* already-completed epochs. Example: first run
+  # used epochs=10; set epochs=20 here to train 10 more (epochs 11–20).
+  epochs: 20

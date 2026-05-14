@@ -1,0 +1,42 @@
+# @package _global_
+# Heavy augmentation policy for the V-JEPA 2 probe training (Track B).
+#
+# This stacks together every per-frame augmentation we have, with knobs tuned
+# for the SSv2-finetuned ViT-L 256-px checkpoint:
+#
+#   1. RandAugment-T (Kim et al. 2020, Sec. 3.1 + 4.2) -- 14-op palette,
+#      mode ``temporal_plus`` (best in Tab. 2): same N op identities applied
+#      to every frame, but the magnitude varies linearly from M-delta on
+#      frame 0 to M+delta on frame T-1, with delta ~ U(0, 0.5 * M). This
+#      injects temporally-coherent geometric/photometric noise that mimics
+#      camera motion and lighting drift, which V-JEPA features are robust to.
+#   2. Random crop (resize 256 + 32 = 288, then crop 256) -- mild zoom
+#      jitter so the SSv2 prior doesn't latch onto absolute pixel positions.
+#   3. Random horizontal flip -- standard. The class-pair remap that handles
+#      "pulling left->right" vs "pulling right->left" lives in the submission
+#      TTA path, not here; for training the flip just adds variety.
+#   4. Color jitter -- moderate hue/saturation perturbation on top of
+#      RandAugment to vary lighting/skin tones beyond what RandAugment hits
+#      per frame.
+#
+# All randomness is *synchronized* across the frames of a clip
+# (``sync_across_frames: true``) so that motion direction (the only cue for
+# many SSv2 classes) is preserved within a sample.
+augment:
+  name: vjepa2_heavy
+  random_horizontal_flip: true
+  random_crop: true
+  crop_padding: 32
+  color_jitter: true
+  color_jitter_brightness: 0.3
+  color_jitter_contrast: 0.3
+  color_jitter_saturation: 0.3
+  color_jitter_hue: 0.05
+  sync_across_frames: true
+  randaugment:
+    enabled: true
+    n: 2
+    m: 9.0
+    mode: temporal_plus
+    magnitude_max: 30.0
+    ops: null

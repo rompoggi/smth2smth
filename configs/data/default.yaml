@@ -28,6 +28,8 @@ dataset:
   use_official_val: false
   seed: ${seed}
   max_samples: null
+  # Balanced per-class subsampling (see ``train._balanced_per_class_subsample``).
+  max_samples_per_class: null
   image_size: 224
   # Motion-aware time-reversal augmentation (only applied to the train set).
   # With this probability, the sampled frame sequence is reversed *and* the
@@ -38,3 +40,9 @@ dataset:
   # no clean temporal mirror are *not* reversed -- they would corrupt the
   # supervision signal otherwise. Default 0.0 is a no-op.
   time_reversal_prob: 0.0
+
+  # Train-only: reverse sampled frame order and swap label (curated Track A
+  # pairs). See ``temporal_pair_augment.py``. Val / submit must keep disabled.
+  temporal_reversal_augment:
+    enabled: false
+    prob: 0.5
