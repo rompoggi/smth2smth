@@ -23,6 +23,7 @@ from torch.utils.data import DataLoader, WeightedRandomSampler
 from smth2smth.shared.data import (
     VideoFrameDataset,
     build_time_reversal_table,
+    build_track_a_temporal_reversal_map,
     build_transforms,
     collect_video_samples,
     describe_time_reversal_table,
@@ -77,6 +78,74 @@ def _ssl_trunk_to_supervised_keys(trunk_state: dict[str, torch.Tensor]) -> dict[
     return out
 
 
+def _balanced_per_class_subsample(
+    samples: list[tuple[Path, int]],
+    *,
+    max_per_class: int,
+    seed: int,
+) -> list[tuple[Path, int]]:
+    """Keep at most ``max_per_class`` samples for each integer class label.
+
+    Selection is deterministic given ``seed``: we draw a permutation of the
+    indices within each class and take the first ``max_per_class``. The
+    returned list preserves the original ``samples`` ordering for the kept
+    indices, which keeps downstream sort/shuffle behaviour unchanged.
+
+    Args:
+        samples: List of ``(video_dir, class_index)`` pairs.
+        max_per_class: Maximum clips kept per class label. Non-positive
+            values yield an empty subset.
+        seed: NumPy seed for the per-class permutation.
+
+    Returns:
+        A new list with at most ``max_per_class`` samples per label, in
+        the same order as ``samples`` for the surviving indices.
+    """
+    if max_per_class <= 0:
+        return []
+    import numpy as np
+
+    rng = np.random.default_rng(int(seed))
+    indices_by_label: dict[int, list[int]] = {}
+    for idx, (_, label) in enumerate(samples):
+        indices_by_label.setdefault(int(label), []).append(idx)
+
+    kept: set[int] = set()
+    for label_indices in indices_by_label.values():
+        if len(label_indices) <= max_per_class:
+            kept.update(label_indices)
+            continue
+        perm = rng.permutation(len(label_indices))[:max_per_class]
+        for i in perm:
+            kept.add(label_indices[int(i)])
+    return [samples[i] for i in range(len(samples)) if i in kept]
+
+
+def _split_trainable_params_head_vs_lora(model: nn.Module) -> tuple[list[nn.Parameter], list[nn.Parameter]]:
+    """Partition trainable parameters into probe/head vs PEFT LoRA adapters.
+
+    HuggingFace PEFT names adapter weights with ``lora_A`` / ``lora_B`` in the
+    parameter name. Everything else trainable is treated as the head (or
+    non-LoRA trainables).
+
+    Args:
+        model: Network possibly wrapped with ``PeftModel`` on the backbone.
+
+    Returns:
+        ``(head_params, lora_params)`` lists; either list may be empty.
+    """
+    head_params: list[nn.Parameter] = []
+    lora_params: list[nn.Parameter] = []
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+        if "lora_A" in name or "lora_B" in name:
+            lora_params.append(param)
+        else:
+            head_params.append(param)
+    return head_params, lora_params
+
+
 def _free_cuda_memory(reason: str = "") -> None:
     """Release Python references and empty the CUDA caching allocator.
 
@@ -119,6 +188,18 @@ def run(cfg: DictConfig) -> Path | None:
 
     train_dir = Path(cfg.dataset.train_dir).resolve()
     all_samples = collect_video_samples(train_dir)
+
+    max_samples_per_class = cfg.dataset.get("max_samples_per_class")
+    if max_samples_per_class is not None:
+        all_samples = _balanced_per_class_subsample(
+            all_samples,
+            max_per_class=int(max_samples_per_class),
+            seed=int(cfg.dataset.seed),
+        )
+        print(
+            f"[data] balanced subsample: kept {len(all_samples)} clips "
+            f"(at most {int(max_samples_per_class)} per class, seed={int(cfg.dataset.seed)})"
+        )
 
     max_samples = cfg.dataset.get("max_samples")
     if max_samples is not None:
@@ -181,6 +262,17 @@ def run(cfg: DictConfig) -> Path | None:
         )
         print(f"[time-reversal] prob={time_reversal_prob}. " + describe_time_reversal_table(tr_perm, tr_allow))
 
+    tr_aug_cfg = cfg.dataset.get("temporal_reversal_augment")
+    temporal_reversal_map = None
+    temporal_reversal_prob = 0.0
+    if tr_aug_cfg is not None and bool(tr_aug_cfg.get("enabled", False)):
+        temporal_reversal_map = build_track_a_temporal_reversal_map()
+        temporal_reversal_prob = float(tr_aug_cfg.get("prob", 0.5))
+        print(
+            f"[data] temporal_reversal_augment: prob={temporal_reversal_prob}, "
+            f"paired_labels={len(temporal_reversal_map)}"
+        )
+
     train_dataset = VideoFrameDataset(
         root_dir=train_dir,
         num_frames=num_frames,
@@ -189,6 +281,8 @@ def run(cfg: DictConfig) -> Path | None:
         time_reversal_prob=time_reversal_prob,
         time_reversal_perm=tr_perm,
         time_reversal_allow_mask=tr_allow,
+        temporal_reversal_pair_to_opposite=temporal_reversal_map,
+        temporal_reversal_prob=temporal_reversal_prob,
     )
     val_dataset = VideoFrameDataset(
         root_dir=train_dir,
@@ -291,20 +385,77 @@ def run(cfg: DictConfig) -> Path | None:
         )
     loss_fn = nn.CrossEntropyLoss(weight=class_weights)
     optimizer_name = str(cfg.training.get("optimizer", "adam")).lower()
-    base_lr = float(cfg.training.lr)
+    head_lr = float(cfg.training.lr)
     weight_decay = float(cfg.training.get("weight_decay", 0.0))
+    lora_enabled = bool(cfg.model.get("lora_enabled", False)) if hasattr(cfg, "model") else False
+    head_params, lora_params = _split_trainable_params_head_vs_lora(model)
+    if not head_params and not lora_params:
+        raise RuntimeError(
+            "No trainable parameters found in the model; cannot construct an optimizer."
+        )
+    lora_lr_ratio = float(cfg.training.get("lora_lr_ratio", 0.25))
+    lora_lr_raw = cfg.training.get("lora_lr")
+    if lora_lr_raw is not None:
+        eff_lora_lr = float(lora_lr_raw)
+    else:
+        eff_lora_lr = head_lr * lora_lr_ratio
+
+    use_lora_group = lora_enabled and bool(head_params) and bool(lora_params)
+    if lora_enabled and not lora_params:
+        print(
+            "[optim] model.lora_enabled but no trainable lora_A/lora_B tensors; "
+            "using a single LR group."
+        )
+
+    if use_lora_group:
+        param_groups: list[dict[str, Any]] = [
+            {
+                "params": head_params,
+                "lr": head_lr,
+                "weight_decay": weight_decay,
+                "warmup_lr_max": head_lr,
+                "name": "head",
+            },
+            {
+                "params": lora_params,
+                "lr": eff_lora_lr,
+                "weight_decay": weight_decay,
+                "warmup_lr_max": eff_lora_lr,
+                "name": "lora",
+            },
+        ]
+        print(
+            f"[optim] two param groups: head lr={head_lr:g} (n={len(head_params)}), "
+            f"lora lr={eff_lora_lr:g} (n={len(lora_params)})"
+        )
+    else:
+        trainable_params = head_params + lora_params
+        param_groups = [
+            {
+                "params": trainable_params,
+                "lr": head_lr,
+                "weight_decay": weight_decay,
+                "warmup_lr_max": head_lr,
+                "name": "trainable",
+            },
+        ]
+
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_count = sum(p.numel() for g in param_groups for p in g["params"])
+    print(
+        f"[optim] trainable {trainable_count:,} / total {total_params:,} params "
+        f"({100.0 * trainable_count / max(1, total_params):.2f}%)"
+    )
     if optimizer_name == "sgd":
         optimizer = torch.optim.SGD(
-            model.parameters(),
-            lr=base_lr,
+            param_groups,
             momentum=float(cfg.training.get("momentum", 0.9)),
-            weight_decay=weight_decay,
             nesterov=bool(cfg.training.get("nesterov", False)),
         )
     elif optimizer_name == "adamw":
-        optimizer = torch.optim.AdamW(model.parameters(), lr=base_lr, weight_decay=weight_decay)
+        optimizer = torch.optim.AdamW(param_groups)
     else:
-        optimizer = torch.optim.Adam(model.parameters(), lr=base_lr, weight_decay=weight_decay)
+        optimizer = torch.optim.Adam(param_groups)
 
     use_cosine = bool(cfg.training.get("scheduler_cosine", False))
     warmup_epochs = int(cfg.training.get("warmup_epochs", 0))
@@ -360,6 +511,36 @@ def run(cfg: DictConfig) -> Path | None:
     epochs_without_improvement = 0
     start_epoch = 0
 
+    save_last_enabled = bool(cfg.training.get("save_last_checkpoint", True))
+    last_override = cfg.training.get("last_checkpoint_path")
+    if last_override:
+        last_checkpoint_path = Path(str(last_override)).resolve()
+    else:
+        last_checkpoint_path = checkpoint_path.with_name(
+            checkpoint_path.stem + ".last" + checkpoint_path.suffix
+        )
+
+    def _save_last_checkpoint(
+        epoch_done: int, latest_val_top1: float | None
+    ) -> None:
+        """Persist the live model + optimizer state at the end of ``epoch_done``."""
+        if not save_last_enabled:
+            return
+        last_extra: dict[str, Any] = {
+            "epoch": int(epoch_done),
+            "val_top1": float(best_top1),
+            "trained_class_indices": trained_class_indices,
+            "checkpoint_kind": "last",
+            "optimizer_state_dict": optimizer.state_dict(),
+        }
+        if cosine_scheduler is not None:
+            last_extra["scheduler_state_dict"] = cosine_scheduler.state_dict()
+        if scaler is not None:
+            last_extra["scaler_state_dict"] = scaler.state_dict()
+        if latest_val_top1 is not None:
+            last_extra["latest_val_top1"] = float(latest_val_top1)
+        save_checkpoint(last_checkpoint_path, model, cfg, extra=last_extra)
+
     resume_from = cfg.training.get("resume_from")
     if resume_from:
         resume_path = Path(str(resume_from)).resolve()
@@ -376,20 +557,27 @@ def run(cfg: DictConfig) -> Path | None:
             f"best val top1 so far = {best_top1:.4f}"
         )
 
-        # Optimizer / scheduler / scaler are stored inside ``extra`` so the
-        # checkpoint schema (``schema_version=1``) stays untouched. Older
-        # checkpoints that don't carry these keys fall back to the legacy
-        # cosine fast-forward path so we keep resuming runs created before
-        # this change.
+        opt_restored = False
         opt_state = extra.get("optimizer_state_dict")
         if opt_state is not None:
             try:
                 optimizer.load_state_dict(opt_state)
+                opt_restored = True
                 print("  Optimizer state restored from checkpoint.")
             except Exception as exc:
                 print(f"  [warn] could not restore optimizer state: {exc}")
 
         sched_state = extra.get("scheduler_state_dict")
+        scaler_state = extra.get("scaler_state_dict")
+        if not opt_restored:
+            sched_state = None
+            scaler_state = None
+            print(
+                "  [resume] optimizer not restored; ignoring saved scheduler/scaler "
+                "state (incompatible param groups or missing state). Cosine uses "
+                "fast-forward from the fresh optimizer."
+            )
+
         if cosine_scheduler is not None and sched_state is not None:
             try:
                 cosine_scheduler.load_state_dict(sched_state)
@@ -397,7 +585,7 @@ def run(cfg: DictConfig) -> Path | None:
                 print(f"  Cosine scheduler state restored; resumed LR={current_lr:.6g}")
             except Exception as exc:
                 print(f"  [warn] could not restore scheduler state: {exc}")
-                sched_state = None  # trigger fast-forward fallback below
+                sched_state = None
 
         if cosine_scheduler is not None and sched_state is None:
             ff_steps = max(0, start_epoch - warmup_epochs)
@@ -410,7 +598,6 @@ def run(cfg: DictConfig) -> Path | None:
                     f"resumed LR={current_lr:.6g}"
                 )
 
-        scaler_state = extra.get("scaler_state_dict")
         if scaler is not None and scaler_state is not None:
             try:
                 scaler.load_state_dict(scaler_state)
@@ -418,12 +605,24 @@ def run(cfg: DictConfig) -> Path | None:
             except Exception as exc:
                 print(f"  [warn] could not restore GradScaler state: {exc}")
 
+        lr_parts = [
+            f"{g.get('name', f'group{i}')}={g['lr']:.6g}"
+            for i, g in enumerate(optimizer.param_groups)
+        ]
+        sched_hint = (
+            "cosine will step after each train epoch"
+            if cosine_scheduler is not None
+            else "fixed (scheduler_cosine=false)"
+        )
+        print(f"  LR after resume: {', '.join(lr_parts)} ({sched_hint}).")
+
     try:
         for epoch in range(start_epoch, int(cfg.training.epochs)):
             if warmup_epochs > 0 and epoch < warmup_epochs:
-                warm_lr = base_lr * float(epoch + 1) / float(warmup_epochs)
+                warm_scale = float(epoch + 1) / float(warmup_epochs)
                 for group in optimizer.param_groups:
-                    group["lr"] = warm_lr
+                    max_lr = float(group.get("warmup_lr_max", group["lr"]))
+                    group["lr"] = max_lr * warm_scale
             train_stats: EpochStats = train_one_epoch(
                 model,
                 train_loader,
@@ -440,14 +639,30 @@ def run(cfg: DictConfig) -> Path | None:
                 ema_model=ema_model,
                 class_weights=class_weights,
             )
+            eval_every_n_epochs = max(1, int(cfg.training.get("eval_every_n_epochs", 1)))
+            eval_ema = bool(cfg.training.get("eval_ema", True))
+            is_last_epoch = (epoch + 1) == int(cfg.training.epochs)
+            should_eval = is_last_epoch or ((epoch + 1) % eval_every_n_epochs == 0)
+            if not should_eval:
+                print(
+                    f"Epoch {epoch + 1}/{cfg.training.epochs} | "
+                    f"train loss {train_stats.loss:.4f} top1 {train_stats.top1:.4f} | "
+                    f"val skipped (eval_every_n_epochs={eval_every_n_epochs})"
+                )
+                if cosine_scheduler is not None and epoch >= warmup_epochs:
+                    cosine_scheduler.step()
+                _save_last_checkpoint(epoch_done=epoch + 1, latest_val_top1=None)
+                continue
+
             val_stats: EpochStats = evaluate_epoch(
                 model, val_loader, loss_fn, device, amp_enabled=amp_enabled
             )
             ema_stats: EpochStats | None = None
-            if ema_model is not None:
+            if ema_model is not None and eval_ema:
                 ema_stats = evaluate_epoch(
                     ema_model, val_loader, loss_fn, device, amp_enabled=amp_enabled
                 )
+            if ema_stats is not None:
                 print(
                     f"Epoch {epoch + 1}/{cfg.training.epochs} | "
                     f"train loss {train_stats.loss:.4f} top1 {train_stats.top1:.4f} | "
@@ -456,11 +671,12 @@ def run(cfg: DictConfig) -> Path | None:
                     f"ema val top1 {ema_stats.top1:.4f} top5 {ema_stats.top5:.4f}"
                 )
             else:
+                ema_tag = " | ema eval skipped" if (ema_model is not None and not eval_ema) else ""
                 print(
                     f"Epoch {epoch + 1}/{cfg.training.epochs} | "
                     f"train loss {train_stats.loss:.4f} top1 {train_stats.top1:.4f} | "
                     f"val loss {val_stats.loss:.4f} top1 {val_stats.top1:.4f} "
-                    f"top5 {val_stats.top5:.4f}"
+                    f"top5 {val_stats.top5:.4f}{ema_tag}"
                 )
 
             # Pick the better of (live, EMA) for checkpointing. The chosen
@@ -487,11 +703,6 @@ def run(cfg: DictConfig) -> Path | None:
                     ckpt_extra["scheduler_state_dict"] = cosine_scheduler.state_dict()
                 if scaler is not None:
                     ckpt_extra["scaler_state_dict"] = scaler.state_dict()
-                # ``AveragedModel`` wraps the underlying network in a ``.module``
-                # attribute. Saving ``ema_model.module`` instead of ``ema_model``
-                # keeps the state_dict shape identical to the live model so
-                # downstream loading (which reconstructs via :func:`build_model`)
-                # works without special cases.
                 module_to_save = (
                     ckpt_module.module
                     if isinstance(ckpt_module, torch.optim.swa_utils.AveragedModel)
@@ -517,13 +728,14 @@ def run(cfg: DictConfig) -> Path | None:
                     )
                     if epochs_without_improvement >= early_stopping_patience:
                         print(
-                            "  Early stopping triggered: "
+                            "Early stopping triggered: "
                             f"no improvement > {early_stopping_min_delta:.6f} for "
                             f"{early_stopping_patience} consecutive epochs."
                         )
                         break
             if cosine_scheduler is not None and epoch >= warmup_epochs:
                 cosine_scheduler.step()
+            _save_last_checkpoint(epoch_done=epoch + 1, latest_val_top1=ckpt_stats.top1)
     except torch.cuda.OutOfMemoryError as exc:
         print(f"[cuda] OOM during training: {exc}. Releasing memory and aborting this job.")
         del model, optimizer, train_loader, val_loader
