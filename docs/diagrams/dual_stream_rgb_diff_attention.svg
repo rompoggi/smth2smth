@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 640" width="920" height="640">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#333"/>
+    </marker>
+    <style>
+      .box { fill: #f5f7fa; stroke: #334155; stroke-width: 2; }
+      .box-accent { fill: #e8f4fc; stroke: #0369a1; stroke-width: 2; }
+      .box-fuse { fill: #f3e8ff; stroke: #6b21a8; stroke-width: 2; }
+      .lbl { font-family: system-ui, Segoe UI, sans-serif; fill: #0f172a; }
+      .lbl-muted { font-family: system-ui, Segoe UI, sans-serif; fill: #475569; font-size: 13px; }
+      .lbl-title { font-family: system-ui, Segoe UI, sans-serif; fill: #0f172a; font-size: 17px; font-weight: 600; }
+      .line { stroke: #334155; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .line-soft {
+        stroke: #64748b;
+        stroke-width: 1.8;
+        fill: none;
+        marker-end: url(#arrow);
+        stroke-dasharray: 7 5;
+      }
+    </style>
+  </defs>
+
+  <text class="lbl-title" x="460" y="34" text-anchor="middle">RGB + frame-difference streams to shared temporal head</text>
+
+  <text class="lbl-muted" x="460" y="72" text-anchor="middle">Input clip</text>
+
+  <!-- Input frames T1-T4 -->
+  <rect class="box" x="170" y="86" width="88" height="44" rx="6"/>
+  <text class="lbl" x="214" y="115" text-anchor="middle" font-size="16" font-weight="600">T1</text>
+  <rect class="box" x="290" y="86" width="88" height="44" rx="6"/>
+  <text class="lbl" x="334" y="115" text-anchor="middle" font-size="16" font-weight="600">T2</text>
+  <rect class="box" x="410" y="86" width="88" height="44" rx="6"/>
+  <text class="lbl" x="454" y="115" text-anchor="middle" font-size="16" font-weight="600">T3</text>
+  <rect class="box" x="530" y="86" width="88" height="44" rx="6"/>
+  <text class="lbl" x="574" y="115" text-anchor="middle" font-size="16" font-weight="600">T4</text>
+
+  <text class="lbl-muted" x="460" y="152" text-anchor="middle">Original RGB frames</text>
+
+  <text class="lbl-muted" x="460" y="184" text-anchor="middle">Consecutive differences (motion proxy)</text>
+
+  <rect class="box" x="250" y="198" width="100" height="44" rx="6"/>
+  <text class="lbl" x="300" y="227" text-anchor="middle" font-size="15" font-weight="600">T2 - T1</text>
+  <rect class="box" x="390" y="198" width="100" height="44" rx="6"/>
+  <text class="lbl" x="440" y="227" text-anchor="middle" font-size="15" font-weight="600">T3 - T2</text>
+  <rect class="box" x="530" y="198" width="100" height="44" rx="6"/>
+  <text class="lbl" x="580" y="227" text-anchor="middle" font-size="15" font-weight="600">T4 - T3</text>
+
+  <text class="lbl-muted" x="230" y="286" text-anchor="middle">Spatial branch</text>
+  <text class="lbl-muted" x="690" y="286" text-anchor="middle">Motion branch</text>
+
+  <rect class="box-accent" x="70" y="298" width="320" height="52" rx="8"/>
+  <text class="lbl" x="230" y="332" text-anchor="middle" font-size="15" font-weight="600">ResNet-50 (+ TSM)</text>
+
+  <rect class="box-accent" x="530" y="298" width="320" height="52" rx="8"/>
+  <text class="lbl" x="690" y="332" text-anchor="middle" font-size="15" font-weight="600">ResNet-34 (+ TSM)</text>
+
+  <text class="lbl-muted" x="230" y="368" text-anchor="middle">One embedding per original frame</text>
+  <text class="lbl-muted" x="690" y="368" text-anchor="middle">One embedding per frame difference</text>
+
+  <text class="lbl-muted" x="460" y="408" text-anchor="middle">Token alignment / fusion (e.g. concat + project per time index)</text>
+  <rect class="box-fuse" x="260" y="420" width="400" height="52" rx="8"/>
+  <text class="lbl" x="460" y="454" text-anchor="middle" font-size="15" font-weight="600">Single sequence of tokens</text>
+
+  <text class="lbl-muted" x="460" y="494" text-anchor="middle">Shared readout</text>
+  <rect class="box-fuse" x="260" y="506" width="400" height="48" rx="8"/>
+  <text class="lbl" x="460" y="536" text-anchor="middle" font-size="15" font-weight="600">Attention pooling + classifier</text>
+
+  <!-- Frames to spatial encoder -->
+  <path class="line" d="M 214 130 L 214 296" />
+  <path class="line" d="M 334 130 L 280 296" />
+  <path class="line" d="M 454 130 L 380 296" />
+  <path class="line" d="M 574 130 L 480 296" />
+
+  <!-- Frames to diffs (conceptual) -->
+  <path class="line-soft" d="M 224 108 L 288 196" />
+  <path class="line-soft" d="M 314 108 L 312 196" />
+  <path class="line-soft" d="M 314 108 L 408 196" />
+  <path class="line-soft" d="M 434 108 L 432 196" />
+  <path class="line-soft" d="M 434 108 L 548 196" />
+  <path class="line-soft" d="M 554 108 L 552 196" />
+
+  <!-- Diffs to motion encoder -->
+  <path class="line" d="M 300 242 L 620 296" />
+  <path class="line" d="M 440 242 L 670 296" />
+  <path class="line" d="M 580 242 L 720 296" />
+
+  <!-- Encoders to fusion -->
+  <path class="line" d="M 230 350 L 400 418" />
+  <path class="line" d="M 690 350 L 520 418" />
+
+  <!-- Fusion to head -->
+  <path class="line" d="M 460 472 L 460 502" />
+</svg>
