@@ -1,0 +1,146 @@
+model:
+  name: vjepa2
+  pretrained: true
+  num_classes: ${num_classes}
+  hf_repo: facebook/vjepa2-vitl-fpc64-256
+  head_type: attentive
+  head_num_heads: 8
+  head_num_queries: 1
+  head_dropout: 0.0
+  lora_enabled: true
+  lora_r: 8
+  lora_alpha: 16
+  lora_dropout: 0.05
+  lora_target_modules: null
+  freeze_backbone: true
+  attn_implementation: sdpa
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: ${hydra:runtime.cwd}/submissions/track_b.csv
+  num_frames: 16
+  val_ratio: 0.2
+  use_official_val: true
+  seed: ${seed}
+  max_samples: null
+  max_samples_per_class: null
+  image_size: 256
+training:
+  batch_size: 4
+  lr: 0.001
+  epochs: 30
+  num_workers: 2
+  checkpoint_path: checkpoints/track_b/vitl_30e_warmup_lora.pt
+  resume_from: null
+  amp: true
+  device: cuda
+  optimizer: adamw
+  momentum: 0.9
+  nesterov: false
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 3
+  min_lr: 1.0e-05
+  label_smoothing: 0.1
+  videomix_alpha: 0.0
+  videomix_prob: 1.0
+  videomix_mode: cube_cutmix
+  early_stopping_enabled: false
+  early_stopping_patience: 8
+  early_stopping_min_delta: 0.001
+  log_interval_steps: 50
+  ema_enabled: false
+  ema_decay: 0.999
+  eval_every_n_epochs: 1
+  eval_ema: false
+  save_last_checkpoint: true
+  last_checkpoint_path: null
+  tta: true
+  tta_flip: true
+  tta_temporal_shift: 0
+augment:
+  name: none
+  random_horizontal_flip: true
+  random_crop: false
+  crop_padding: 0
+  color_jitter: false
+  color_jitter_brightness: 0.0
+  color_jitter_contrast: 0.0
+  color_jitter_saturation: 0.0
+  color_jitter_hue: 0.0
+pretrain:
+  epochs: 100
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 50
+  checkpoint_path: ${hydra:runtime.cwd}/ssl_trunk.pt
+  max_frames: null
+  image_size: 224
+  local_image_size: 96
+  num_local_views: 6
+  out_dim: 4096
+  hidden_dim: 2048
+  bottleneck_dim: 256
+  n_layers: 3
+  teacher_temp: 0.04
+  student_temp: 0.1
+  center_momentum: 0.9
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
+track:
+  name: b
+  description: 'Open-world track: pretrained backbone allowed.'
+num_classes: 33
+seed: 42
+
+[cuda] cache emptied (run-start). Free: 15.28 / 15.58 GiB
+[data] use_official_val=true: train=44993 (from /Data/romain.poggi/Modal/project/smth2smth/data/train), val=6745 (from /Data/romain.poggi/Modal/project/smth2smth/data/val)
+[2026-05-14 15:34:45,728][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/facebook/vjepa2-vitl-fpc64-256/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-05-14 15:34:45,732][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/facebook/vjepa2-vitl-fpc64-256/b3c1679b7c34d3255ef3547f27c7b226aefab26f/config.json "HTTP/1.1 200 OK"
+[2026-05-14 15:34:45,944][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/facebook/vjepa2-vitl-fpc64-256/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-05-14 15:34:45,949][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/facebook/vjepa2-vitl-fpc64-256/b3c1679b7c34d3255ef3547f27c7b226aefab26f/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/587 [00:00<?, ?it/s]Loading weights: 100%|██████████| 587/587 [00:00<00:00, 20110.73it/s]
+Error executing job with overrides: ['track=b', 'experiment=track_b_vjepa2_vitl_30e_warmup']
+Traceback (most recent call last):
+  File "/Data/romain.poggi/Modal/project/smth2smth/src/smth2smth/track_b/vjepa2.py", line 121, in _try_apply_peft_lora
+    return get_peft_model(backbone, lora_config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/Modal/project/smth2smth/.venv/lib/python3.12/site-packages/peft/mapping_func.py", line 114, in get_peft_model
+    return PeftModel(
+           ^^^^^^^^^^
+  File "/Data/romain.poggi/Modal/project/smth2smth/.venv/lib/python3.12/site-packages/peft/peft_model.py", line 129, in __init__
+    self.base_model = cls(model, {adapter_name: peft_config}, adapter_name)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/Modal/project/smth2smth/.venv/lib/python3.12/site-packages/peft/tuners/tuners_utils.py", line 315, in __init__
+    self.inject_adapter(self.model, adapter_name, low_cpu_mem_usage=low_cpu_mem_usage, state_dict=state_dict)
+  File "/Data/romain.poggi/Modal/project/smth2smth/.venv/lib/python3.12/site-packages/peft/tuners/tuners_utils.py", line 1008, in inject_adapter
+    raise ValueError(error_msg)
+ValueError: Target modules {'q_proj', 'v_proj', 'k_proj', 'out_proj'} not found in the base model. Please check the target modules and try again.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Data/romain.poggi/Modal/project/smth2smth/src/smth2smth/pipelines/train.py", line 624, in main
+    run(cfg)
+  File "/Data/romain.poggi/Modal/project/smth2smth/src/smth2smth/pipelines/train.py", line 247, in run
+    model = build_model(cfg).to(device)
+            ^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/Modal/project/smth2smth/src/smth2smth/shared/models/registry.py", line 68, in build_model
+    return MODEL_REGISTRY[name](cfg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/Modal/project/smth2smth/src/smth2smth/track_b/vjepa2.py", line 434, in build_vjepa2
+    return VJEPA2Probe(
+           ^^^^^^^^^^^^
+  File "/Data/romain.poggi/Modal/project/smth2smth/src/smth2smth/track_b/vjepa2.py", line 351, in __init__
+    self.backbone = _try_apply_peft_lora(
+                    ^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/Modal/project/smth2smth/src/smth2smth/track_b/vjepa2.py", line 123, in _try_apply_peft_lora
+    raise RuntimeError(
+RuntimeError: PEFT LoRA could not be applied to this backbone. Try adjusting model.lora_target_modules to match the encoder's attention linear names (tried ['q_proj', 'k_proj', 'v_proj', 'out_proj']). Original error: Target modules {'q_proj', 'v_proj', 'k_proj', 'out_proj'} not found in the base model. Please check the target modules and try again.
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.

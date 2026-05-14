@@ -1,0 +1,48 @@
+nohup: ignoring input
+[2026-04-28 02:13:39] Repo: /Data/romain.poggi/Modal/project/smth2smth
+[2026-04-28 02:13:39] EPOCHS=20  LRS_A=1e-3,5e-4,1e-4  LRS_B=5e-4,1e-4,5e-5
+Tue Apr 28 02:13:39 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 595.58.03              Driver Version: 595.58.03      CUDA Version: 13.2     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA RTX A4000               Off |   00000000:01:00.0 Off |                  Off |
+| 41%   41C    P8             13W /  140W |     138MiB /  16376MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A          955546      G   /usr/libexec/Xorg                        94MiB |
+|    0   N/A  N/A          955574      G   /usr/bin/gnome-shell                      8MiB |
++-----------------------------------------------------------------------------------------+
+[2026-04-28 02:13:39] === Track A x {augment=none, augment=strong} x {lr in 1e-3,5e-4,1e-4} ===
+usage: run_track_a.py [--help] [--hydra-help] [--version]
+                      [--cfg {job,hydra,all}] [--resolve] [--package PACKAGE]
+                      [--run] [--multirun] [--shell-completion]
+                      [--config-path CONFIG_PATH] [--config-name CONFIG_NAME]
+                      [--config-dir CONFIG_DIR]
+                      [--experimental-rerun EXPERIMENTAL_RERUN]
+                      [--info [{all,config,defaults,defaults-tree,plugins,searchpath}]]
+                      [overrides ...]
+run_track_a.py: error: unrecognized arguments: augment=none,strong training.lr=1e-3,5e-4,1e-4 training.epochs=20 training.checkpoint_path=${hydra:runtime.cwd}/checkpoints/runs/track_a_aug-${augment.name}_lr${training.lr}.pt
+[2026-04-28 02:13:41] Track A multirun returned non-zero. Continuing with Track B.
+[2026-04-28 02:13:41] === Track B x {augment=none, augment=strong} x {lr in 5e-4,1e-4,5e-5} ===
+usage: run_track_b.py [--help] [--hydra-help] [--version]
+                      [--cfg {job,hydra,all}] [--resolve] [--package PACKAGE]
+                      [--run] [--multirun] [--shell-completion]
+                      [--config-path CONFIG_PATH] [--config-name CONFIG_NAME]
+                      [--config-dir CONFIG_DIR]
+                      [--experimental-rerun EXPERIMENTAL_RERUN]
+                      [--info [{all,config,defaults,defaults-tree,plugins,searchpath}]]
+                      [overrides ...]
+run_track_b.py: error: unrecognized arguments: augment=none,strong training.lr=5e-4,1e-4,5e-5 training.epochs=20 training.checkpoint_path=${hydra:runtime.cwd}/checkpoints/runs/track_b_aug-${augment.name}_lr${training.lr}.pt
+[2026-04-28 02:13:42] Track B multirun returned non-zero.
+[2026-04-28 02:13:42] Done. Checkpoints under: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/
+total 0
