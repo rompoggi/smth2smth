@@ -142,6 +142,7 @@ This section gives concrete commands for the most common runs.
 | Baseline (Track B) | B (open) | `cnn_baseline` | ImageNet-pretrained | hflip (default) |
 | CNN-LSTM | any | `cnn_lstm` (ResNet-18 frame encoder + LSTM) | configurable | hflip (default) |
 | Stronger aug | any | any | any | hflip + color jitter + random crop (`augment=strong`) |
+| Dual-stream RGB+diff TSM (Track A) | A | `dual_stream_rgb_diff_tsm` | random | RandAugment-T + FrameMixUp (see preset below) |
 
 Every command below assumes you've completed the **Quick start** above (env + data in place).
 
@@ -211,6 +212,25 @@ For a from-scratch CNN-LSTM (Track A), pin `model.pretrained=false`:
 ```bash
 python scripts/run_track_a.py model=cnn_lstm model.pretrained=false training.epochs=20
 ```
+
+### Dual-stream RGB + frame-difference TSM (Track A)
+
+`dual_stream_rgb_diff_tsm` runs **ResNet-50 + TSM** on RGB frames and **ResNet-34 + TSM** on consecutive-frame differences \(I_t - I_{t-1}\), fuses to **\(T\)** tokens (motion zero-padded at \(t{=}0\)), then uses the same style temporal head as the single-stream TSM model (`head=mean` or `head=attn`). See `docs/diagrams/dual_stream_rgb_diff_attention.svg` and `report/track_a.tex`.
+
+**Preset (30 epochs, warmup, official val, RandAugment-T + FrameMixUp, AMP, EMA, class boosting):**
+
+```bash
+PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
+    track=a \
+    experiment=track_a_dual_stream_30e_class_boost
+```
+
+Hydra knobs:
+
+- `dataset.class_boosting.enabled` — deterministic duplicate train rows for curated opposite verb pairs (`expand_train_samples_for_class_boosting`); when `true`, stochastic `dataset.temporal_reversal_augment` is ignored.
+- `training.eval_every_n_epochs` — default `1` so validation (and EMA eval when enabled) runs every epoch; the preset sets it explicitly.
+
+Model YAML: `configs/model/dual_stream_rgb_diff_tsm.yaml` (`fuse_dim`, `drop_path_rate`, `head`, …).
 
 ### Default data augmentation
 

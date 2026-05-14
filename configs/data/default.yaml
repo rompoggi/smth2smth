@@ -46,3 +46,11 @@ dataset:
   temporal_reversal_augment:
     enabled: false
     prob: 0.5
+
+  # Deterministic class boosting (Track A): duplicate each train row whose label
+  # is in a curated opposite pair — native row + reversed-frames row with the
+  # partner label. See ``expand_train_samples_for_class_boosting``. Incompatible
+  # with ``temporal_reversal_augment`` (stochastic); the latter is ignored when
+  # this is enabled. Val split unchanged.
+  class_boosting:
+    enabled: false

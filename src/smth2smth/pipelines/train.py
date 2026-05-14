@@ -27,6 +27,7 @@ from smth2smth.shared.data import (
     build_transforms,
     collect_video_samples,
     describe_time_reversal_table,
+    expand_train_samples_for_class_boosting,
 )
 from smth2smth.shared.engine import EpochStats, evaluate_epoch, train_one_epoch
 from smth2smth.shared.io.checkpoints import load_checkpoint, save_checkpoint
@@ -232,6 +233,17 @@ def run(cfg: DictConfig) -> Path | None:
     # dataset would otherwise win a fraction of test predictions by accident).
     trained_class_indices: list[int] = sorted({int(label) for _, label in train_samples})
 
+    class_boost_cfg = cfg.dataset.get("class_boosting")
+    class_boosting_enabled = class_boost_cfg is not None and bool(class_boost_cfg.get("enabled", False))
+    if class_boosting_enabled:
+        pair_for_boost = build_track_a_temporal_reversal_map()
+        n_disk_rows = len(train_samples)
+        train_samples = expand_train_samples_for_class_boosting(train_samples, pair_for_boost)
+        print(
+            f"[data] class_boosting: expanded train rows {n_disk_rows} -> {len(train_samples)} "
+            f"(deterministic paired-verb duplicates)"
+        )
+
     use_imagenet_norm = bool(cfg.model.pretrained)
     augment_cfg = cfg.get("augment") if hasattr(cfg, "get") else None
     train_transform = build_transforms(
@@ -265,7 +277,12 @@ def run(cfg: DictConfig) -> Path | None:
     tr_aug_cfg = cfg.dataset.get("temporal_reversal_augment")
     temporal_reversal_map = None
     temporal_reversal_prob = 0.0
-    if tr_aug_cfg is not None and bool(tr_aug_cfg.get("enabled", False)):
+    if class_boosting_enabled and tr_aug_cfg is not None and bool(tr_aug_cfg.get("enabled", False)):
+        print(
+            "[data] temporal_reversal_augment disabled while class_boosting is enabled "
+            "(paired augmentation is already deterministic)."
+        )
+    elif tr_aug_cfg is not None and bool(tr_aug_cfg.get("enabled", False)):
         temporal_reversal_map = build_track_a_temporal_reversal_map()
         temporal_reversal_prob = float(tr_aug_cfg.get("prob", 0.5))
         print(
@@ -306,7 +323,7 @@ def run(cfg: DictConfig) -> Path | None:
             num_samples=len(train_samples),
             replacement=True,
         )
-        n_train_by_class = sorted({int(label) for _, label in train_samples})
+        n_train_by_class = sorted({int(s[1]) for s in train_samples})
         print(
             f"[class-balance] sampler={cb_sampler_policy!r}; "
             f"trained classes={len(n_train_by_class)}, "
@@ -340,27 +357,33 @@ def run(cfg: DictConfig) -> Path | None:
     # mismatches (e.g. extra BN buffers) don't fail the supervised run.
     init_from = cfg.model.get("init_from") if hasattr(cfg.model, "get") else None
     if init_from:
-        init_path = Path(str(init_from)).resolve()
-        if not init_path.is_file():
-            raise SystemExit(f"model.init_from points to a missing file: {init_path}")
-        payload = torch.load(init_path, map_location=device, weights_only=False)
-        trunk_state = payload.get("trunk_state_dict") if isinstance(payload, dict) else None
-        if trunk_state is None:
-            raise SystemExit(
-                f"{init_path} does not contain a 'trunk_state_dict' key; "
-                "expected an SSL checkpoint produced by pretrain_ssl.py."
+        if str(cfg.model.name) == "dual_stream_rgb_diff_tsm":
+            print(
+                "[init_from] skipped for dual_stream_rgb_diff_tsm: SSL checkpoints target "
+                "AvancedResNet50TSM backbone keys only (dual-stream uses rgb_backbone / motion_backbone)."
             )
-        prefixed = _ssl_trunk_to_supervised_keys(trunk_state)
-        missing, unexpected = model.load_state_dict(prefixed, strict=False)
-        # ``missing`` will include classifier / attn_pool keys -- expected.
-        backbone_missing = [k for k in missing if k.startswith("backbone.")]
-        print(
-            f"[init_from] loaded {len(prefixed)} trunk tensors from {init_path}. "
-            f"backbone-missing={len(backbone_missing)}, unexpected={len(unexpected)}"
-        )
-        if backbone_missing:
-            # If the SSL trunk doesn't cover every backbone key, we want to know.
-            print(f"[init_from] backbone keys NOT covered by SSL: {backbone_missing[:8]}...")
+        else:
+            init_path = Path(str(init_from)).resolve()
+            if not init_path.is_file():
+                raise SystemExit(f"model.init_from points to a missing file: {init_path}")
+            payload = torch.load(init_path, map_location=device, weights_only=False)
+            trunk_state = payload.get("trunk_state_dict") if isinstance(payload, dict) else None
+            if trunk_state is None:
+                raise SystemExit(
+                    f"{init_path} does not contain a 'trunk_state_dict' key; "
+                    "expected an SSL checkpoint produced by pretrain_ssl.py."
+                )
+            prefixed = _ssl_trunk_to_supervised_keys(trunk_state)
+            missing, unexpected = model.load_state_dict(prefixed, strict=False)
+            # ``missing`` will include classifier / attn_pool keys -- expected.
+            backbone_missing = [k for k in missing if k.startswith("backbone.")]
+            print(
+                f"[init_from] loaded {len(prefixed)} trunk tensors from {init_path}. "
+                f"backbone-missing={len(backbone_missing)}, unexpected={len(unexpected)}"
+            )
+            if backbone_missing:
+                # If the SSL trunk doesn't cover every backbone key, we want to know.
+                print(f"[init_from] backbone keys NOT covered by SSL: {backbone_missing[:8]}...")
 
     # Class-balanced cross-entropy weights (opt-in). Composes with
     # label-smoothing and video-mixing: the same tensor is passed both to

@@ -55,7 +55,11 @@ def class_counts(samples: Iterable[VideoSampleLike], num_classes: int) -> list[i
     if num_classes <= 0:
         raise ValueError(f"num_classes must be > 0, got {num_classes}.")
     counts = [0] * int(num_classes)
-    counter: Counter[int] = Counter(int(label) for _, label in samples)
+    counter: Counter[int] = Counter()
+    for sample in samples:
+        if len(sample) < 2:
+            raise ValueError(f"Each sample must have at least (path, label); got {sample!r}.")
+        counter[int(sample[1])] += 1
     for c, n in counter.items():
         if 0 <= c < num_classes:
             counts[c] = int(n)
@@ -93,7 +97,7 @@ def compute_sample_weights(
         return torch.ones(len(samples), dtype=torch.float32)
     factors = _class_factors(n_per_class, policy=policy)
     weights = torch.tensor(
-        [factors[int(label)] for _, label in samples], dtype=torch.float32
+        [factors[int(sample[1])] for sample in samples], dtype=torch.float32
     )
     return weights
 

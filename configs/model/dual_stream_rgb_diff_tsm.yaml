@@ -1,0 +1,16 @@
+# @package _global_
+# Track A: RGB (ResNet-50 + TSM) + consecutive-frame differences (ResNet-34 + TSM),
+# fused to T tokens then mean or attention pool + classifier.
+model:
+  name: dual_stream_rgb_diff_tsm
+  pretrained: false
+  num_classes: ${num_classes}
+  shift_div: 8
+  shift_place: blockres
+  dropout: 0.5
+  drop_path_rate: 0.1
+  head: attn
+  head_num_heads: 4
+  fuse_dim: 512
+  # SSL warm-start targets the single-stream ResNet-50 layout only; leave null.
+  init_from: null

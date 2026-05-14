@@ -718,3 +718,35 @@ fresh-init values. The trainer logs how many tensors were loaded, and
 warns loudly if any backbone key was \emph{not} covered by the SSL
 checkpoint.
 
+\subsection{Dual-stream RGB + frame-difference TSM}
+\label{sec:dual-stream-rgb-diff}
+
+Beyond the single-stream \code{AvancedResNet50TSM} baseline, the codebase
+includes \code{dual\_stream\_rgb\_diff\_tsm}: two backbones with TSM
+inserted in the usual bottleneck (ResNet-50 on RGB frames) and
+basic-block (ResNet-34 on consecutive RGB differences
+\(I_t - I_{t-1}\)) branches. Per time index \(t=0,\ldots,T-1\) the model
+forms a fused token by concatenating the RGB embedding at \(t\) with a
+motion embedding---zero-padded at \(t{=}0\), otherwise the difference
+embedding for \((t{-}1,t)\)---and projecting to a fixed width
+(\code{model.fuse\_dim}, default~512). A shared temporal readout (mean or
+1-query attention, matching the single-stream head options) and linear
+classifier produce clip logits. See
+\file{docs/diagrams/dual\_stream\_rgb\_diff\_attention.svg}
+for a block diagram of the architecture.
+
+\paragraph{Configuration.} Model defaults live in
+\file{configs/model/dual\_stream\_rgb\_diff\_tsm.yaml}. A ready-made
+Track~A training recipe (30~epochs, warmup, RandAugment-T + FrameMixUp,
+official validation split, AMP, EMA, class boosting with deterministic
+paired-verb duplicate rows, validation every epoch via
+\code{training.eval\_every\_n\_epochs=1}) is
+\file{configs/experiment/track\_a\_dual\_stream\_30e\_class\_boost.yaml}.
+Stochastic \code{temporal\_reversal\_augment} is disabled automatically
+when \code{dataset.class\_boosting.enabled} is true. The README documents
+the Hydra invocation.
+
+\paragraph{SSL warm-start.} The \code{model.init\_from} hook from
+\S\ref{sec:phase3:initfrom} applies only to \code{AvancedResNet50TSM}
+backbone key names; training with \code{dual\_stream\_rgb\_diff\_tsm}
+skips loading so that mis-matched prefixes are not applied silently.

@@ -513,3 +513,14 @@ Epoch 2/30 | train loss 1.3493 top1 0.7377 | val loss 1.2441 top1 0.6405 top5 0.
     step 8200/11249 | avg train loss 1.3110 top1 0.7502 top5 0.9620
     step 8250/11249 | avg train loss 1.3105 top1 0.7503 top5 0.9620
     step 8300/11249 | avg train loss 1.3113 top1 0.7501 top5 0.9618
+    step 8350/11249 | avg train loss 1.3117 top1 0.7500 top5 0.9617
+    step 8400/11249 | avg train loss 1.3116 top1 0.7498 top5 0.9618
+    step 8450/11249 | avg train loss 1.3113 top1 0.7499 top5 0.9619
+    step 8500/11249 | avg train loss 1.3118 top1 0.7498 top5 0.9618
+    step 8550/11249 | avg train loss 1.3114 top1 0.7500 top5 0.9617
+    step 8600/11249 | avg train loss 1.3113 top1 0.7499 top5 0.9618
+    step 8650/11249 | avg train loss 1.3113 top1 0.7499 top5 0.9617
+    step 8700/11249 | avg train loss 1.3113 top1 0.7498 top5 0.9616
+    step 8750/11249 | avg train loss 1.3113 top1 0.7499 top5 0.9616
+    step 8800/11249 | avg train loss 1.3111 top1 0.7500 top5 0.9616
+    step 8850/11249 | avg train loss 1.3110 top1 0.7500 top5 0.9616
