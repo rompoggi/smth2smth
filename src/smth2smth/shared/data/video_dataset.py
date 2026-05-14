@@ -21,6 +21,7 @@ Each ``__getitem__`` returns:
 
 from __future__ import annotations
 
+import random
 import re
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -165,6 +166,12 @@ class VideoFrameDataset(Dataset):
         time_reversal_allow_mask: 1-D ``BoolTensor`` of length
             ``num_classes``; only classes with ``True`` are eligible for
             reversal. Required when ``time_reversal_prob > 0``.
+        temporal_reversal_pair_to_opposite: Optional map from class index to its
+            paired opposite (Track A curated pairs). Used only when
+            ``temporal_reversal_prob > 0``.
+        temporal_reversal_prob: Bernoulli probability to reverse frame order and
+            swap the label via ``temporal_reversal_pair_to_opposite``. Ignored if
+            the map is ``None`` or empty.
     """
 
     def __init__(
@@ -177,10 +184,14 @@ class VideoFrameDataset(Dataset):
         time_reversal_prob: float = 0.0,
         time_reversal_perm: torch.Tensor | None = None,
         time_reversal_allow_mask: torch.Tensor | None = None,
+        temporal_reversal_pair_to_opposite: dict[int, int] | None = None,
+        temporal_reversal_prob: float = 0.0,
     ) -> None:
         self.root_dir = Path(root_dir)
         self.num_frames = num_frames
         self.transform = transform
+        self.temporal_reversal_pair_to_opposite = temporal_reversal_pair_to_opposite
+        self.temporal_reversal_prob = float(temporal_reversal_prob)
 
         if sample_list is None:
             self.samples: list[VideoSample] = collect_video_samples(self.root_dir)
@@ -201,6 +212,10 @@ class VideoFrameDataset(Dataset):
             )
         self.time_reversal_perm = time_reversal_perm
         self.time_reversal_allow_mask = time_reversal_allow_mask
+        if self.temporal_reversal_prob < 0.0 or self.temporal_reversal_prob > 1.0:
+            raise ValueError(
+                f"temporal_reversal_prob must be in [0, 1], got {self.temporal_reversal_prob}."
+            )
 
     def __len__(self) -> int:
         return len(self.samples)
@@ -221,6 +236,17 @@ class VideoFrameDataset(Dataset):
             with Image.open(path) as image:
                 raw_frames.append(image.convert("RGB"))
 
+        label_int = int(label)
+        pair_map = self.temporal_reversal_pair_to_opposite
+        if (
+            pair_map
+            and self.temporal_reversal_prob > 0.0
+            and label_int in pair_map
+            and random.random() < self.temporal_reversal_prob
+        ):
+            raw_frames.reverse()
+            label_int = int(pair_map[label_int])
+
         try:
             transformed = self.transform(raw_frames)
             if isinstance(transformed, list):
@@ -231,7 +257,7 @@ class VideoFrameDataset(Dataset):
             frames = [self.transform(frame) for frame in raw_frames]  # type: ignore[arg-type]
 
         video_tensor = torch.stack(frames, dim=0)
-        label_tensor = torch.tensor(label, dtype=torch.long)
+        label_tensor = torch.tensor(label_int, dtype=torch.long)
         return video_tensor, label_tensor
 
     def _should_reverse(self, label: int) -> bool:
