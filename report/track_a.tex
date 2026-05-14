@@ -1,0 +1,752 @@
+% =====================================================================
+% Track A (Closed-World, from scratch): context, Phase~1--3.
+%
+% This file is \input{}-ed from report/main.tex.  Keep phase numbering
+% consistent with the rest of the report.
+% =====================================================================
+
+\section{Context}
+\label{sec:context}
+
+\subsection{Competition rules}
+
+The Kaggle competition \emph{Can a model predict the future?} provides
+short video clips from the Something-Something~V2 dataset and asks
+participants to predict the action that will occur next, given only the
+beginning of each clip. Track~A (\emph{Closed World}) is the focus of this
+work: \textbf{models must be trained from scratch using only the provided
+data}; no external dataset and no pretrained weights are allowed.
+Submissions are evaluated by Top-1 classification accuracy (with Top-5 as
+a secondary metric) on a held-out test set whose public/private split is
+hidden from participants.
+
+\subsection{Starting point and observed problems}
+
+Before the work in this report, the supervised Track-A pipeline was a
+TSM-ResNet50 trained with Adam, label smoothing, RandAugment-T temporal
+augmentations, FrameMixUp, an 80/20 internal split of the training data
+for validation, and a cosine learning-rate schedule. Its best public
+Kaggle scores were:
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Submission} & \textbf{Internal val Top-1} & \textbf{Public Top-1} \\
+\midrule
+Initial run (epoch 29) & 0.4582 & 0.3207 \\
+Resumed run (epoch 60) & 0.5666 & 0.3584 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The roughly 21~percentage-point gap between internal validation and the
+public leaderboard pointed at a collection of issues, the most important
+of which were identified in a project review:
+
+\begin{enumerate}[leftmargin=*]
+\item \textbf{Leaky validation split}. The 80/20 split was carved out of
+      \file{data/train/} rather than using the official held-out
+      \file{data/val/} folder. Validation samples were therefore drawn
+      from the same recording sessions and demographics as training,
+      producing optimistically biased numbers.
+\item \textbf{Suboptimal initialisation}. The ResNet-50 backbone was
+      initialised with Xavier weights, which is well-suited to networks
+      with sigmoid/tanh activations but is documented to under-perform
+      Kaiming He initialisation on deep ReLU networks trained from
+      scratch.
+\item \textbf{No mixed-precision training}. Forward and backward passes
+      ran in full FP32, leaving \(\approx 1.5{-}2\times\) of GPU
+      throughput on the table on Ampere or newer hardware.
+\item \textbf{Optimizer / scheduler / scaler state lost on resume}. Only
+      the model weights and the epoch counter were checkpointed, so
+      restarting a long run forced the optimizer (Adam moments) and the
+      cosine LR schedule to restart from scratch as well.
+\item \textbf{Missing class~27}. The ``50 classes'' described in the
+      competition page is in practice 33 unique class indices on disk
+      with class~27 entirely absent. The submission pipeline did nothing
+      to prevent the network from emitting this never-trained label,
+      meaning \(\approx 3\%\) of test predictions could land on it.
+\item \textbf{No EMA, no TTA, no SSL pretraining.} The pipeline used
+      none of the well-known accuracy-boosting techniques that are
+      standard for video classification on small datasets.
+\end{enumerate}
+
+The remainder of this document describes the changes that addressed each
+of these issues, in the order they were introduced.
+
+% =====================================================================
+\section{Phase 1: Foundations}
+\label{sec:phase1}
+
+Phase~1 comprises five low-risk, high-return changes. All of them were
+introduced behind explicit configuration switches so that historical runs
+can still be reproduced bit-for-bit by setting the new switches to their
+``off'' defaults.
+
+\subsection{Official validation split}
+\label{sec:phase1:val}
+
+\paragraph{Logic.} A train/val split that overlaps with the test
+distribution understates the generalisation gap. Switching to the
+official \file{data/val/} folder makes the validation score a faithful
+proxy for the public leaderboard score and therefore drives early
+stopping, model selection and hyperparameter choices in the right
+direction.
+
+\paragraph{Implementation.} A new boolean
+\cfgkey{dataset.use\_official\_val} (default \code{false}) was added to
+\file{configs/data/default.yaml}. When set to \code{true}, the trainer
+bypasses the internal 80/20 split and instead enumerates every video
+under \file{data/val/}.
+
+\begin{lstlisting}[style=py]
+use_official_val = bool(cfg.dataset.get("use_official_val", False))
+if use_official_val:
+    val_dir_for_val = Path(cfg.dataset.val_dir).resolve()
+    val_samples = collect_video_samples(val_dir_for_val)
+    train_samples = all_samples
+    print(f"[data] use_official_val=true: train={len(train_samples)}, "
+          f"val={len(val_samples)} (from {val_dir_for_val})")
+else:
+    train_samples, val_samples = split_train_val(
+        all_samples, val_ratio=float(cfg.dataset.val_ratio),
+        seed=int(cfg.dataset.seed))
+\end{lstlisting}
+
+\subsection{Kaiming He initialisation}
+\label{sec:phase1:init}
+
+\paragraph{Logic.} For a Conv$\to$BN$\to$ReLU stack trained from scratch,
+the variance of pre-activations grows or shrinks geometrically with depth
+unless the initial Conv weights are scaled with the Kaiming He recipe
+\cite[Sec.~2.2]{HeICCV2015}:
+\[
+\mathrm{Var}(W_{i,j}) = \frac{2}{\text{fan\_out}}.
+\]
+Xavier initialisation, which uses \(2/(\text{fan\_in}+\text{fan\_out})\),
+under-shoots this variance by roughly \(2\times\) per layer for ReLU
+networks and is empirically a poor choice for from-scratch ResNet
+training.
+
+\paragraph{Implementation.} The
+\code{\_init\_weights\_xavier} method of \code{AvancedResNet50TSM} was
+renamed to \code{\_init\_weights} and rewritten to walk every submodule:
+
+\begin{lstlisting}[style=py]
+def _init_weights(self) -> None:
+    for module in self.modules():
+        if isinstance(module, nn.Conv2d):
+            nn.init.kaiming_normal_(module.weight,
+                mode="fan_out", nonlinearity="relu")
+            if module.bias is not None:
+                nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.BatchNorm2d):
+            if module.weight is not None:
+                nn.init.ones_(module.weight)
+            if module.bias is not None:
+                nn.init.zeros_(module.bias)
+    nn.init.normal_(self.classifier.weight, mean=0.0, std=0.01)
+    if self.classifier.bias is not None:
+        nn.init.zeros_(self.classifier.bias)
+\end{lstlisting}
+
+The classifier head is initialised with a small-Gaussian
+(\(\mathcal{N}(0, 0.01^2)\)) following the original ResNet and TSM
+recipes; BN affine parameters are set to \(\gamma=1, \beta=0\).
+
+\subsection{Automatic Mixed Precision (AMP)}
+\label{sec:phase1:amp}
+
+\paragraph{Logic.} On Ampere, Hopper and newer GPUs, running the forward
+pass in FP16 (or BF16) and only the master copy of the optimizer state in
+FP32 yields \(1.5\)--\(2\times\) throughput at no measurable accuracy
+cost when paired with PyTorch's gradient scaler.
+
+\paragraph{Implementation.} A new boolean \cfgkey{training.amp}
+(default \code{false}) gates a \code{torch.amp.GradScaler} that is
+created in \file{train.py} and threaded through the engine helpers.
+\code{train\_one\_epoch} and \code{evaluate\_epoch} both received two new
+keyword arguments, \code{scaler} and \code{amp\_dtype}, and wrap their
+forward and backward passes in
+\code{torch.amp.autocast(device\_type="cuda", dtype=amp\_dtype)}. When
+\code{scaler} is \code{None} (the default), the code path is
+byte-for-byte identical to the legacy full-precision implementation.
+
+\begin{lstlisting}[style=py]
+amp_enabled = bool(cfg.training.get("amp", False)) \
+              and device.type == "cuda"
+scaler = torch.amp.GradScaler("cuda", enabled=True) \
+         if amp_enabled else None
+
+# ...inside train_one_epoch:
+with torch.amp.autocast(device_type="cuda",
+                        enabled=use_amp,
+                        dtype=amp_dtype):
+    logits = model(videos)
+    loss = loss_fn(logits, target)
+if use_amp:
+    scaler.scale(loss).backward()
+    scaler.step(optimizer)
+    scaler.update()
+else:
+    loss.backward()
+    optimizer.step()
+\end{lstlisting}
+
+\subsection{Persistent optimizer / scheduler / scaler state}
+\label{sec:phase1:resume}
+
+\paragraph{Logic.} A long training run inevitably gets restarted
+(scheduled maintenance, a transient OOM, an accidental \code{Ctrl-C}). If
+only the model weights are persisted, the optimizer's running moments,
+the cosine LR schedule and the GradScaler all reset, which causes a
+visible accuracy dip for several epochs after each restart and makes
+``resume from epoch~$k$'' a much weaker recovery than ``never
+interrupted''.
+
+\paragraph{Implementation.} On every \emph{best-checkpoint} save, the
+trainer now stores \code{optimizer.state\_dict()},
+\code{cosine\_scheduler.state\_dict()} (when present) and
+\code{scaler.state\_dict()} (when AMP is on) inside the existing
+\code{extra} dict of the checkpoint payload. The schema version is
+unchanged. On resume, those state dicts are loaded inside try/except
+blocks so a checkpoint produced by an older code path still resumes
+cleanly (the cosine scheduler then falls back to its legacy
+fast-forward).
+
+\begin{lstlisting}[style=py]
+ckpt_extra: dict[str, Any] = {
+    "val_top1": ckpt_stats.top1,
+    "val_top5": ckpt_stats.top5,
+    "val_loss": ckpt_stats.loss,
+    "epoch": epoch + 1,
+    "optimizer_state_dict": optimizer.state_dict(),
+    "trained_class_indices": trained_class_indices,
+    "checkpoint_kind": ckpt_kind,
+}
+if cosine_scheduler is not None:
+    ckpt_extra["scheduler_state_dict"] = cosine_scheduler.state_dict()
+if scaler is not None:
+    ckpt_extra["scaler_state_dict"] = scaler.state_dict()
+\end{lstlisting}
+
+\subsection{Trained-class indices and untrained-logit masking}
+\label{sec:phase1:masking}
+
+\paragraph{Logic.} The provided dataset has 33 unique class indices in
+\([0, 32]\) but class~27 has no training samples. The classifier head is
+nonetheless 33-wide (its weight tensor was initialised at random for
+class~27) and at inference time argmax can therefore land on class~27 by
+accident, producing systematically wrong predictions for every test
+clip on which the random class~27 logit happens to be the largest.
+
+\paragraph{Implementation.} The trainer derives the set of class indices
+that actually have at least one training sample and writes it into the
+checkpoint:
+
+\begin{lstlisting}[style=py]
+trained_class_indices: list[int] = sorted(
+    {int(label) for _, label in train_samples})
+\end{lstlisting}
+
+The submission pipeline reads this list back and builds an additive mask
+that pushes every never-trained class to \(-\infty\) before
+\code{argmax}:
+
+\begin{lstlisting}[style=py]
+def _build_untrained_mask(trained_class_indices, num_classes, device):
+    if not trained_class_indices:
+        return None
+    trained = {int(i) for i in trained_class_indices
+               if 0 <= int(i) < num_classes}
+    if len(trained) >= num_classes:
+        return None
+    mask = torch.zeros(num_classes, dtype=torch.float32, device=device)
+    untrained = [c for c in range(num_classes) if c not in trained]
+    mask[untrained] = -math.inf
+    return mask
+\end{lstlisting}
+
+Older checkpoints that pre-date Phase~1 do not carry this list; in that
+case the mask is \code{None} and the legacy unmasked argmax path is used,
+preserving backward compatibility.
+
+% =====================================================================
+\section{Phase 2: Architectural and Training Enhancements}
+\label{sec:phase2}
+
+Phase~2 adds four orthogonal opt-in features that compose cleanly with
+Phase~1. None of them change the behaviour of the legacy code paths when
+left at their defaults; together, they are bundled in a new experiment
+config \file{configs/experiment/track\_a\_phase2.yaml} that also flips on
+AdamW with a stronger weight decay.
+
+\subsection{Stochastic Depth (DropPath)}
+\label{sec:phase2:droppath}
+
+\paragraph{Logic.} Stochastic Depth \cite{Huang2016SD} is a stochastic
+regularisation technique that, during training, drops the residual branch
+of each ResNet bottleneck block with probability \(p_\ell\) and rescales
+the kept contributions by \(1/(1-p_\ell)\) so that the expectation over
+the random mask matches the no-drop forward pass:
+\[
+y_\ell \;=\; x_\ell \;+\;
+\frac{b_\ell}{1-p_\ell}\,F_\ell(x_\ell), \qquad
+b_\ell \sim \text{Bernoulli}(1-p_\ell).
+\]
+At inference time, all blocks are kept (\(b_\ell = 1\) deterministically)
+so no rescaling is needed. The standard recipe uses a linear schedule
+that drops deeper blocks more aggressively:
+\[
+p_\ell \;=\; p_{\max}\,\frac{\ell - 1}{L - 1},
+\]
+where \(L\) is the total number of bottleneck blocks. For ResNet-50
+\(L=16\) and a typical \(p_{\max}\) is in \([0.05, 0.2]\).
+
+\paragraph{Implementation.} A parameter-free \code{DropPath} module
+implements the per-sample bernoulli mask. A helper
+\code{\_inject\_drop\_path} walks the four ResNet stages, attaches a
+\code{DropPath} instance to each block (with the linearly-scaled
+probability), and rebinds the block's \code{forward} to a patched
+implementation that calls \code{self.drop\_path(out)} on the residual
+branch immediately before the residual addition:
+
+\begin{lstlisting}[style=py]
+def _patched_bottleneck_forward(self, x: torch.Tensor) -> torch.Tensor:
+    identity = x
+    out = self.relu(self.bn1(self.conv1(x)))
+    out = self.relu(self.bn2(self.conv2(out)))
+    out = self.bn3(self.conv3(out))
+    if self.downsample is not None:
+        identity = self.downsample(x)
+    out = self.drop_path(out)         # <-- new
+    return self.relu(out + identity)
+\end{lstlisting}
+
+\code{DropPath} adds no parameters and no buffers, so the model's
+\code{state\_dict} layout is unchanged regardless of
+\cfgkey{model.drop\_path\_rate}. This is asserted by a unit test that
+compares state-dict key sets with and without DropPath enabled.
+
+\subsection{Attention-pool head}
+\label{sec:phase2:attn}
+
+\paragraph{Logic.} The legacy temporal head averages the per-frame
+features:
+\[
+z = \frac{1}{T}\sum_{t=1}^{T} \phi(x_t), \qquad
+\widehat{y} = W z + b.
+\]
+A 1-query multi-head attention pool is a strict generalisation: when the
+attention weights are uniform it reproduces the mean exactly, but it can
+also concentrate on the most informative frame(s). Concretely, we
+introduce a learnable query token \(q \in \mathbb{R}^{1\times D}\) and
+compute
+\[
+z \;=\; \mathrm{LayerNorm}\!\left(
+        \mathrm{MultiHeadAttn}(q,\, K{=}V{=}\Phi)\right),
+\]
+where \(\Phi \in \mathbb{R}^{T\times D}\) is the stack of frame
+features. With \(T=4\) and \(D=2048\), this adds about
+\(D + 4D^2 \approx 16{,}780{,}288\) parameters, which is small compared
+to the \(\approx 25\)M parameter ResNet-50 trunk.
+
+\paragraph{Implementation.} A new \code{AttentionPool} module wraps a
+single \code{nn.MultiheadAttention} layer plus a final
+\code{nn.LayerNorm}; the query token is initialised with a truncated
+normal of std~0.02. The supervised model exposes a new
+\cfgkey{model.head} switch (\code{"mean"} or \code{"attn"}) and routes
+features accordingly:
+
+\begin{lstlisting}[style=py]
+sequence_features = frame_features.view(batch_size, num_frames, -1)
+if self.attn_pool is not None:
+    consensus_features = self.attn_pool(sequence_features)
+else:
+    consensus_features = sequence_features.mean(dim=1)
+\end{lstlisting}
+
+When \cfgkey{model.head}~$=$~\code{"mean"} (the default) the
+\code{attn\_pool} attribute is \code{None} and no extra parameters are
+added.
+
+\subsection{Exponential Moving Average (EMA) of model weights}
+\label{sec:phase2:ema}
+
+\paragraph{Logic.} Polyak averaging \cite{PolyakSIAM1992} maintains an
+exponentially-weighted average of the model's parameters,
+\[
+\theta_{\mathrm{EMA}}^{(t+1)} \;=\;
+\alpha\,\theta_{\mathrm{EMA}}^{(t)} \;+\;
+(1-\alpha)\,\theta^{(t+1)}, \qquad \alpha \in [0.99, 0.9999],
+\]
+which empirically gives smoother loss curves and a small but consistent
+top-1 boost (\(\approx 0.3{-}1.0\) points) on most modern image and
+video classifiers.
+
+\paragraph{Implementation.} We use PyTorch's
+\code{torch.optim.swa\_utils.AveragedModel} with a custom averaging
+function and \code{use\_buffers=True} so BatchNorm running statistics are
+also tracked:
+
+\begin{lstlisting}[style=py]
+def _ema_avg_fn(avg_param, model_param, _num_averaged):
+    return ema_decay * avg_param + (1.0 - ema_decay) * model_param
+
+ema_model = torch.optim.swa_utils.AveragedModel(
+    model, avg_fn=_ema_avg_fn, use_buffers=True).to(device)
+\end{lstlisting}
+
+\code{train\_one\_epoch} accepts a new \code{ema\_model} keyword and
+calls \code{ema\_model.update\_parameters(model)} after every optimizer
+step. At the end of each epoch the trainer evaluates \emph{both} the
+live and the EMA model and saves the better of the two:
+
+\begin{lstlisting}[style=py]
+if ema_stats is not None and ema_stats.top1 > val_stats.top1:
+    ckpt_stats, ckpt_module, ckpt_kind = ema_stats, ema_model, "ema"
+else:
+    ckpt_stats, ckpt_module, ckpt_kind = val_stats, model, "live"
+
+# ...later, before save_checkpoint:
+module_to_save = (ckpt_module.module
+                  if isinstance(ckpt_module,
+                                torch.optim.swa_utils.AveragedModel)
+                  else ckpt_module)
+\end{lstlisting}
+
+This selection rule is what lets downstream consumers
+(\file{submit.py}, \file{evaluate.py}) stay completely oblivious to the
+EMA toggle: the saved \code{model\_state\_dict} is always loaded with
+\code{build\_model(...).load\_state\_dict(...)}, regardless of which
+copy won. The string \code{"live"} or \code{"ema"} is recorded in
+\code{extra["checkpoint\_kind"]} for traceability.
+
+\subsection{Test-Time Augmentation with auto class-pair remap}
+\label{sec:phase2:tta}
+
+\paragraph{Logic.} Horizontal flip is a free \emph{evaluation-time}
+augmentation \emph{provided} that the predicted class is invariant to
+the flip. The Something-Something~V2 subset used in this competition
+contains a small number of direction-sensitive classes, in particular:
+\begin{itemize}[leftmargin=2em]
+\item class~018: ``Pulling something from left to right''
+\item class~019: ``Pulling something from right to left''
+\end{itemize}
+For these, a flipped clip should predict the \emph{paired} class. A
+naive flip-and-average TTA actually hurts accuracy on these two classes
+because it averages two confident but \emph{disagreeing} predictions.
+
+\paragraph{Implementation.} We average softmax probabilities across the
+two views (original and flipped) and apply a learned permutation
+\(\pi: \{0,\ldots,K-1\}\to\{0,\ldots,K-1\}\) to the flipped softmax so
+that paired classes are mapped back into agreement. The permutation is
+\emph{auto-derived from the class folder names}, making it robust to any
+future change in the class set:
+
+\begin{lstlisting}[style=py]
+LR = "from_left_to_right"
+RL = "from_right_to_left"
+for idx, stem in stem_by_idx.items():
+    if LR in stem:
+        mirror_stem = stem.replace(LR, RL)
+        for other_idx, other_stem in stem_by_idx.items():
+            if other_stem == mirror_stem:
+                perm[idx] = other_idx
+                perm[other_idx] = idx
+                break
+\end{lstlisting}
+
+(The numeric prefix is stripped before matching so
+\code{018\_..\_left\_to\_right} pairs with \code{019\_..\_right\_to\_left}
+without a code-level hard-code.) The TTA loop in \file{submit.py} then
+becomes:
+
+\begin{lstlisting}[style=py]
+logits = _logits_for_batch(model, video_batch, untrained_mask)
+probs_total = torch.softmax(logits, dim=1)
+n_views = 1
+if tta_flip:
+    flipped = torch.flip(video_batch, dims=[-1])
+    flipped_probs = torch.softmax(
+        _logits_for_batch(model, flipped, untrained_mask), dim=1)
+    if flip_perm is not None:
+        flipped_probs = flipped_probs.index_select(dim=1, index=flip_perm)
+    probs_total = probs_total + flipped_probs
+    n_views += 1
+predictions.extend(int(p) for p in
+    (probs_total / n_views).argmax(dim=1).cpu().tolist())
+\end{lstlisting}
+
+The configuration is opt-in (\cfgkey{training.tta}, \cfgkey{training.tta\_flip},
+both \code{false} by default) and read at inference time only; training
+is unaffected.
+
+\subsection{AdamW and the bundled experiment configuration}
+\label{sec:phase2:adamw}
+
+The trainer already supported AdamW; Phase~2 simply makes it the
+recommended optimizer for the new experiment by setting
+\cfgkey{training.optimizer: adamw} and \cfgkey{training.weight\_decay:
+0.05} in \file{configs/experiment/track\_a\_phase2.yaml}. Decoupling the
+weight-decay term from the gradient (which is what AdamW does, unlike
+plain Adam) is the right thing to do whenever a non-zero weight decay is
+used; it is also the optimizer of choice for ConvNeXt, ViT and modern
+ResNet recipes.
+
+The \file{track\_a\_phase2.yaml} bundle composes all of Phase~1 and
+Phase~2:
+
+\begin{lstlisting}[style=yaml]
+defaults:
+  - override /model: avanced_resnet50_tsm
+  - override /augment: randaugment_t
+
+model:
+  drop_path_rate: 0.1
+  head: attn
+  head_num_heads: 4
+
+dataset:
+  num_frames: 4
+  use_official_val: true
+
+training:
+  optimizer: adamw
+  weight_decay: 0.05
+  amp: true
+  ema_enabled: true
+  ema_decay: 0.999
+  tta: true
+  tta_flip: true
+  scheduler_cosine: true
+  warmup_epochs: 10
+  label_smoothing: 0.1
+\end{lstlisting}
+
+% =====================================================================
+\section{Phase 3: Self-Supervised Pretraining (DINO)}
+\label{sec:phase3}
+
+The single highest-impact change available within Track~A is to give the
+trunk something useful to do with the unlabeled frames before the
+supervised loss starts back-propagating. We implemented DINO-v1
+\cite{Caron2021DINO}, a teacher-student knowledge-distillation framework
+that has consistently outperformed contrastive methods (MoCo, SimCLR) on
+ResNet-50 trunks at the dataset sizes we are working with.
+
+\subsection{Track-A compliance}
+
+The competition forbids \emph{external data} and \emph{pretrained
+models}. Self-supervised pretraining on the \emph{provided} unlabeled
+images is therefore allowed: the labels are simply not consumed and the
+trunk starts from random initialisation. We pretrain on the union of the
+\file{train/}, \file{val/} and \file{test/} folders, which gives roughly
+\(\sim 12{,}000\) still frames (\(\sim 3{,}000\) videos
+\(\times\) 4 frames) and is sufficient to drive the DINO loss for many
+hundreds of steps per epoch at batch size~64.
+
+\subsection{Still-frames dataset}
+\label{sec:phase3:dataset}
+
+A new file \file{src/smth2smth/shared/data/still\_frames\_dataset.py}
+exposes two utilities:
+
+\begin{itemize}[leftmargin=2em]
+\item \code{collect\_all\_frame\_paths(roots)} walks the provided
+      directories. It transparently handles both layouts in use:
+      \file{train/<class>/<video>/<frame>.jpg} (via
+      \code{collect\_video\_samples}) and
+      \file{test/<video>/<frame>.jpg} (one level shallower, no class
+      bucket). Duplicate paths are removed.
+\item \code{MultiViewStillFramesDataset} returns, for each frame, two
+      global views (typically 224\(\times\)224 with random crop scale in
+      \([0.4, 1.0]\)) and \(L\) local views (typically 96\(\times\)96
+      with random crop scale in \([0.05, 0.4]\)). The augmentations
+      include horizontal flip, colour jitter, grayscale, and Gaussian
+      blur, following the DINO recipe.
+\end{itemize}
+
+The dataset returns a \code{dict} with keys \code{global\_views} and
+\code{local\_views}; a custom collate function stacks them into per-view
+batches.
+
+\subsection{The DINO model}
+\label{sec:phase3:model}
+
+\file{src/smth2smth/shared/models/dino\_ssl.py} contains three pieces.
+
+\paragraph{Trunk.} \code{build\_resnet50\_trunk()} returns a
+\code{torchvision.models.resnet50(weights=None)} with its final \code{fc}
+replaced by \code{nn.Identity}. The trunk emits 2048-d features.
+
+\paragraph{Head.} \code{DinoHead} is the canonical 3-layer projection
+MLP used in DINO: \code{Linear} $\to$ \code{GELU} $\to$ \code{Linear}
+$\to$ \code{GELU} $\to$ \code{Linear} (to a low-dimensional bottleneck)
+$\to$ L2 normalisation $\to$ weight-normalised \code{Linear} mapping to
+\(K\) prototypes (\(K=4096\) by default).
+
+\paragraph{Composite.} \code{DinoModel} composes the trunk and the head.
+Two copies are instantiated at training time --- a \emph{student} and a
+\emph{teacher}. Both have identical architecture; the teacher's weights
+are an EMA of the student's and are never updated by gradient descent.
+
+\subsection{The DINO loss}
+\label{sec:phase3:loss}
+
+Let \(\mathcal{V} = \{v_1, \ldots, v_{2+L}\}\) be the set of all views
+of one image (two globals, \(L\) locals). Let \(p_s(v)\) and \(p_t(v)\)
+be the softmax-normalised outputs of the student and teacher at
+temperatures \(\tau_s\) and \(\tau_t\) respectively. The loss is
+\[
+\mathcal{L} \;=\;
+\frac{1}{|\mathcal{P}|}\!\!\sum_{(t, s)\in \mathcal{P}}\!\!
+H\!\left( p_t(v_t),\; p_s(v_s) \right),
+\]
+where \(\mathcal{P}\) is the set of (teacher view, student view) pairs
+with \emph{distinct} indices and \(H\) is the standard cross-entropy.
+The teacher only processes the two global views (so
+\(|\mathcal{P}| = 2 \cdot |\mathcal{V}| - 2 \cdot 1\)), but the student
+processes \emph{all} views. The teacher's logits are sharpened
+(\(\tau_t = 0.04\) is much smaller than \(\tau_s = 0.1\)) and centred by
+an EMA of the batch mean to prevent collapse:
+\[
+c^{(t+1)} \;=\; m_c\, c^{(t)} \;+\;
+(1 - m_c)\, \frac{1}{B}\sum_{i=1}^{B}\mathrm{logits}_t(v_i^{\mathrm{global}}),
+\]
+with momentum \(m_c = 0.9\).
+
+\begin{lstlisting}[style=py]
+class DinoLoss(nn.Module):
+    def forward(self, student_logits_per_view, teacher_logits_per_global):
+        teacher_probs_per_global = [
+            F.softmax((logits - self.center) / self.teacher_temp,
+                      dim=-1).detach()
+            for logits in teacher_logits_per_global]
+        student_log_softmax_per_view = [
+            F.log_softmax(logits / self.student_temp, dim=-1)
+            for logits in student_logits_per_view]
+        total_loss, n_terms = 0.0, 0
+        for t_idx, t_probs in enumerate(teacher_probs_per_global):
+            for s_idx, s_log in enumerate(student_log_softmax_per_view):
+                if t_idx == s_idx:
+                    continue
+                total_loss = total_loss \
+                             + (-(t_probs * s_log).sum(dim=-1).mean())
+                n_terms += 1
+        # ... centering buffer EMA update ...
+        return total_loss / n_terms
+\end{lstlisting}
+
+\subsection{Teacher EMA momentum schedule}
+
+The teacher's parameters are updated by
+\(\theta_t \leftarrow m\,\theta_t + (1-m)\,\theta_s\) after every
+optimizer step, with \(m\) following a cosine schedule from
+\(m_0 = 0.996\) at the start to \(m_1 = 1.0\) at the end of training.
+This mirrors the recipe in the DINO paper and stabilises training
+significantly --- a constant momentum is more prone to collapse on small
+datasets.
+
+\subsection{Trunk-only checkpoint format}
+
+After every epoch we save a small ($\approx$ 95~MiB) checkpoint that
+contains \emph{only} the trunk parameters, with the \code{trunk.}
+prefix stripped:
+
+\begin{lstlisting}[style=py]
+trunk_state_dict = {
+    k.removeprefix("trunk."): v
+    for k, v in student.state_dict().items()
+    if k.startswith("trunk.")
+}
+torch.save({"trunk_state_dict": trunk_state_dict,
+            "epoch": epoch + 1}, out_path)
+\end{lstlisting}
+
+This format is intentionally minimal: there is no point keeping the DINO
+head, the teacher copy or the optimizer state once supervised training
+takes over.
+
+\subsection{The \cfgkey{model.init\_from} hook in \file{train.py}}
+\label{sec:phase3:initfrom}
+
+The supervised trainer received a single new opt-in:
+
+\begin{lstlisting}[style=py]
+init_from = cfg.model.get("init_from") if hasattr(cfg.model, "get") \
+            else None
+if init_from:
+    payload = torch.load(Path(str(init_from)).resolve(),
+                         map_location=device, weights_only=False)
+    trunk_state = payload.get("trunk_state_dict")
+    prefixed = _ssl_trunk_to_supervised_keys(trunk_state)
+    missing, unexpected = model.load_state_dict(prefixed, strict=False)
+\end{lstlisting}
+
+The non-trivial part is the key remap. The supervised
+\code{AvancedResNet50TSM} wraps every bottleneck block's \code{conv1}
+in
+\[
+\code{block.conv1} \;\leftarrow\;
+\code{nn.Sequential(TemporalShift(\(T\), shift\_div), conv1)},
+\]
+which means the parameter that the SSL trunk has at key
+\code{layer1.0.conv1.weight} now lives at
+\code{layer1.0.conv1.1.weight} in the supervised model.
+\code{\_ssl\_trunk\_to\_supervised\_keys} performs this rename
+unconditionally for every key matching
+\code{layer[1-4]\textbackslash.\textbackslash d+\textbackslash.conv1\textbackslash.(weight|bias)}:
+
+\begin{lstlisting}[style=py]
+block_conv1_re = re.compile(
+    r"^(layer[1-4]\.\d+\.conv1)\.(weight|bias)$")
+out: dict[str, torch.Tensor] = {}
+for k, v in trunk_state.items():
+    match = block_conv1_re.match(k)
+    if match is not None:
+        new_k = f"{match.group(1)}.1.{match.group(2)}"
+    else:
+        new_k = k
+    out[f"backbone.{new_k}"] = v
+return out
+\end{lstlisting}
+
+The load is intentionally non-strict so that the supervised model's
+classifier head and (when enabled) attention pool keys remain at their
+fresh-init values. The trainer logs how many tensors were loaded, and
+warns loudly if any backbone key was \emph{not} covered by the SSL
+checkpoint.
+
+\subsection{Dual-stream RGB + frame-difference TSM}
+\label{sec:dual-stream-rgb-diff}
+
+Beyond the single-stream \code{AvancedResNet50TSM} baseline, the codebase
+includes \code{dual\_stream\_rgb\_diff\_tsm}: two backbones with TSM
+inserted in the usual bottleneck (ResNet-50 on RGB frames) and
+basic-block (ResNet-34 on consecutive RGB differences
+\(I_t - I_{t-1}\)) branches. Per time index \(t=0,\ldots,T-1\) the model
+forms a fused token by concatenating the RGB embedding at \(t\) with a
+motion embedding---zero-padded at \(t{=}0\), otherwise the difference
+embedding for \((t{-}1,t)\)---and projecting to a fixed width
+(\code{model.fuse\_dim}, default~512). A shared temporal readout (mean or
+1-query attention, matching the single-stream head options) and linear
+classifier produce clip logits. See
+\file{docs/diagrams/dual\_stream\_rgb\_diff\_attention.svg}
+for a block diagram of the architecture.
+
+\paragraph{Configuration.} Model defaults live in
+\file{configs/model/dual\_stream\_rgb\_diff\_tsm.yaml}. A ready-made
+Track~A training recipe (30~epochs, warmup, RandAugment-T + FrameMixUp,
+official validation split, AMP, EMA, class boosting with deterministic
+paired-verb duplicate rows, validation every epoch via
+\code{training.eval\_every\_n\_epochs=1}) is
+\file{configs/experiment/track\_a\_dual\_stream\_30e\_class\_boost.yaml}.
+Stochastic \code{temporal\_reversal\_augment} is disabled automatically
+when \code{dataset.class\_boosting.enabled} is true. The README documents
+the Hydra invocation.
+
+\paragraph{SSL warm-start.} The \code{model.init\_from} hook from
+\S\ref{sec:phase3:initfrom} applies only to \code{AvancedResNet50TSM}
+backbone key names; training with \code{dual\_stream\_rgb\_diff\_tsm}
+skips loading so that mis-matched prefixes are not applied silently.

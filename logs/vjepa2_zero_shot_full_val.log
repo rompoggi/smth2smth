@@ -1,0 +1,137 @@
+[load] facebook/vjepa2-vitl-fpc16-256-ssv2
+Loading weights:   0%|          | 0/652 [00:00<?, ?it/s]Loading weights: 100%|██████████| 652/652 [00:00<00:00, 29507.39it/s]
+[load] backbone hidden_size=1024 num_labels=174
+[map] prefix-matched our class 015 ('015_Pretending_to_pour_something_out_of_something_but_something_') to SSv2 idx 70 ('Pretending to pour [something] out of [something], but [something] is empty')
+[map] matched 32 / 32 of our classes to SSv2 indices
+[data] val samples used: 6745 (excluded 0 from unmatched classes; 6745 total)
+  step 10/844  seen=80  top1=0.6250  top5=0.9125  speed=16.6 vid/s
+  step 20/844  seen=160  top1=0.6188  top5=0.9000  speed=17.9 vid/s
+  step 30/844  seen=240  top1=0.5875  top5=0.8917  speed=18.3 vid/s
+  step 40/844  seen=320  top1=0.5594  top5=0.8500  speed=18.5 vid/s
+  step 50/844  seen=400  top1=0.5450  top5=0.8175  speed=18.7 vid/s
+  step 60/844  seen=480  top1=0.5354  top5=0.8021  speed=18.7 vid/s
+  step 70/844  seen=560  top1=0.5161  top5=0.7911  speed=18.8 vid/s
+  step 80/844  seen=640  top1=0.4922  top5=0.7797  speed=18.8 vid/s
+  step 90/844  seen=720  top1=0.5028  top5=0.7861  speed=18.8 vid/s
+  step 100/844  seen=800  top1=0.5038  top5=0.7937  speed=18.8 vid/s
+  step 110/844  seen=880  top1=0.5193  top5=0.7989  speed=18.7 vid/s
+  step 120/844  seen=960  top1=0.5365  top5=0.8135  speed=18.7 vid/s
+  step 130/844  seen=1040  top1=0.5490  top5=0.8221  speed=18.7 vid/s
+  step 140/844  seen=1120  top1=0.5652  top5=0.8348  speed=18.7 vid/s
+  step 150/844  seen=1200  top1=0.5733  top5=0.8425  speed=18.7 vid/s
+  step 160/844  seen=1280  top1=0.5836  top5=0.8477  speed=18.7 vid/s
+  step 170/844  seen=1360  top1=0.5860  top5=0.8522  speed=18.6 vid/s
+  step 180/844  seen=1440  top1=0.5896  top5=0.8583  speed=18.6 vid/s
+  step 190/844  seen=1520  top1=0.5967  top5=0.8632  speed=18.6 vid/s
+  step 200/844  seen=1600  top1=0.5900  top5=0.8550  speed=18.6 vid/s
+  step 210/844  seen=1680  top1=0.5756  top5=0.8458  speed=18.6 vid/s
+  step 220/844  seen=1760  top1=0.5705  top5=0.8432  speed=18.5 vid/s
+  step 230/844  seen=1840  top1=0.5761  top5=0.8478  speed=18.5 vid/s
+  step 240/844  seen=1920  top1=0.5807  top5=0.8510  speed=18.5 vid/s
+  step 250/844  seen=2000  top1=0.5780  top5=0.8445  speed=18.5 vid/s
+  step 260/844  seen=2080  top1=0.5692  top5=0.8385  speed=18.5 vid/s
+  step 270/844  seen=2160  top1=0.5611  top5=0.8338  speed=18.5 vid/s
+  step 280/844  seen=2240  top1=0.5554  top5=0.8290  speed=18.5 vid/s
+  step 290/844  seen=2320  top1=0.5478  top5=0.8211  speed=18.4 vid/s
+  step 300/844  seen=2400  top1=0.5379  top5=0.8117  speed=18.4 vid/s
+  step 310/844  seen=2480  top1=0.5282  top5=0.8056  speed=18.4 vid/s
+  step 320/844  seen=2560  top1=0.5172  top5=0.7973  speed=18.4 vid/s
+  step 330/844  seen=2640  top1=0.5117  top5=0.7917  speed=18.4 vid/s
+  step 340/844  seen=2720  top1=0.5081  top5=0.7901  speed=18.4 vid/s
+  step 350/844  seen=2800  top1=0.5046  top5=0.7882  speed=18.4 vid/s
+  step 360/844  seen=2880  top1=0.5035  top5=0.7903  speed=18.4 vid/s
+  step 370/844  seen=2960  top1=0.4993  top5=0.7878  speed=18.3 vid/s
+  step 380/844  seen=3040  top1=0.4891  top5=0.7783  speed=18.3 vid/s
+  step 390/844  seen=3120  top1=0.4808  top5=0.7676  speed=18.3 vid/s
+  step 400/844  seen=3200  top1=0.4822  top5=0.7684  speed=18.3 vid/s
+  step 410/844  seen=3280  top1=0.4909  top5=0.7741  speed=18.3 vid/s
+  step 420/844  seen=3360  top1=0.4955  top5=0.7789  speed=18.3 vid/s
+  step 430/844  seen=3440  top1=0.4997  top5=0.7831  speed=18.3 vid/s
+  step 440/844  seen=3520  top1=0.5045  top5=0.7869  speed=18.3 vid/s
+  step 450/844  seen=3600  top1=0.5108  top5=0.7908  speed=18.3 vid/s
+  step 460/844  seen=3680  top1=0.5147  top5=0.7927  speed=18.3 vid/s
+  step 470/844  seen=3760  top1=0.5186  top5=0.7960  speed=18.3 vid/s
+  step 480/844  seen=3840  top1=0.5138  top5=0.7987  speed=18.3 vid/s
+  step 490/844  seen=3920  top1=0.5117  top5=0.7985  speed=18.2 vid/s
+  step 500/844  seen=4000  top1=0.5078  top5=0.7953  speed=18.2 vid/s
+  step 510/844  seen=4080  top1=0.5034  top5=0.7917  speed=18.2 vid/s
+  step 520/844  seen=4160  top1=0.4986  top5=0.7853  speed=18.2 vid/s
+  step 530/844  seen=4240  top1=0.4967  top5=0.7818  speed=18.2 vid/s
+  step 540/844  seen=4320  top1=0.4963  top5=0.7810  speed=18.2 vid/s
+  step 550/844  seen=4400  top1=0.4925  top5=0.7802  speed=18.2 vid/s
+  step 560/844  seen=4480  top1=0.4904  top5=0.7781  speed=18.2 vid/s
+  step 570/844  seen=4560  top1=0.4871  top5=0.7783  speed=18.2 vid/s
+  step 580/844  seen=4640  top1=0.4834  top5=0.7772  speed=18.2 vid/s
+  step 590/844  seen=4720  top1=0.4794  top5=0.7761  speed=18.2 vid/s
+  step 600/844  seen=4800  top1=0.4746  top5=0.7773  speed=18.2 vid/s
+  step 610/844  seen=4880  top1=0.4721  top5=0.7783  speed=18.2 vid/s
+  step 620/844  seen=4960  top1=0.4698  top5=0.7788  speed=18.2 vid/s
+  step 630/844  seen=5040  top1=0.4641  top5=0.7750  speed=18.2 vid/s
+  step 640/844  seen=5120  top1=0.4643  top5=0.7748  speed=18.2 vid/s
+  step 650/844  seen=5200  top1=0.4683  top5=0.7771  speed=18.1 vid/s
+  step 660/844  seen=5280  top1=0.4722  top5=0.7788  speed=18.1 vid/s
+  step 670/844  seen=5360  top1=0.4752  top5=0.7815  speed=18.1 vid/s
+  step 680/844  seen=5440  top1=0.4756  top5=0.7818  speed=18.1 vid/s
+  step 690/844  seen=5520  top1=0.4716  top5=0.7801  speed=18.1 vid/s
+  step 700/844  seen=5600  top1=0.4686  top5=0.7788  speed=18.1 vid/s
+  step 710/844  seen=5680  top1=0.4660  top5=0.7778  speed=18.1 vid/s
+  step 720/844  seen=5760  top1=0.4665  top5=0.7767  speed=18.1 vid/s
+  step 730/844  seen=5840  top1=0.4661  top5=0.7764  speed=18.1 vid/s
+  step 740/844  seen=5920  top1=0.4606  top5=0.7704  speed=18.1 vid/s
+  step 750/844  seen=6000  top1=0.4560  top5=0.7657  speed=18.1 vid/s
+  step 760/844  seen=6080  top1=0.4508  top5=0.7590  speed=18.1 vid/s
+  step 770/844  seen=6160  top1=0.4459  top5=0.7545  speed=18.1 vid/s
+  step 780/844  seen=6240  top1=0.4412  top5=0.7490  speed=18.1 vid/s
+  step 790/844  seen=6320  top1=0.4394  top5=0.7457  speed=18.1 vid/s
+  step 800/844  seen=6400  top1=0.4381  top5=0.7431  speed=18.1 vid/s
+  step 810/844  seen=6480  top1=0.4361  top5=0.7398  speed=18.1 vid/s
+  step 820/844  seen=6560  top1=0.4363  top5=0.7396  speed=18.1 vid/s
+  step 830/844  seen=6640  top1=0.4383  top5=0.7420  speed=18.1 vid/s
+  step 840/844  seen=6720  top1=0.4393  top5=0.7442  speed=18.1 vid/s
+
+========================================================
+V-JEPA 2 zero-shot eval on /Data/romain.poggi/Modal/project/smth2smth/data/val
+  hf_repo      : facebook/vjepa2-vitl-fpc16-256-ssv2
+  num_frames   : 16
+  image_size   : 256
+  dtype        : float16
+  samples used : 6745
+  matched cls  : 32 / 32
+  wall time    : 373.4 s (18.1 vid/s)
+  TOP-1        : 0.4396
+  TOP-5        : 0.7447
+========================================================
+
+Per-class top-1 (sorted by accuracy, ascending):
+  [030] 0.072  (  391 videos)  030_Turning_something_upside_down  ->  SSv2: 'Turning [something] upside down'
+  [024] 0.122  (  139 videos)  024_Putting_something_onto_something  ->  SSv2: 'Putting [something] onto [something]'
+  [011] 0.151  (  199 videos)  011_Picking_something_up  ->  SSv2: 'Picking [something] up'
+  [016] 0.206  (   68 videos)  016_Pretending_to_put_something_into_something  ->  SSv2: 'Pretending to put [something] into [something]'
+  [028] 0.222  (  239 videos)  028_Taking_something_out_of_something  ->  SSv2: 'Taking [something] out of [something]'
+  [009] 0.251  (  359 videos)  009_Moving_something_up  ->  SSv2: 'Moving [something] up'
+  [022] 0.271  (  292 videos)  022_Putting_something_into_something  ->  SSv2: 'Putting [something] into [something]'
+  [018] 0.284  (  169 videos)  018_Pulling_something_from_left_to_right  ->  SSv2: 'Pulling [something] from left to right'
+  [019] 0.288  (  125 videos)  019_Pulling_something_from_right_to_left  ->  SSv2: 'Pulling [something] from right to left'
+  [031] 0.308  (  312 videos)  031_Uncovering_something  ->  SSv2: 'Uncovering [something]'
+  [023] 0.315  (  203 videos)  023_Putting_something_next_to_something  ->  SSv2: 'Putting [something] next to [something]'
+  [006] 0.333  (  183 videos)  006_Moving_something_away_from_something  ->  SSv2: 'Moving [something] away from [something]'
+  [021] 0.341  (  135 videos)  021_Putting_something_in_front_of_something  ->  SSv2: 'Putting [something] in front of [something]'
+  [008] 0.379  (  311 videos)  008_Moving_something_down  ->  SSv2: 'Moving [something] down'
+  [010] 0.407  (  332 videos)  010_Opening_something  ->  SSv2: 'Opening [something]'
+  [001] 0.436  (  417 videos)  001_Covering_something_with_something  ->  SSv2: 'Covering [something] with [something]'
+  [020] 0.441  (  127 videos)  020_Putting_something_behind_something  ->  SSv2: 'Putting [something] behind [something]'
+  [029] 0.478  (  184 videos)  029_Throwing_something  ->  SSv2: 'Throwing [something]'
+  [017] 0.532  (   47 videos)  017_Pretending_to_throw_something  ->  SSv2: 'Pretending to throw [something]'
+  [002] 0.562  (  178 videos)  002_Dropping_something_into_something  ->  SSv2: 'Dropping [something] into [something]'
+  [032] 0.563  (  215 videos)  032_Unfolding_something  ->  SSv2: 'Unfolding [something]'
+  [015] 0.571  (   56 videos)  015_Pretending_to_pour_something_out_of_something_but_something_  ->  SSv2: 'Pretending to pour [something] out of [something], but [something] is empty'
+  [000] 0.596  (  228 videos)  000_Closing_something  ->  SSv2: 'Closing [something]'
+  [013] 0.620  (   79 videos)  013_Pouring_something_out_of_something  ->  SSv2: 'Pouring [something] out of [something]'
+  [005] 0.660  (  197 videos)  005_Holding_something  ->  SSv2: 'Holding [something]'
+  [007] 0.695  (  213 videos)  007_Moving_something_closer_to_something  ->  SSv2: 'Moving [something] closer to [something]'
+  [004] 0.706  (  235 videos)  004_Hitting_something_with_something  ->  SSv2: 'Hitting [something] with [something]'
+  [026] 0.717  (   60 videos)  026_Spilling_something_next_to_something  ->  SSv2: 'Spilling [something] next to [something]'
+  [003] 0.723  (  285 videos)  003_Folding_something  ->  SSv2: 'Folding [something]'
+  [025] 0.724  (  261 videos)  025_Showing_something_to_the_camera  ->  SSv2: 'Showing [something] to the camera'
+  [012] 0.730  (  278 videos)  012_Pouring_something_into_something  ->  SSv2: 'Pouring [something] into [something]'
+  [014] 0.772  (  228 videos)  014_Pretending_to_pick_something_up  ->  SSv2: 'Pretending to pick [something] up'

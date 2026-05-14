@@ -61,3 +61,12 @@ external/**/__pycache__/
 
 # --- Cache ---
 .cache/
+
+
+# --- LaTeX ---
+report/main.{aux,log,out,toc}
+report/*.synctex.gz
+report/main.synctex*
+
+# --- Training Checkpoints ----
+checkpoints/*

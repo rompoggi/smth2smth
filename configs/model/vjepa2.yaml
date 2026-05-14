@@ -1,0 +1,50 @@
+# @package _global_
+# V-JEPA 2 (Assran et al., FAIR 2025) -- frozen self-supervised video encoder
+# + trainable classifier probe. Track-B model (allowed: pretrained backbones
+# and external data).
+#
+# The "pretrained" key is left at ``true`` so the supervised pipeline applies
+# ImageNet normalization on the input frames (V-JEPA 2 was trained with the
+# standard ImageNet mean/std). Don't flip this; setting ``pretrained: false``
+# would use ``Normalize((0.5,)*3, (0.5,)*3)`` and silently break the encoder.
+model:
+  name: vjepa2
+  pretrained: true
+  num_classes: ${num_classes}
+  # HuggingFace Hub repo id for the encoder. Allowed values include
+  #   facebook/vjepa2-vitl-fpc64-256        (0.3 B, 256 px)   <- default
+  #   facebook/vjepa2-vith-fpc64-256        (0.7 B, 256 px)
+  #   facebook/vjepa2-vitg-fpc64-256        (1.0 B, 256 px)
+  #   facebook/vjepa2-vitg-fpc64-384        (1.0 B, 384 px)
+  #   facebook/vjepa2-vitl-fpc16-256-ssv2   (0.4 B, 256 px, SSv2-finetuned)
+  #   facebook/vjepa2-vitg-fpc64-384-ssv2   (1.0 B, 384 px, SSv2-finetuned)
+  # The chosen variant dictates the required ``dataset.image_size`` (256 or 384).
+  hf_repo: facebook/vjepa2-vitl-fpc64-256
+  # Probe head type: "attentive" (V-JEPA paper recipe), "linear" or
+  # "mean_linear" (LayerNorm + Dropout + Linear over mean-pooled tokens).
+  head_type: attentive
+  # Attention heads in the attentive head. Must divide the backbone's
+  # ``hidden_size`` (1024 for ViT-L, 1280 for ViT-H, 1408 for ViT-g).
+  head_num_heads: 8
+  # Attentive head only: number of learnable query tokens (>=1). Mean-pooled
+  # across queries before the classifier. Default 1 matches the V-JEPA paper.
+  head_num_queries: 1
+  head_dropout: 0.0
+  # Optional PEFT LoRA on attention linear layers (requires ``peft`` package).
+  # Only valid with freeze_backbone=true. Unlocks low-rank adaptation of the
+  # encoder without full fine-tuning (Phase 4.4).
+  lora_enabled: false
+  lora_r: 8
+  lora_alpha: 16
+  lora_dropout: 0.05
+  # Submodule name suffixes for LoRA (PEFT matches against the module tree).
+  # null = HF V-JEPA2 encoder: query, key, value, proj (not q_proj/out_proj).
+  lora_target_modules: null
+  # Standard V-JEPA evaluation: freeze the encoder, train only the probe.
+  # Set to ``false`` for full fine-tuning (lower the LR by ~10x and enable AMP
+  # to fit the gradient graph in memory). When lora_enabled=true, the pretrained
+  # core stays frozen but LoRA adapters train.
+  freeze_backbone: true
+  # HuggingFace attention backend. ``sdpa`` uses PyTorch's scaled-dot-product;
+  # ``eager`` falls back to the reference implementation if SDPA is missing.
+  attn_implementation: sdpa

@@ -6,10 +6,16 @@ training:
   num_workers: 2
   checkpoint_path: ${hydra:runtime.cwd}/best_model.pt
   # Optional path to a checkpoint to resume from. When set, model weights and
-  # the epoch/best-top1 metadata recorded in `extra` are loaded; the cosine
-  # scheduler (if any) is fast-forwarded so the LR continues from the right
-  # point. Optimizer state is not stored in the schema and therefore restarts.
+  # the epoch/best-top1 metadata in ``extra`` are loaded. Optimizer, cosine
+  # scheduler, and GradScaler states are restored when present and compatible
+  # with the current optimizer param groups (see ``pipelines/train.py``).
   resume_from: null
+  # PEFT LoRA (``model.lora_enabled=true``): separate LR for adapter tensors
+  # matched by name (``lora_A`` / ``lora_B``). Head keeps ``training.lr``.
+  # When ``null``, LoRA LR is ``lr * lora_lr_ratio``. Ignored if there are no
+  # trainable LoRA weights.
+  lora_lr: null
+  lora_lr_ratio: 0.25
   # When true and the device is CUDA, training and evaluation forward passes
   # run under ``torch.amp.autocast`` (mixed FP16/BF16 + GradScaler). Off by
   # default for byte-for-byte parity with historical runs.
@@ -37,6 +43,27 @@ training:
   # in the saved ``extra`` records which copy won.
   ema_enabled: false
   ema_decay: 0.999
+  # Slim-validation gates (Phase 4.2 / Track B). Both default to the legacy
+  # behaviour (eval every epoch, evaluate the EMA snapshot when EMA is on).
+  # Used by ``pipelines/train.py`` to skip the (often dominant) cost of
+  # repeated full val passes during heavy-aug training of large frozen
+  # backbones like V-JEPA 2.
+  # ``eval_every_n_epochs: N``  -> only run val (and update the best ckpt)
+  #                                 every N epochs. The last epoch always
+  #                                 evaluates so the recorded best is fresh.
+  # ``eval_ema: false``         -> skip the second EMA val pass per epoch
+  #                                 (saves ~50% of wall time when EMA is on).
+  eval_every_n_epochs: 1
+  eval_ema: true
+  # Resume-safe "last" checkpoint persisted at the end of every epoch
+  # (Phase 4.3). Independent from ``checkpoint_path`` (which only writes
+  # on val_top1 improvement). Lets long overnight runs resume from the
+  # last completed epoch after a crash via
+  # ``training.resume_from=<best>.last.pt``.
+  save_last_checkpoint: true
+  # When null, derived from ``checkpoint_path`` by inserting ``.last``
+  # before the extension (e.g. ``best.pt`` -> ``best.last.pt``).
+  last_checkpoint_path: null
   # Test-Time Augmentation. Used by ``submit.py`` only (no effect on train).
   # ``tta: false``                 -> single deterministic forward pass.
   # ``tta_flip: true``             -> also evaluate horizontally-flipped clips

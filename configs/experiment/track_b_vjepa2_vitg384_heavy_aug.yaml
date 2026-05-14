@@ -1,0 +1,84 @@
+# @package _global_
+# Track B (open-world), Phase 4.3: overnight big-model + heavy-aug run.
+#
+# Bumps the encoder from ViT-L 256 (0.4 B, 53% no-aug) to the largest
+# SSv2-finetuned V-JEPA 2 publicly available -- ViT-g 384 (1 B params,
+# 77.3% on full SSv2 per Assran et al. 2025). Combines this with the
+# same heavy data augmentation we use for ViT-L (RandAugment-T
+# temporal_plus + random crop + flip + colour jitter + CubeCutMix).
+#
+# Cost sizing: a single training step on a frozen ViT-g 384 backbone
+# clocks 1.30 vid/s at fp16 in inference-only mode on the A4000
+# (smoke-checked). With aug overhead realistic train throughput drops
+# to roughly 1.0 vid/s. The full ``data/val/`` pass costs ~78 min per
+# evaluation, so we space evals at ``eval_every_n_epochs=5`` (only 2
+# total: epoch 5 and the final epoch 10) and disable EMA entirely.
+#
+# Estimated wall time: 10 epochs * 3 200 clips / 1.0 vid/s = 8.9 h
+# train + 2 * 78 min val = ~11.5 h. Fits an overnight 21:00 -> 09:00.
+#
+# Resume safety: ``training.save_last_checkpoint: true`` writes
+# ``checkpoints/track_b/vitg384_heavy_aug.last.pt`` at the end of every
+# epoch. If the run crashes (OOM, host reboot), pass
+# ``training.resume_from=checkpoints/track_b/vitg384_heavy_aug.last.pt``
+# on the next launch to continue at the next epoch boundary.
+defaults:
+  - override /model: vjepa2
+  - override /augment: vjepa2_heavy
+
+model:
+  pretrained: true
+  hf_repo: facebook/vjepa2-vitg-fpc64-384-ssv2
+  head_type: attentive
+  # ViT-g hidden_size=1408 is divisible by 16, so 16 heads keeps head_dim=88.
+  head_num_heads: 16
+  head_dropout: 0.1
+  freeze_backbone: true
+  attn_implementation: sdpa
+
+dataset:
+  # The SSv2-finetuned ViT-g was trained with fpc64@384; we use 16 frames
+  # (matches our 4-unique-frames source) because the ViT temporal
+  # tubelet handles any even T and the attentive pooler is agnostic.
+  num_frames: 16
+  image_size: 384
+  use_official_val: true
+  # 100 clips/class * 32 classes = 3 200 train clips. Chosen so the
+  # train cost (10 epochs / ~1 vid/s = 8.9 h) plus 2 val passes (~2.6 h)
+  # totals ~11.5 h, i.e. fits an overnight slot.
+  max_samples_per_class: 100
+
+training:
+  batch_size: 4
+  epochs: 10
+  num_workers: 4
+  lr: 0.0003
+  optimizer: adamw
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 1
+  min_lr: 0.000001
+  label_smoothing: 0.1
+  amp: true
+  # EMA disabled: the deepcopy of a 1 B-param ViT-g doubles resident
+  # memory for a marginal gain we don't currently exploit at submission.
+  ema_enabled: false
+  # Slim val: ViT-g val on 6 745 clips is ~78 min on the A4000, so we
+  # only do 2 val passes total (epoch 5 + epoch 10 -- the trainer always
+  # evaluates the last epoch even if it isn't a multiple of N).
+  eval_every_n_epochs: 5
+  eval_ema: false
+  # Resume-safe last checkpoint at the end of every epoch.
+  save_last_checkpoint: true
+  # Clip-level CubeCutMix on top of RandAugment-T. Strong regularizer
+  # for motion-sensitive datasets, prevents the probe from memorising
+  # specific spatial layouts.
+  videomix_mode: cube_cutmix
+  videomix_alpha: 1.0
+  videomix_prob: 0.5
+  tta: true
+  tta_flip: true
+  # Allow the schedule to play out: 2 missed eval epochs * patience 3
+  # gives the cosine LR enough time to anneal before any auto-stop.
+  early_stopping_enabled: false
+  log_interval_steps: 50

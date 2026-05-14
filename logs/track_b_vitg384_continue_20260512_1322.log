@@ -1,0 +1,328 @@
+model:
+  name: vjepa2
+  pretrained: true
+  num_classes: ${num_classes}
+  hf_repo: facebook/vjepa2-vitg-fpc64-384-ssv2
+  head_type: attentive
+  head_num_heads: 16
+  head_dropout: 0.1
+  freeze_backbone: true
+  attn_implementation: sdpa
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: ${hydra:runtime.cwd}/submissions/track_b.csv
+  num_frames: 16
+  val_ratio: 0.2
+  use_official_val: true
+  seed: ${seed}
+  max_samples: null
+  max_samples_per_class: 100
+  image_size: 384
+training:
+  batch_size: 4
+  lr: 0.0003
+  epochs: 20
+  num_workers: 4
+  checkpoint_path: checkpoints/track_b/vitg384_heavy_aug.pt
+  resume_from: checkpoints/track_b/vitg384_heavy_aug.last.pt
+  amp: true
+  device: cuda
+  optimizer: adamw
+  momentum: 0.9
+  nesterov: false
+  weight_decay: 0.05
+  scheduler_cosine: false
+  warmup_epochs: 0
+  min_lr: 1.0e-06
+  label_smoothing: 0.1
+  videomix_alpha: 1.0
+  videomix_prob: 0.5
+  videomix_mode: cube_cutmix
+  early_stopping_enabled: false
+  early_stopping_patience: 10
+  early_stopping_min_delta: 0.0
+  log_interval_steps: 50
+  ema_enabled: false
+  ema_decay: 0.999
+  eval_every_n_epochs: 1
+  eval_ema: false
+  save_last_checkpoint: true
+  last_checkpoint_path: null
+  tta: true
+  tta_flip: true
+  tta_temporal_shift: 0
+augment:
+  name: vjepa2_heavy
+  random_horizontal_flip: true
+  random_crop: true
+  crop_padding: 32
+  color_jitter: true
+  color_jitter_brightness: 0.3
+  color_jitter_contrast: 0.3
+  color_jitter_saturation: 0.3
+  color_jitter_hue: 0.05
+  sync_across_frames: true
+  randaugment:
+    enabled: true
+    'n': 2
+    m: 9.0
+    mode: temporal_plus
+    magnitude_max: 30.0
+    ops: null
+pretrain:
+  epochs: 100
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 50
+  checkpoint_path: ${hydra:runtime.cwd}/ssl_trunk.pt
+  max_frames: null
+  image_size: 224
+  local_image_size: 96
+  num_local_views: 6
+  out_dim: 4096
+  hidden_dim: 2048
+  bottleneck_dim: 256
+  n_layers: 3
+  teacher_temp: 0.04
+  student_temp: 0.1
+  center_momentum: 0.9
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
+track:
+  name: b
+  description: 'Open-world track: pretrained backbone allowed.'
+num_classes: 33
+seed: 42
+
+[cuda] cache emptied (run-start). Free: 11.39 / 15.58 GiB
+[data] balanced subsample: kept 3200 clips (at most 100 per class, seed=42)
+[data] use_official_val=true: train=3200 (from /Data/romain.poggi/Modal/project/smth2smth/data/train), val=6745 (from /Data/romain.poggi/Modal/project/smth2smth/data/val)
+[2026-05-12 13:22:57,959][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/facebook/vjepa2-vitg-fpc64-384-ssv2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-05-12 13:22:57,964][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/facebook/vjepa2-vitg-fpc64-384-ssv2/9f5fd615cb6f79065a28edcf1cc3ef25010dddfa/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/843 [00:00<?, ?it/s]Loading weights: 100%|██████████| 843/843 [00:00<00:00, 19185.22it/s]
+[transformers] [1mVJEPA2Model LOAD REPORT[0m from: facebook/vjepa2-vitg-fpc64-384-ssv2
+Key                                                              | Status     |  | 
+-----------------------------------------------------------------+------------+--+-
+pooler.self_attention_layers.{0, 1, 2}.mlp.fc2.bias              | UNEXPECTED |  | 
+pooler.self_attention_layers.{0, 1, 2}.self_attn.q_proj.weight   | UNEXPECTED |  | 
+pooler.self_attention_layers.{0, 1, 2}.layer_norm1.bias          | UNEXPECTED |  | 
+pooler.self_attention_layers.{0, 1, 2}.self_attn.v_proj.bias     | UNEXPECTED |  | 
+pooler.cross_attention_layer.layer_norm1.bias                    | UNEXPECTED |  | 
+pooler.self_attention_layers.{0, 1, 2}.self_attn.q_proj.bias     | UNEXPECTED |  | 
+pooler.self_attention_layers.{0, 1, 2}.mlp.fc2.weight            | UNEXPECTED |  | 
+pooler.self_attention_layers.{0, 1, 2}.self_attn.k_proj.bias     | UNEXPECTED |  | 
+pooler.self_attention_layers.{0, 1, 2}.self_attn.out_proj.weight | UNEXPECTED |  | 
+pooler.self_attention_layers.{0, 1, 2}.mlp.fc1.bias              | UNEXPECTED |  | 
+pooler.self_attention_layers.{0, 1, 2}.layer_norm1.weight        | UNEXPECTED |  | 
+pooler.self_attention_layers.{0, 1, 2}.self_attn.v_proj.weight   | UNEXPECTED |  | 
+pooler.cross_attention_layer.cross_attn.v_proj.weight            | UNEXPECTED |  | 
+pooler.cross_attention_layer.mlp.fc1.weight                      | UNEXPECTED |  | 
+pooler.cross_attention_layer.cross_attn.q_proj.weight            | UNEXPECTED |  | 
+pooler.self_attention_layers.{0, 1, 2}.layer_norm2.bias          | UNEXPECTED |  | 
+pooler.self_attention_layers.{0, 1, 2}.self_attn.out_proj.bias   | UNEXPECTED |  | 
+pooler.self_attention_layers.{0, 1, 2}.mlp.fc1.weight            | UNEXPECTED |  | 
+pooler.self_attention_layers.{0, 1, 2}.layer_norm2.weight        | UNEXPECTED |  | 
+pooler.cross_attention_layer.layer_norm2.bias                    | UNEXPECTED |  | 
+classifier.bias                                                  | UNEXPECTED |  | 
+pooler.cross_attention_layer.layer_norm1.weight                  | UNEXPECTED |  | 
+pooler.self_attention_layers.{0, 1, 2}.self_attn.k_proj.weight   | UNEXPECTED |  | 
+pooler.cross_attention_layer.layer_norm2.weight                  | UNEXPECTED |  | 
+pooler.query_tokens                                              | UNEXPECTED |  | 
+pooler.cross_attention_layer.cross_attn.k_proj.weight            | UNEXPECTED |  | 
+pooler.cross_attention_layer.mlp.fc2.bias                        | UNEXPECTED |  | 
+pooler.cross_attention_layer.cross_attn.q_proj.bias              | UNEXPECTED |  | 
+pooler.cross_attention_layer.mlp.fc2.weight                      | UNEXPECTED |  | 
+pooler.cross_attention_layer.mlp.fc1.bias                        | UNEXPECTED |  | 
+pooler.cross_attention_layer.cross_attn.k_proj.bias              | UNEXPECTED |  | 
+pooler.cross_attention_layer.cross_attn.v_proj.bias              | UNEXPECTED |  | 
+classifier.weight                                                | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+[optim] trainable 7,986,209 / total 1,042,541,473 params (0.77%)
+[amp] mixed-precision (fp16 + GradScaler) enabled.
+Resuming from checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/track_b/vitg384_heavy_aug.last.pt
+  Resumed at epoch 10/20; best val top1 so far = 0.5368
+  Optimizer state restored from checkpoint.
+  GradScaler state restored from checkpoint.
+    step 50/800 | avg train loss 1.4894 top1 0.5950 top5 0.8300
+    step 100/800 | avg train loss 1.4853 top1 0.6125 top5 0.8400
+    step 150/800 | avg train loss 1.3964 top1 0.6650 top5 0.8650
+    step 200/800 | avg train loss 1.3510 top1 0.6763 top5 0.8662
+    step 250/800 | avg train loss 1.3530 top1 0.6680 top5 0.8600
+    step 300/800 | avg train loss 1.3332 top1 0.6725 top5 0.8583
+    step 350/800 | avg train loss 1.3202 top1 0.6779 top5 0.8671
+    step 400/800 | avg train loss 1.3193 top1 0.6800 top5 0.8662
+    step 450/800 | avg train loss 1.3194 top1 0.6844 top5 0.8683
+    step 500/800 | avg train loss 1.2962 top1 0.6910 top5 0.8685
+    step 550/800 | avg train loss 1.2925 top1 0.6977 top5 0.8741
+    step 600/800 | avg train loss 1.2905 top1 0.6979 top5 0.8754
+    step 650/800 | avg train loss 1.2834 top1 0.7015 top5 0.8769
+    step 700/800 | avg train loss 1.2796 top1 0.7000 top5 0.8761
+    step 750/800 | avg train loss 1.2821 top1 0.6943 top5 0.8723
+    step 800/800 | avg train loss 1.2777 top1 0.6997 top5 0.8756
+Epoch 11/20 | train loss 1.2777 top1 0.6997 | val loss 1.6188 top1 0.5379 top5 0.8523
+  Saved new best checkpoint (live): /Data/romain.poggi/Modal/project/smth2smth/checkpoints/track_b/vitg384_heavy_aug.pt (val top1=0.5379)
+    step 50/800 | avg train loss 1.3802 top1 0.6600 top5 0.8300
+    step 100/800 | avg train loss 1.3432 top1 0.6700 top5 0.8300
+    step 150/800 | avg train loss 1.3585 top1 0.6683 top5 0.8450
+    step 200/800 | avg train loss 1.3327 top1 0.6675 top5 0.8512
+    step 250/800 | avg train loss 1.3183 top1 0.6730 top5 0.8620
+    step 300/800 | avg train loss 1.3221 top1 0.6767 top5 0.8683
+    step 350/800 | avg train loss 1.3056 top1 0.6793 top5 0.8693
+    step 400/800 | avg train loss 1.3170 top1 0.6744 top5 0.8650
+    step 450/800 | avg train loss 1.3087 top1 0.6789 top5 0.8678
+    step 500/800 | avg train loss 1.3142 top1 0.6755 top5 0.8670
+    step 550/800 | avg train loss 1.3071 top1 0.6745 top5 0.8664
+    step 600/800 | avg train loss 1.3013 top1 0.6763 top5 0.8646
+    step 650/800 | avg train loss 1.2992 top1 0.6808 top5 0.8685
+    step 700/800 | avg train loss 1.3046 top1 0.6786 top5 0.8668
+    step 750/800 | avg train loss 1.3005 top1 0.6830 top5 0.8723
+    step 800/800 | avg train loss 1.3124 top1 0.6813 top5 0.8694
+Epoch 12/20 | train loss 1.3124 top1 0.6813 | val loss 1.6155 top1 0.5388 top5 0.8529
+  Saved new best checkpoint (live): /Data/romain.poggi/Modal/project/smth2smth/checkpoints/track_b/vitg384_heavy_aug.pt (val top1=0.5388)
+    step 50/800 | avg train loss 1.2997 top1 0.7250 top5 0.9050
+    step 100/800 | avg train loss 1.3460 top1 0.6850 top5 0.8750
+    step 150/800 | avg train loss 1.3308 top1 0.6900 top5 0.8783
+    step 200/800 | avg train loss 1.3202 top1 0.6650 top5 0.8575
+    step 250/800 | avg train loss 1.3248 top1 0.6810 top5 0.8680
+    step 300/800 | avg train loss 1.3360 top1 0.6775 top5 0.8708
+    step 350/800 | avg train loss 1.3088 top1 0.6886 top5 0.8721
+    step 400/800 | avg train loss 1.3176 top1 0.6900 top5 0.8731
+    step 450/800 | avg train loss 1.3124 top1 0.6917 top5 0.8722
+    step 500/800 | avg train loss 1.3035 top1 0.6960 top5 0.8730
+    step 550/800 | avg train loss 1.2967 top1 0.6991 top5 0.8736
+    step 600/800 | avg train loss 1.2906 top1 0.6979 top5 0.8717
+    step 650/800 | avg train loss 1.2902 top1 0.6962 top5 0.8696
+    step 700/800 | avg train loss 1.2979 top1 0.6954 top5 0.8693
+    step 750/800 | avg train loss 1.3054 top1 0.6900 top5 0.8673
+    step 800/800 | avg train loss 1.3040 top1 0.6941 top5 0.8697
+Epoch 13/20 | train loss 1.3040 top1 0.6941 | val loss 1.6156 top1 0.5388 top5 0.8528
+    step 50/800 | avg train loss 1.1858 top1 0.7550 top5 0.8850
+    step 100/800 | avg train loss 1.1991 top1 0.7775 top5 0.9050
+    step 150/800 | avg train loss 1.2424 top1 0.7517 top5 0.8933
+    step 200/800 | avg train loss 1.2819 top1 0.7300 top5 0.8825
+    step 250/800 | avg train loss 1.3149 top1 0.7000 top5 0.8580
+    step 300/800 | avg train loss 1.3123 top1 0.6933 top5 0.8567
+    step 350/800 | avg train loss 1.3192 top1 0.6921 top5 0.8564
+    step 400/800 | avg train loss 1.3239 top1 0.6863 top5 0.8556
+    step 450/800 | avg train loss 1.3307 top1 0.6767 top5 0.8544
+    step 500/800 | avg train loss 1.3281 top1 0.6745 top5 0.8540
+    step 550/800 | avg train loss 1.3353 top1 0.6709 top5 0.8550
+    step 600/800 | avg train loss 1.3244 top1 0.6779 top5 0.8592
+    step 650/800 | avg train loss 1.3288 top1 0.6750 top5 0.8573
+    step 700/800 | avg train loss 1.3248 top1 0.6718 top5 0.8543
+    step 750/800 | avg train loss 1.3308 top1 0.6720 top5 0.8573
+    step 800/800 | avg train loss 1.3324 top1 0.6766 top5 0.8609
+Epoch 14/20 | train loss 1.3324 top1 0.6766 | val loss 1.6159 top1 0.5376 top5 0.8519
+    step 50/800 | avg train loss 1.4256 top1 0.6750 top5 0.8600
+    step 100/800 | avg train loss 1.3797 top1 0.6700 top5 0.8400
+    step 150/800 | avg train loss 1.3725 top1 0.6650 top5 0.8383
+    step 200/800 | avg train loss 1.3612 top1 0.6875 top5 0.8550
+    step 250/800 | avg train loss 1.3393 top1 0.6990 top5 0.8630
+    step 300/800 | avg train loss 1.3455 top1 0.6992 top5 0.8650
+    step 350/800 | avg train loss 1.3393 top1 0.6971 top5 0.8621
+    step 400/800 | avg train loss 1.3293 top1 0.7063 top5 0.8681
+    step 450/800 | avg train loss 1.3352 top1 0.7056 top5 0.8717
+    step 500/800 | avg train loss 1.3253 top1 0.7035 top5 0.8730
+    step 550/800 | avg train loss 1.3151 top1 0.7055 top5 0.8750
+    step 600/800 | avg train loss 1.3218 top1 0.7029 top5 0.8746
+    step 650/800 | avg train loss 1.3258 top1 0.6965 top5 0.8712
+    step 700/800 | avg train loss 1.3281 top1 0.6961 top5 0.8707
+    step 750/800 | avg train loss 1.3317 top1 0.6943 top5 0.8697
+    step 800/800 | avg train loss 1.3259 top1 0.6975 top5 0.8719
+Epoch 15/20 | train loss 1.3259 top1 0.6975 | val loss 1.6109 top1 0.5382 top5 0.8535
+    step 50/800 | avg train loss 1.2965 top1 0.7300 top5 0.8900
+    step 100/800 | avg train loss 1.2715 top1 0.7150 top5 0.8625
+    step 150/800 | avg train loss 1.2870 top1 0.6883 top5 0.8517
+    step 200/800 | avg train loss 1.2927 top1 0.6925 top5 0.8650
+    step 250/800 | avg train loss 1.2680 top1 0.6920 top5 0.8670
+    step 300/800 | avg train loss 1.2559 top1 0.7025 top5 0.8767
+    step 350/800 | avg train loss 1.2601 top1 0.7093 top5 0.8771
+    step 400/800 | avg train loss 1.2752 top1 0.7094 top5 0.8775
+    step 450/800 | avg train loss 1.2609 top1 0.7100 top5 0.8783
+    step 500/800 | avg train loss 1.2548 top1 0.7100 top5 0.8750
+    step 550/800 | avg train loss 1.2527 top1 0.7109 top5 0.8764
+    step 600/800 | avg train loss 1.2475 top1 0.7154 top5 0.8792
+    step 650/800 | avg train loss 1.2411 top1 0.7219 top5 0.8812
+    step 700/800 | avg train loss 1.2361 top1 0.7264 top5 0.8829
+    step 750/800 | avg train loss 1.2343 top1 0.7247 top5 0.8813
+    step 800/800 | avg train loss 1.2368 top1 0.7231 top5 0.8788
+Epoch 16/20 | train loss 1.2368 top1 0.7231 | val loss 1.6158 top1 0.5386 top5 0.8525
+    step 50/800 | avg train loss 1.3718 top1 0.6400 top5 0.8400
+    step 100/800 | avg train loss 1.3290 top1 0.7025 top5 0.8825
+    step 150/800 | avg train loss 1.3456 top1 0.7083 top5 0.8783
+    step 200/800 | avg train loss 1.3221 top1 0.7163 top5 0.8975
+    step 250/800 | avg train loss 1.3392 top1 0.7090 top5 0.8930
+    step 300/800 | avg train loss 1.3255 top1 0.7100 top5 0.8908
+    step 350/800 | avg train loss 1.3139 top1 0.7114 top5 0.8907
+    step 400/800 | avg train loss 1.2965 top1 0.7137 top5 0.8894
+    step 450/800 | avg train loss 1.3130 top1 0.7011 top5 0.8789
+    step 500/800 | avg train loss 1.3163 top1 0.6985 top5 0.8795
+    step 550/800 | avg train loss 1.3248 top1 0.6918 top5 0.8745
+    step 600/800 | avg train loss 1.3204 top1 0.6904 top5 0.8754
+    step 650/800 | avg train loss 1.3231 top1 0.6881 top5 0.8727
+    step 700/800 | avg train loss 1.3286 top1 0.6843 top5 0.8689
+    step 750/800 | avg train loss 1.3277 top1 0.6820 top5 0.8680
+    step 800/800 | avg train loss 1.3297 top1 0.6831 top5 0.8700
+Epoch 17/20 | train loss 1.3297 top1 0.6831 | val loss 1.6154 top1 0.5388 top5 0.8526
+    step 50/800 | avg train loss 1.3145 top1 0.6750 top5 0.8900
+    step 100/800 | avg train loss 1.3220 top1 0.7050 top5 0.8850
+    step 150/800 | avg train loss 1.3151 top1 0.6900 top5 0.8717
+    step 200/800 | avg train loss 1.2956 top1 0.7025 top5 0.8762
+    step 250/800 | avg train loss 1.2715 top1 0.7190 top5 0.8850
+    step 300/800 | avg train loss 1.2494 top1 0.7225 top5 0.8858
+    step 350/800 | avg train loss 1.2536 top1 0.7121 top5 0.8814
+    step 400/800 | avg train loss 1.2536 top1 0.7113 top5 0.8838
+    step 450/800 | avg train loss 1.2577 top1 0.7156 top5 0.8844
+    step 500/800 | avg train loss 1.2530 top1 0.7135 top5 0.8850
+    step 550/800 | avg train loss 1.2519 top1 0.7141 top5 0.8850
+    step 600/800 | avg train loss 1.2683 top1 0.7117 top5 0.8842
+    step 650/800 | avg train loss 1.2849 top1 0.7042 top5 0.8815
+    step 700/800 | avg train loss 1.2924 top1 0.7036 top5 0.8818
+    step 750/800 | avg train loss 1.2880 top1 0.7077 top5 0.8847
+    step 800/800 | avg train loss 1.2840 top1 0.7075 top5 0.8838
+Epoch 18/20 | train loss 1.2840 top1 0.7075 | val loss 1.6151 top1 0.5394 top5 0.8528
+  Saved new best checkpoint (live): /Data/romain.poggi/Modal/project/smth2smth/checkpoints/track_b/vitg384_heavy_aug.pt (val top1=0.5394)
+    step 50/800 | avg train loss 1.2266 top1 0.7900 top5 0.9300
+    step 100/800 | avg train loss 1.2586 top1 0.7650 top5 0.9050
+    step 150/800 | avg train loss 1.2774 top1 0.7567 top5 0.8950
+    step 200/800 | avg train loss 1.2937 top1 0.7325 top5 0.8850
+    step 250/800 | avg train loss 1.3003 top1 0.7200 top5 0.8740
+    step 300/800 | avg train loss 1.2917 top1 0.7133 top5 0.8692
+    step 350/800 | avg train loss 1.2899 top1 0.7164 top5 0.8736
+    step 400/800 | avg train loss 1.2877 top1 0.7163 top5 0.8750
+    step 450/800 | avg train loss 1.2775 top1 0.7172 top5 0.8778
+    step 500/800 | avg train loss 1.2834 top1 0.7170 top5 0.8785
+    step 550/800 | avg train loss 1.2903 top1 0.7100 top5 0.8718
+    step 600/800 | avg train loss 1.2871 top1 0.7100 top5 0.8721
+    step 650/800 | avg train loss 1.2796 top1 0.7127 top5 0.8731
+    step 700/800 | avg train loss 1.2838 top1 0.7125 top5 0.8732
+    step 750/800 | avg train loss 1.2950 top1 0.7090 top5 0.8740
+    step 800/800 | avg train loss 1.2995 top1 0.7044 top5 0.8706
+Epoch 19/20 | train loss 1.2995 top1 0.7044 | val loss 1.6149 top1 0.5388 top5 0.8528
+    step 50/800 | avg train loss 1.2787 top1 0.7000 top5 0.8850
+    step 100/800 | avg train loss 1.2949 top1 0.7150 top5 0.8825
+    step 150/800 | avg train loss 1.3403 top1 0.6917 top5 0.8683
+    step 200/800 | avg train loss 1.3138 top1 0.7013 top5 0.8812
+    step 250/800 | avg train loss 1.2951 top1 0.7010 top5 0.8810
+    step 300/800 | avg train loss 1.2930 top1 0.7008 top5 0.8783
+    step 350/800 | avg train loss 1.2974 top1 0.7021 top5 0.8793
+    step 400/800 | avg train loss 1.3030 top1 0.6956 top5 0.8756
+    step 450/800 | avg train loss 1.3048 top1 0.6972 top5 0.8756
+    step 500/800 | avg train loss 1.3201 top1 0.6960 top5 0.8730
+    step 550/800 | avg train loss 1.3118 top1 0.6955 top5 0.8714
+    step 600/800 | avg train loss 1.3146 top1 0.6933 top5 0.8721
+    step 650/800 | avg train loss 1.3196 top1 0.6888 top5 0.8688
+    step 700/800 | avg train loss 1.3264 top1 0.6879 top5 0.8668
+    step 750/800 | avg train loss 1.3342 top1 0.6850 top5 0.8677
+    step 800/800 | avg train loss 1.3390 top1 0.6806 top5 0.8656
+Epoch 20/20 | train loss 1.3390 top1 0.6806 | val loss 1.6151 top1 0.5391 top5 0.8522
+[cuda] cache emptied (run-end). Free: 6.29 / 15.58 GiB
+Done. Best val top1: 0.5394. Checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/track_b/vitg384_heavy_aug.pt

@@ -1,0 +1,75 @@
+---
+description: smth2smth repo layout, tracks, long-running jobs, LaTeX/report conventions, and collaboration notes
+alwaysApply: true
+---
+
+# smth2smth — project context for the agent
+
+## What this repo is
+
+- Course challenge (**CSC_43M04_EP**): Something-Something v2–style video classification / “What happens next”, Kaggle-style submission.
+- Single Python package **`smth2smth`** under `src/smth2smth/`, Hydra configs under `configs/`.
+- **Two tracks** from one codebase:
+  - **Track A (closed world):** no pretrained weights / no external data by default; checkpoints under `checkpoints/track_a/`, submissions like `submissions/track_a*.csv`.
+  - **Track B (open world):** pretrained allowed; `checkpoints/track_b/`, `submissions/track_b*.csv`.
+- Canonical overview: `README.md`; module flow: `docs/architecture.md`.
+
+## How to run code
+
+- Package is not installed as editable by default (`pyproject.toml`); use **`PYTHONPATH=src`** with `uv run`, or the **`scripts/run_track_a.py`** / **`scripts/run_track_b.py`** wrappers (they pin `track=` / default experiment).
+- Examples (foreground):
+
+  ```bash
+  PYTHONPATH=src uv run python -m smth2smth.pipelines.train track=b experiment=...
+  ```
+
+- Prefer **`uv run`** and project `.venv` as in the README; align with whatever the user already uses in their shell.
+
+## Long-running training / jobs (`nohup`)
+
+- For overnight or remote-shell jobs, **use `nohup`** so the process survives logout; combine with **unbuffered Python** so logs update live (`PYTHONUNBUFFERED=1` or `python -u`).
+- **Redirect stdout/stderr** to a file under `logs/` (e.g. `logs/my_experiment_YYYYMMDD.log`) so progress is inspectable.
+- Optionally write a **pid file** next to the log for monitoring (`echo $! > logs/....pid`).
+- The report documents this pattern (see `report/main.tex` and `report/track_b.tex` for concrete command templates). Prefer the same style for consistency.
+
+## Training runs: always report in the LaTeX report
+
+When you **start** a training (or long eval) job for this project:
+
+1. **Add or update a row** in the **Track B run logbook** table in `report/track_b.tex` (and the analogous place for Track A in `report/track_a.tex` or `main.tex` tail if you add a Track‑A run log). Set status to **`RUNNING`** and record **log path**, **PID file path** (if used), **Hydra experiment preset** (`experiment=...`), and **compact hyperparameters** (see below).
+2. **Hyperparameters in prose:** do **not** spell out “learning rate (lr) is …” every time. Keep a **symbol glossary** table in the report (Track B: `report/track_b.tex`, table with label `tab:trackb-glossary`) mapping short symbols (`lr`, `wd`, `bs`, `E`, `wu`, `T`, `Sz`, `repo`, `expt`, `ema`, `ev`, `LoRA`, …) to the Hydra key and plain-language meaning. In each run row, write only compact assignments, e.g. `lr=1e-3`, `E=30`, `LoRA: r=8, α=16`.
+3. **When the run finishes or fails:** check **`kill -0 $(cat pidfile)`** (or read the log tail for `Done.` / tracebacks), then **update the same row**: status **`DONE`** or **`FAILED`**, fill **best val metrics** (and checkpoint path if relevant). If the process is still alive, keep **`RUNNING`** and optionally refresh **interim** best metrics from the log.
+4. **Never leave a started job undocumented** in the report if the user asked for training work on this repo—either add the row immediately or explicitly tell the user the table path to paste into.
+
+## LaTeX / report editing
+
+- **`report/main.tex`** is the full standalone report (large). Avoid pasting huge unrelated edits there unless the user wants global restructuring.
+- **Track-scoped narrative:** **`report/track_a.tex`** holds Track A (Phases~1--3 + context); **`report/track_b.tex`** holds Track B (Phase~4 V-JEPA~2). Both are `\input{}` from `main.tex`, which applies red (A) / blue (B) margin stripes and matching fancy headers for those blocks. For Track‑only edits, touch the corresponding file rather than duplicating content in `main.tex`. The **run logbook + parameter glossary** for Track B live in `track_b.tex` (subsections *Hydra symbol glossary* and *Track B training run logbook*).
+- Build artifacts: `report/main.{aux,log,out,toc}` are gitignored where applicable; do not rely on committing LaTeX build noise unless the project explicitly tracks it.
+
+## LaTeX build gate (`report/main.tex`)
+
+Whenever you **edit any file under `report/`** (including `main.tex`, `track_a.tex`, `track_b.tex`, or snippets they `\input{}`):
+
+1. From the **`report/`** directory, run **`pdflatex -interaction=nonstopmode main.tex`** (typically **twice** so references and margin overlays settle).
+2. Inspect **`report/main.log`**: the deliverable is **no substantive warnings** --- including **`LaTeX Warning:`**, **`Package ... Warning`**, **`Overfull \hbox`**, **`Underfull \hbox`**, undefined references/citations, and multiply-defined labels. (Font substitution notices from Latin Modern are usually harmless; silence them only if the user agrees.) **Errors (`!`) are never acceptable.**
+3. If you **cannot** reach a clean build after **three** full fix attempts, **stop** and tell the user plainly: you hit the limit, paste the relevant **`main.log`** excerpts, and cite the **approximate line numbers in the `.tex` sources** (and log line hints) that still trigger failures or warnings so they can continue by hand.
+
+Treat “compiles” as **exit code 0 and warning-free log**, not merely a PDF being produced.
+
+## Config and experiments
+
+- **Hydra**: root `configs/config.yaml`, composed `configs/data/`, `train/`, `model/`, `experiment/`, `augment/`, etc.
+- New sweeps / presets: add YAML under `configs/experiment/` (and related) and keep naming consistent with existing `track_a_*` / `track_b_*` experiments.
+
+## Git / two people on one branch
+
+- **`git pull`** can be refused locally if **uncommitted changes** touch the same paths as incoming commits; **commit** or **`git stash`** (often **`git stash push -u`** if untracked files would be overwritten) before pulling.
+- To preview incoming file lists: `git diff --name-status "$(git merge-base HEAD origin/main)"..origin/main` after `git fetch`.
+- Avoid **`git add .`** without checking `git status`: large artifacts (`outputs/`, checkpoints, logs) may still appear depending on `.gitignore`; only stage what should be versioned.
+
+## Agent behaviour (this workspace)
+
+- **Run commands** in the real environment when investigating (tests, `git`, short scripts); do not only suggest commands if the user expects execution.
+- **Keep edits focused** on the task; match existing style in the file being edited.
+- **Do not invent** dataset paths or cluster-specific paths; use README / user-provided locations.

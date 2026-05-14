@@ -1,0 +1,562 @@
+model:
+  name: avanced_resnet50_tsm
+  backbone: resnet50
+  pretrained: false
+  num_classes: ${num_classes}
+  shift_div: 8
+  shift_place: blockres
+  dropout: 0.5
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: ${hydra:runtime.cwd}/submissions/track_a.csv
+  num_frames: 4
+  val_ratio: 0.2
+  seed: ${seed}
+  max_samples: null
+  image_size: 224
+training:
+  batch_size: 16
+  lr: 0.01
+  epochs: 20
+  num_workers: 2
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt
+  device: cuda
+  optimizer: sgd
+  momentum: 0.9
+  nesterov: true
+  weight_decay: 0.0001
+  scheduler_cosine: true
+  warmup_epochs: 10
+  min_lr: 1.0e-06
+  label_smoothing: 0.1
+  videomix_alpha: 1.0
+  videomix_prob: 1.0
+  early_stopping_enabled: true
+  early_stopping_patience: 8
+  early_stopping_min_delta: 0.001
+  log_interval_steps: 100
+augment:
+  name: tsm_track_a
+  random_horizontal_flip: false
+  random_crop: true
+  crop_padding: 32
+  color_jitter: true
+  color_jitter_brightness: 0.2
+  color_jitter_contrast: 0.2
+  color_jitter_saturation: 0.2
+  color_jitter_hue: 0.0
+  sync_across_frames: true
+track:
+  name: a
+  description: 'Closed-world track: train from scratch.'
+num_classes: 33
+seed: 42
+
+[cuda] cache emptied (run-start). Free: 15.28 / 15.58 GiB
+    step 100/2250 | avg train loss 4.3915 top1 0.0500 top5 0.2219
+    step 200/2250 | avg train loss 4.1226 top1 0.0481 top5 0.2225
+    step 300/2250 | avg train loss 3.9924 top1 0.0471 top5 0.2235
+    step 400/2250 | avg train loss 3.8915 top1 0.0511 top5 0.2288
+    step 500/2250 | avg train loss 3.8246 top1 0.0540 top5 0.2324
+    step 600/2250 | avg train loss 3.7736 top1 0.0557 top5 0.2389
+    step 700/2250 | avg train loss 3.7327 top1 0.0563 top5 0.2437
+    step 800/2250 | avg train loss 3.7002 top1 0.0551 top5 0.2459
+    step 900/2250 | avg train loss 3.6749 top1 0.0547 top5 0.2465
+    step 1000/2250 | avg train loss 3.6523 top1 0.0548 top5 0.2483
+    step 1100/2250 | avg train loss 3.6346 top1 0.0550 top5 0.2484
+    step 1200/2250 | avg train loss 3.6177 top1 0.0553 top5 0.2505
+    step 1300/2250 | avg train loss 3.6015 top1 0.0553 top5 0.2526
+    step 1400/2250 | avg train loss 3.5892 top1 0.0555 top5 0.2527
+    step 1500/2250 | avg train loss 3.5768 top1 0.0559 top5 0.2538
+    step 1600/2250 | avg train loss 3.5649 top1 0.0565 top5 0.2558
+    step 1700/2250 | avg train loss 3.5524 top1 0.0576 top5 0.2585
+    step 1800/2250 | avg train loss 3.5437 top1 0.0581 top5 0.2592
+    step 1900/2250 | avg train loss 3.5363 top1 0.0584 top5 0.2597
+    step 2000/2250 | avg train loss 3.5284 top1 0.0583 top5 0.2594
+    step 2100/2250 | avg train loss 3.5208 top1 0.0584 top5 0.2604
+    step 2200/2250 | avg train loss 3.5138 top1 0.0589 top5 0.2618
+    step 2250/2250 | avg train loss 3.5107 top1 0.0590 top5 0.2622
+Epoch 1/20 | train loss 3.5107 top1 0.0590 | val loss 4.8796 top1 0.0752 top5 0.3141
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.0752)
+    step 100/2250 | avg train loss 3.3715 top1 0.0625 top5 0.2706
+    step 200/2250 | avg train loss 3.3768 top1 0.0616 top5 0.2787
+    step 300/2250 | avg train loss 3.3763 top1 0.0644 top5 0.2796
+    step 400/2250 | avg train loss 3.3795 top1 0.0658 top5 0.2808
+    step 500/2250 | avg train loss 3.3805 top1 0.0651 top5 0.2812
+    step 600/2250 | avg train loss 3.3771 top1 0.0665 top5 0.2830
+    step 700/2250 | avg train loss 3.3820 top1 0.0654 top5 0.2794
+    step 800/2250 | avg train loss 3.3829 top1 0.0648 top5 0.2778
+    step 900/2250 | avg train loss 3.3840 top1 0.0651 top5 0.2775
+    step 1000/2250 | avg train loss 3.3845 top1 0.0649 top5 0.2796
+    step 1100/2250 | avg train loss 3.3849 top1 0.0650 top5 0.2789
+    step 1200/2250 | avg train loss 3.3850 top1 0.0654 top5 0.2801
+    step 1300/2250 | avg train loss 3.3834 top1 0.0647 top5 0.2789
+    step 1400/2250 | avg train loss 3.3822 top1 0.0649 top5 0.2801
+    step 1500/2250 | avg train loss 3.3801 top1 0.0651 top5 0.2810
+    step 1600/2250 | avg train loss 3.3783 top1 0.0661 top5 0.2812
+    step 1700/2250 | avg train loss 3.3764 top1 0.0667 top5 0.2810
+    step 1800/2250 | avg train loss 3.3759 top1 0.0667 top5 0.2813
+    step 1900/2250 | avg train loss 3.3738 top1 0.0671 top5 0.2823
+    step 2000/2250 | avg train loss 3.3721 top1 0.0672 top5 0.2825
+    step 2100/2250 | avg train loss 3.3704 top1 0.0672 top5 0.2832
+    step 2200/2250 | avg train loss 3.3694 top1 0.0672 top5 0.2838
+    step 2250/2250 | avg train loss 3.3684 top1 0.0675 top5 0.2847
+Epoch 2/20 | train loss 3.3684 top1 0.0675 | val loss 3.2937 top1 0.0782 top5 0.3179
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.0782)
+    step 100/2250 | avg train loss 3.3454 top1 0.0619 top5 0.2863
+    step 200/2250 | avg train loss 3.3316 top1 0.0675 top5 0.3044
+    step 300/2250 | avg train loss 3.3397 top1 0.0679 top5 0.2973
+    step 400/2250 | avg train loss 3.3416 top1 0.0672 top5 0.3005
+    step 500/2250 | avg train loss 3.3422 top1 0.0681 top5 0.2978
+    step 600/2250 | avg train loss 3.3417 top1 0.0682 top5 0.2972
+    step 700/2250 | avg train loss 3.3393 top1 0.0686 top5 0.2981
+    step 800/2250 | avg train loss 3.3409 top1 0.0670 top5 0.2945
+    step 900/2250 | avg train loss 3.3381 top1 0.0674 top5 0.2956
+    step 1000/2250 | avg train loss 3.3399 top1 0.0681 top5 0.2942
+    step 1100/2250 | avg train loss 3.3408 top1 0.0676 top5 0.2919
+    step 1200/2250 | avg train loss 3.3410 top1 0.0679 top5 0.2930
+    step 1300/2250 | avg train loss 3.3400 top1 0.0688 top5 0.2938
+    step 1400/2250 | avg train loss 3.3400 top1 0.0688 top5 0.2935
+    step 1500/2250 | avg train loss 3.3380 top1 0.0688 top5 0.2944
+    step 1600/2250 | avg train loss 3.3387 top1 0.0684 top5 0.2928
+    step 1700/2250 | avg train loss 3.3384 top1 0.0685 top5 0.2933
+    step 1800/2250 | avg train loss 3.3391 top1 0.0676 top5 0.2920
+    step 1900/2250 | avg train loss 3.3389 top1 0.0677 top5 0.2914
+    step 2000/2250 | avg train loss 3.3384 top1 0.0681 top5 0.2920
+    step 2100/2250 | avg train loss 3.3380 top1 0.0680 top5 0.2920
+    step 2200/2250 | avg train loss 3.3369 top1 0.0686 top5 0.2928
+    step 2250/2250 | avg train loss 3.3371 top1 0.0685 top5 0.2930
+Epoch 3/20 | train loss 3.3371 top1 0.0685 | val loss 3.4563 top1 0.0886 top5 0.3170
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.0886)
+    step 100/2250 | avg train loss 3.3208 top1 0.0775 top5 0.2963
+    step 200/2250 | avg train loss 3.3237 top1 0.0741 top5 0.2966
+    step 300/2250 | avg train loss 3.3316 top1 0.0742 top5 0.3004
+    step 400/2250 | avg train loss 3.3310 top1 0.0752 top5 0.3003
+    step 500/2250 | avg train loss 3.3339 top1 0.0739 top5 0.2993
+    step 600/2250 | avg train loss 3.3330 top1 0.0724 top5 0.2996
+    step 700/2250 | avg train loss 3.3320 top1 0.0704 top5 0.3004
+    step 800/2250 | avg train loss 3.3286 top1 0.0705 top5 0.3005
+    step 900/2250 | avg train loss 3.3292 top1 0.0697 top5 0.2987
+    step 1000/2250 | avg train loss 3.3282 top1 0.0689 top5 0.2995
+    step 1100/2250 | avg train loss 3.3259 top1 0.0694 top5 0.3008
+    step 1200/2250 | avg train loss 3.3246 top1 0.0696 top5 0.3014
+    step 1300/2250 | avg train loss 3.3228 top1 0.0698 top5 0.3024
+    step 1400/2250 | avg train loss 3.3230 top1 0.0692 top5 0.3020
+    step 1500/2250 | avg train loss 3.3231 top1 0.0685 top5 0.3007
+    step 1600/2250 | avg train loss 3.3219 top1 0.0699 top5 0.3009
+    step 1700/2250 | avg train loss 3.3208 top1 0.0703 top5 0.3011
+    step 1800/2250 | avg train loss 3.3205 top1 0.0703 top5 0.3007
+    step 1900/2250 | avg train loss 3.3200 top1 0.0704 top5 0.3008
+    step 2000/2250 | avg train loss 3.3197 top1 0.0705 top5 0.3009
+    step 2100/2250 | avg train loss 3.3199 top1 0.0706 top5 0.2997
+    step 2200/2250 | avg train loss 3.3197 top1 0.0704 top5 0.2997
+    step 2250/2250 | avg train loss 3.3194 top1 0.0702 top5 0.2995
+Epoch 4/20 | train loss 3.3194 top1 0.0702 | val loss 3.3848 top1 0.0892 top5 0.3465
+  No val top1 improvement (1/8); best remains 0.0886
+    step 100/2250 | avg train loss 3.3024 top1 0.0813 top5 0.3031
+    step 200/2250 | avg train loss 3.2897 top1 0.0819 top5 0.3116
+    step 300/2250 | avg train loss 3.2958 top1 0.0781 top5 0.3090
+    step 400/2250 | avg train loss 3.3064 top1 0.0739 top5 0.2997
+    step 500/2250 | avg train loss 3.3048 top1 0.0739 top5 0.3025
+    step 600/2250 | avg train loss 3.3067 top1 0.0728 top5 0.3003
+    step 700/2250 | avg train loss 3.3065 top1 0.0727 top5 0.2980
+    step 800/2250 | avg train loss 3.3053 top1 0.0726 top5 0.2982
+    step 900/2250 | avg train loss 3.3055 top1 0.0726 top5 0.3001
+    step 1000/2250 | avg train loss 3.3079 top1 0.0712 top5 0.2986
+    step 1100/2250 | avg train loss 3.3073 top1 0.0717 top5 0.2994
+    step 1200/2250 | avg train loss 3.3071 top1 0.0720 top5 0.2986
+    step 1300/2250 | avg train loss 3.3066 top1 0.0722 top5 0.2986
+    step 1400/2250 | avg train loss 3.3063 top1 0.0727 top5 0.2989
+    step 1500/2250 | avg train loss 3.3052 top1 0.0731 top5 0.3000
+    step 1600/2250 | avg train loss 3.3054 top1 0.0730 top5 0.2993
+    step 1700/2250 | avg train loss 3.3052 top1 0.0733 top5 0.2997
+    step 1800/2250 | avg train loss 3.3040 top1 0.0732 top5 0.3001
+    step 1900/2250 | avg train loss 3.3029 top1 0.0738 top5 0.3006
+    step 2000/2250 | avg train loss 3.3032 top1 0.0737 top5 0.3004
+    step 2100/2250 | avg train loss 3.3027 top1 0.0744 top5 0.3013
+    step 2200/2250 | avg train loss 3.3025 top1 0.0743 top5 0.3022
+    step 2250/2250 | avg train loss 3.3033 top1 0.0740 top5 0.3022
+Epoch 5/20 | train loss 3.3033 top1 0.0740 | val loss 3.4951 top1 0.1035 top5 0.3499
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.1035)
+    step 100/2250 | avg train loss 3.3091 top1 0.0725 top5 0.3088
+    step 200/2250 | avg train loss 3.3172 top1 0.0756 top5 0.2988
+    step 300/2250 | avg train loss 3.3133 top1 0.0773 top5 0.3046
+    step 400/2250 | avg train loss 3.3055 top1 0.0820 top5 0.3113
+    step 500/2250 | avg train loss 3.3039 top1 0.0818 top5 0.3081
+    step 600/2250 | avg train loss 3.3050 top1 0.0788 top5 0.3058
+    step 700/2250 | avg train loss 3.3031 top1 0.0774 top5 0.3058
+    step 800/2250 | avg train loss 3.3016 top1 0.0786 top5 0.3070
+    step 900/2250 | avg train loss 3.3029 top1 0.0771 top5 0.3064
+    step 1000/2250 | avg train loss 3.3008 top1 0.0767 top5 0.3068
+    step 1100/2250 | avg train loss 3.3014 top1 0.0761 top5 0.3069
+    step 1200/2250 | avg train loss 3.3025 top1 0.0760 top5 0.3068
+    step 1300/2250 | avg train loss 3.3008 top1 0.0766 top5 0.3082
+    step 1400/2250 | avg train loss 3.2975 top1 0.0779 top5 0.3090
+    step 1500/2250 | avg train loss 3.2979 top1 0.0776 top5 0.3084
+    step 1600/2250 | avg train loss 3.2966 top1 0.0786 top5 0.3098
+    step 1700/2250 | avg train loss 3.2950 top1 0.0783 top5 0.3108
+    step 1800/2250 | avg train loss 3.2950 top1 0.0790 top5 0.3109
+    step 1900/2250 | avg train loss 3.2949 top1 0.0785 top5 0.3108
+    step 2000/2250 | avg train loss 3.2933 top1 0.0784 top5 0.3111
+    step 2100/2250 | avg train loss 3.2929 top1 0.0786 top5 0.3125
+    step 2200/2250 | avg train loss 3.2926 top1 0.0790 top5 0.3132
+    step 2250/2250 | avg train loss 3.2923 top1 0.0793 top5 0.3135
+Epoch 6/20 | train loss 3.2923 top1 0.0793 | val loss 3.2054 top1 0.1125 top5 0.3790
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.1125)
+    step 100/2250 | avg train loss 3.2906 top1 0.0831 top5 0.3337
+    step 200/2250 | avg train loss 3.2874 top1 0.0803 top5 0.3194
+    step 300/2250 | avg train loss 3.2871 top1 0.0823 top5 0.3169
+    step 400/2250 | avg train loss 3.2890 top1 0.0831 top5 0.3155
+    step 500/2250 | avg train loss 3.2812 top1 0.0828 top5 0.3206
+    step 600/2250 | avg train loss 3.2819 top1 0.0825 top5 0.3198
+    step 700/2250 | avg train loss 3.2797 top1 0.0830 top5 0.3201
+    step 800/2250 | avg train loss 3.2809 top1 0.0837 top5 0.3205
+    step 900/2250 | avg train loss 3.2813 top1 0.0831 top5 0.3190
+    step 1000/2250 | avg train loss 3.2792 top1 0.0824 top5 0.3194
+    step 1100/2250 | avg train loss 3.2795 top1 0.0829 top5 0.3186
+    step 1200/2250 | avg train loss 3.2791 top1 0.0833 top5 0.3187
+    step 1300/2250 | avg train loss 3.2788 top1 0.0840 top5 0.3187
+    step 1400/2250 | avg train loss 3.2760 top1 0.0848 top5 0.3203
+    step 1500/2250 | avg train loss 3.2758 top1 0.0843 top5 0.3205
+    step 1600/2250 | avg train loss 3.2746 top1 0.0850 top5 0.3215
+    step 1700/2250 | avg train loss 3.2745 top1 0.0848 top5 0.3220
+    step 1800/2250 | avg train loss 3.2747 top1 0.0845 top5 0.3215
+    step 1900/2250 | avg train loss 3.2748 top1 0.0843 top5 0.3219
+    step 2000/2250 | avg train loss 3.2749 top1 0.0841 top5 0.3209
+    step 2100/2250 | avg train loss 3.2727 top1 0.0849 top5 0.3223
+    step 2200/2250 | avg train loss 3.2727 top1 0.0850 top5 0.3224
+    step 2250/2250 | avg train loss 3.2721 top1 0.0855 top5 0.3222
+Epoch 7/20 | train loss 3.2721 top1 0.0855 | val loss 3.1589 top1 0.1262 top5 0.3890
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.1262)
+    step 100/2250 | avg train loss 3.2294 top1 0.1050 top5 0.3538
+    step 200/2250 | avg train loss 3.2464 top1 0.0972 top5 0.3419
+    step 300/2250 | avg train loss 3.2405 top1 0.0967 top5 0.3423
+    step 400/2250 | avg train loss 3.2493 top1 0.0917 top5 0.3381
+    step 500/2250 | avg train loss 3.2504 top1 0.0934 top5 0.3399
+    step 600/2250 | avg train loss 3.2488 top1 0.0958 top5 0.3421
+    step 700/2250 | avg train loss 3.2510 top1 0.0954 top5 0.3415
+    step 800/2250 | avg train loss 3.2505 top1 0.0972 top5 0.3397
+    step 900/2250 | avg train loss 3.2491 top1 0.0970 top5 0.3397
+    step 1000/2250 | avg train loss 3.2516 top1 0.0959 top5 0.3379
+    step 1100/2250 | avg train loss 3.2512 top1 0.0968 top5 0.3384
+    step 1200/2250 | avg train loss 3.2512 top1 0.0954 top5 0.3379
+    step 1300/2250 | avg train loss 3.2519 top1 0.0948 top5 0.3378
+    step 1400/2250 | avg train loss 3.2527 top1 0.0944 top5 0.3369
+    step 1500/2250 | avg train loss 3.2522 top1 0.0939 top5 0.3364
+    step 1600/2250 | avg train loss 3.2529 top1 0.0943 top5 0.3365
+    step 1700/2250 | avg train loss 3.2535 top1 0.0933 top5 0.3357
+    step 1800/2250 | avg train loss 3.2548 top1 0.0932 top5 0.3347
+    step 1900/2250 | avg train loss 3.2545 top1 0.0940 top5 0.3348
+    step 2000/2250 | avg train loss 3.2545 top1 0.0945 top5 0.3350
+    step 2100/2250 | avg train loss 3.2538 top1 0.0945 top5 0.3356
+    step 2200/2250 | avg train loss 3.2539 top1 0.0949 top5 0.3348
+    step 2250/2250 | avg train loss 3.2545 top1 0.0947 top5 0.3347
+Epoch 8/20 | train loss 3.2545 top1 0.0947 | val loss 3.2251 top1 0.1363 top5 0.4259
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.1363)
+    step 100/2250 | avg train loss 3.2233 top1 0.1119 top5 0.3481
+    step 200/2250 | avg train loss 3.2188 top1 0.1069 top5 0.3491
+    step 300/2250 | avg train loss 3.2302 top1 0.1010 top5 0.3513
+    step 400/2250 | avg train loss 3.2364 top1 0.1003 top5 0.3478
+    step 500/2250 | avg train loss 3.2357 top1 0.0998 top5 0.3455
+    step 600/2250 | avg train loss 3.2305 top1 0.1009 top5 0.3481
+    step 700/2250 | avg train loss 3.2335 top1 0.0997 top5 0.3433
+    step 800/2250 | avg train loss 3.2342 top1 0.0990 top5 0.3423
+    step 900/2250 | avg train loss 3.2330 top1 0.0994 top5 0.3426
+    step 1000/2250 | avg train loss 3.2324 top1 0.0984 top5 0.3423
+    step 1100/2250 | avg train loss 3.2347 top1 0.0995 top5 0.3420
+    step 1200/2250 | avg train loss 3.2319 top1 0.0997 top5 0.3429
+    step 1300/2250 | avg train loss 3.2309 top1 0.1004 top5 0.3428
+    step 1400/2250 | avg train loss 3.2271 top1 0.1021 top5 0.3449
+    step 1500/2250 | avg train loss 3.2256 top1 0.1022 top5 0.3461
+    step 1600/2250 | avg train loss 3.2265 top1 0.1016 top5 0.3452
+    step 1700/2250 | avg train loss 3.2251 top1 0.1014 top5 0.3446
+    step 1800/2250 | avg train loss 3.2256 top1 0.1010 top5 0.3449
+    step 1900/2250 | avg train loss 3.2248 top1 0.1012 top5 0.3447
+    step 2000/2250 | avg train loss 3.2228 top1 0.1023 top5 0.3467
+    step 2100/2250 | avg train loss 3.2214 top1 0.1026 top5 0.3472
+    step 2200/2250 | avg train loss 3.2204 top1 0.1032 top5 0.3477
+    step 2250/2250 | avg train loss 3.2204 top1 0.1032 top5 0.3478
+Epoch 9/20 | train loss 3.2204 top1 0.1032 | val loss 4.8852 top1 0.1651 top5 0.4435
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.1651)
+    step 100/2250 | avg train loss 3.1793 top1 0.1181 top5 0.3719
+    step 200/2250 | avg train loss 3.1985 top1 0.1141 top5 0.3569
+    step 300/2250 | avg train loss 3.2074 top1 0.1100 top5 0.3496
+    step 400/2250 | avg train loss 3.2122 top1 0.1078 top5 0.3483
+    step 500/2250 | avg train loss 3.2097 top1 0.1087 top5 0.3490
+    step 600/2250 | avg train loss 3.2091 top1 0.1085 top5 0.3475
+    step 700/2250 | avg train loss 3.2066 top1 0.1103 top5 0.3508
+    step 800/2250 | avg train loss 3.2066 top1 0.1114 top5 0.3485
+    step 900/2250 | avg train loss 3.2049 top1 0.1117 top5 0.3494
+    step 1000/2250 | avg train loss 3.2045 top1 0.1123 top5 0.3508
+    step 1100/2250 | avg train loss 3.2028 top1 0.1137 top5 0.3508
+    step 1200/2250 | avg train loss 3.2018 top1 0.1138 top5 0.3516
+    step 1300/2250 | avg train loss 3.2024 top1 0.1137 top5 0.3513
+    step 1400/2250 | avg train loss 3.2007 top1 0.1133 top5 0.3531
+    step 1500/2250 | avg train loss 3.1989 top1 0.1140 top5 0.3540
+    step 1600/2250 | avg train loss 3.1960 top1 0.1148 top5 0.3557
+    step 1700/2250 | avg train loss 3.1948 top1 0.1146 top5 0.3558
+    step 1800/2250 | avg train loss 3.1924 top1 0.1151 top5 0.3567
+    step 1900/2250 | avg train loss 3.1914 top1 0.1153 top5 0.3568
+    step 2000/2250 | avg train loss 3.1887 top1 0.1153 top5 0.3580
+    step 2100/2250 | avg train loss 3.1900 top1 0.1152 top5 0.3571
+    step 2200/2250 | avg train loss 3.1883 top1 0.1156 top5 0.3576
+    step 2250/2250 | avg train loss 3.1880 top1 0.1157 top5 0.3584
+Epoch 10/20 | train loss 3.1880 top1 0.1157 | val loss 2.9366 top1 0.1954 top5 0.4778
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.1954)
+    step 100/2250 | avg train loss 3.1306 top1 0.1450 top5 0.4006
+    step 200/2250 | avg train loss 3.1431 top1 0.1328 top5 0.3897
+    step 300/2250 | avg train loss 3.1479 top1 0.1290 top5 0.3848
+    step 400/2250 | avg train loss 3.1524 top1 0.1264 top5 0.3769
+    step 500/2250 | avg train loss 3.1534 top1 0.1261 top5 0.3759
+    step 600/2250 | avg train loss 3.1535 top1 0.1265 top5 0.3752
+    step 700/2250 | avg train loss 3.1522 top1 0.1269 top5 0.3764
+    step 800/2250 | avg train loss 3.1500 top1 0.1288 top5 0.3777
+    step 900/2250 | avg train loss 3.1492 top1 0.1288 top5 0.3779
+    step 1000/2250 | avg train loss 3.1445 top1 0.1289 top5 0.3807
+    step 1100/2250 | avg train loss 3.1452 top1 0.1285 top5 0.3798
+    step 1200/2250 | avg train loss 3.1431 top1 0.1289 top5 0.3806
+    step 1300/2250 | avg train loss 3.1407 top1 0.1297 top5 0.3809
+    step 1400/2250 | avg train loss 3.1423 top1 0.1289 top5 0.3805
+    step 1500/2250 | avg train loss 3.1408 top1 0.1286 top5 0.3821
+    step 1600/2250 | avg train loss 3.1412 top1 0.1282 top5 0.3823
+    step 1700/2250 | avg train loss 3.1422 top1 0.1273 top5 0.3817
+    step 1800/2250 | avg train loss 3.1421 top1 0.1269 top5 0.3813
+    step 1900/2250 | avg train loss 3.1453 top1 0.1261 top5 0.3794
+    step 2000/2250 | avg train loss 3.1438 top1 0.1262 top5 0.3798
+    step 2100/2250 | avg train loss 3.1431 top1 0.1259 top5 0.3798
+    step 2200/2250 | avg train loss 3.1408 top1 0.1268 top5 0.3808
+    step 2250/2250 | avg train loss 3.1403 top1 0.1269 top5 0.3807
+Epoch 11/20 | train loss 3.1403 top1 0.1269 | val loss 3.1394 top1 0.2122 top5 0.4889
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.2122)
+    step 100/2250 | avg train loss 3.1091 top1 0.1269 top5 0.3850
+    step 200/2250 | avg train loss 3.1020 top1 0.1363 top5 0.3978
+    step 300/2250 | avg train loss 3.0982 top1 0.1377 top5 0.4008
+    step 400/2250 | avg train loss 3.0955 top1 0.1391 top5 0.4022
+    step 500/2250 | avg train loss 3.0974 top1 0.1419 top5 0.3987
+    step 600/2250 | avg train loss 3.0999 top1 0.1398 top5 0.3976
+    step 700/2250 | avg train loss 3.1025 top1 0.1392 top5 0.3975
+    step 800/2250 | avg train loss 3.1074 top1 0.1381 top5 0.3964
+    step 900/2250 | avg train loss 3.1081 top1 0.1383 top5 0.3962
+    step 1000/2250 | avg train loss 3.1093 top1 0.1377 top5 0.3937
+    step 1100/2250 | avg train loss 3.1092 top1 0.1364 top5 0.3924
+    step 1200/2250 | avg train loss 3.1030 top1 0.1377 top5 0.3960
+    step 1300/2250 | avg train loss 3.1041 top1 0.1375 top5 0.3950
+    step 1400/2250 | avg train loss 3.1020 top1 0.1381 top5 0.3947
+    step 1500/2250 | avg train loss 3.1002 top1 0.1387 top5 0.3955
+    step 1600/2250 | avg train loss 3.1001 top1 0.1382 top5 0.3954
+    step 1700/2250 | avg train loss 3.1010 top1 0.1374 top5 0.3942
+    step 1800/2250 | avg train loss 3.1006 top1 0.1384 top5 0.3943
+    step 1900/2250 | avg train loss 3.0991 top1 0.1400 top5 0.3949
+    step 2000/2250 | avg train loss 3.0987 top1 0.1404 top5 0.3950
+    step 2100/2250 | avg train loss 3.0979 top1 0.1407 top5 0.3955
+    step 2200/2250 | avg train loss 3.0946 top1 0.1420 top5 0.3977
+    step 2250/2250 | avg train loss 3.0945 top1 0.1424 top5 0.3979
+Epoch 12/20 | train loss 3.0945 top1 0.1424 | val loss 2.7650 top1 0.2479 top5 0.5337
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.2479)
+    step 100/2250 | avg train loss 3.0844 top1 0.1350 top5 0.3919
+    step 200/2250 | avg train loss 3.0890 top1 0.1316 top5 0.3887
+    step 300/2250 | avg train loss 3.0760 top1 0.1431 top5 0.3954
+    step 400/2250 | avg train loss 3.0720 top1 0.1461 top5 0.3952
+    step 500/2250 | avg train loss 3.0648 top1 0.1481 top5 0.3992
+    step 600/2250 | avg train loss 3.0594 top1 0.1499 top5 0.4029
+    step 700/2250 | avg train loss 3.0568 top1 0.1491 top5 0.4048
+    step 800/2250 | avg train loss 3.0539 top1 0.1496 top5 0.4058
+    step 900/2250 | avg train loss 3.0537 top1 0.1510 top5 0.4098
+    step 1000/2250 | avg train loss 3.0498 top1 0.1528 top5 0.4110
+    step 1100/2250 | avg train loss 3.0537 top1 0.1526 top5 0.4089
+    step 1200/2250 | avg train loss 3.0548 top1 0.1510 top5 0.4091
+    step 1300/2250 | avg train loss 3.0551 top1 0.1504 top5 0.4077
+    step 1400/2250 | avg train loss 3.0572 top1 0.1495 top5 0.4061
+    step 1500/2250 | avg train loss 3.0591 top1 0.1491 top5 0.4057
+    step 1600/2250 | avg train loss 3.0560 top1 0.1495 top5 0.4061
+    step 1700/2250 | avg train loss 3.0559 top1 0.1497 top5 0.4064
+    step 1800/2250 | avg train loss 3.0549 top1 0.1501 top5 0.4071
+    step 1900/2250 | avg train loss 3.0529 top1 0.1502 top5 0.4072
+    step 2000/2250 | avg train loss 3.0532 top1 0.1502 top5 0.4074
+    step 2100/2250 | avg train loss 3.0534 top1 0.1495 top5 0.4066
+    step 2200/2250 | avg train loss 3.0518 top1 0.1496 top5 0.4062
+    step 2250/2250 | avg train loss 3.0507 top1 0.1502 top5 0.4068
+Epoch 13/20 | train loss 3.0507 top1 0.1502 | val loss 4.1927 top1 0.2563 top5 0.5464
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.2563)
+    step 100/2250 | avg train loss 3.0171 top1 0.1506 top5 0.4100
+    step 200/2250 | avg train loss 2.9948 top1 0.1659 top5 0.4247
+    step 300/2250 | avg train loss 2.9901 top1 0.1683 top5 0.4317
+    step 400/2250 | avg train loss 2.9987 top1 0.1656 top5 0.4284
+    step 500/2250 | avg train loss 3.0017 top1 0.1643 top5 0.4271
+    step 600/2250 | avg train loss 3.0113 top1 0.1609 top5 0.4203
+    step 700/2250 | avg train loss 3.0099 top1 0.1600 top5 0.4227
+    step 800/2250 | avg train loss 3.0103 top1 0.1604 top5 0.4228
+    step 900/2250 | avg train loss 3.0138 top1 0.1593 top5 0.4214
+    step 1000/2250 | avg train loss 3.0088 top1 0.1606 top5 0.4240
+    step 1100/2250 | avg train loss 3.0082 top1 0.1616 top5 0.4263
+    step 1200/2250 | avg train loss 3.0076 top1 0.1608 top5 0.4249
+    step 1300/2250 | avg train loss 3.0055 top1 0.1617 top5 0.4253
+    step 1400/2250 | avg train loss 3.0030 top1 0.1621 top5 0.4261
+    step 1500/2250 | avg train loss 3.0047 top1 0.1618 top5 0.4247
+    step 1600/2250 | avg train loss 3.0018 top1 0.1625 top5 0.4262
+    step 1700/2250 | avg train loss 3.0007 top1 0.1625 top5 0.4266
+    step 1800/2250 | avg train loss 3.0006 top1 0.1617 top5 0.4257
+    step 1900/2250 | avg train loss 2.9993 top1 0.1617 top5 0.4257
+    step 2000/2250 | avg train loss 2.9976 top1 0.1628 top5 0.4273
+    step 2100/2250 | avg train loss 2.9964 top1 0.1629 top5 0.4278
+    step 2200/2250 | avg train loss 2.9969 top1 0.1638 top5 0.4285
+    step 2250/2250 | avg train loss 2.9966 top1 0.1638 top5 0.4285
+Epoch 14/20 | train loss 2.9966 top1 0.1638 | val loss 2.5655 top1 0.2981 top5 0.5902
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.2981)
+    step 100/2250 | avg train loss 3.0057 top1 0.1569 top5 0.4344
+    step 200/2250 | avg train loss 2.9876 top1 0.1603 top5 0.4400
+    step 300/2250 | avg train loss 2.9750 top1 0.1642 top5 0.4394
+    step 400/2250 | avg train loss 2.9667 top1 0.1652 top5 0.4358
+    step 500/2250 | avg train loss 2.9652 top1 0.1639 top5 0.4359
+    step 600/2250 | avg train loss 2.9683 top1 0.1638 top5 0.4360
+    step 700/2250 | avg train loss 2.9614 top1 0.1646 top5 0.4346
+    step 800/2250 | avg train loss 2.9626 top1 0.1659 top5 0.4366
+    step 900/2250 | avg train loss 2.9653 top1 0.1672 top5 0.4379
+    step 1000/2250 | avg train loss 2.9648 top1 0.1701 top5 0.4399
+    step 1100/2250 | avg train loss 2.9657 top1 0.1689 top5 0.4363
+    step 1200/2250 | avg train loss 2.9642 top1 0.1693 top5 0.4359
+    step 1300/2250 | avg train loss 2.9647 top1 0.1683 top5 0.4357
+    step 1400/2250 | avg train loss 2.9655 top1 0.1678 top5 0.4344
+    step 1500/2250 | avg train loss 2.9673 top1 0.1665 top5 0.4332
+    step 1600/2250 | avg train loss 2.9657 top1 0.1665 top5 0.4340
+    step 1700/2250 | avg train loss 2.9626 top1 0.1680 top5 0.4353
+    step 1800/2250 | avg train loss 2.9625 top1 0.1683 top5 0.4351
+    step 1900/2250 | avg train loss 2.9600 top1 0.1691 top5 0.4360
+    step 2000/2250 | avg train loss 2.9575 top1 0.1701 top5 0.4374
+    step 2100/2250 | avg train loss 2.9567 top1 0.1706 top5 0.4388
+    step 2200/2250 | avg train loss 2.9561 top1 0.1705 top5 0.4383
+    step 2250/2250 | avg train loss 2.9548 top1 0.1714 top5 0.4392
+Epoch 15/20 | train loss 2.9548 top1 0.1714 | val loss 2.6155 top1 0.3115 top5 0.6110
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.3115)
+    step 100/2250 | avg train loss 2.8538 top1 0.2062 top5 0.4975
+    step 200/2250 | avg train loss 2.8957 top1 0.1947 top5 0.4756
+    step 300/2250 | avg train loss 2.9023 top1 0.1915 top5 0.4700
+    step 400/2250 | avg train loss 2.8934 top1 0.1955 top5 0.4742
+    step 500/2250 | avg train loss 2.8982 top1 0.1931 top5 0.4710
+    step 600/2250 | avg train loss 2.9028 top1 0.1916 top5 0.4693
+    step 700/2250 | avg train loss 2.9008 top1 0.1918 top5 0.4702
+    step 800/2250 | avg train loss 2.9040 top1 0.1908 top5 0.4670
+    step 900/2250 | avg train loss 2.9055 top1 0.1899 top5 0.4645
+    step 1000/2250 | avg train loss 2.9092 top1 0.1872 top5 0.4625
+    step 1100/2250 | avg train loss 2.9083 top1 0.1861 top5 0.4641
+    step 1200/2250 | avg train loss 2.9064 top1 0.1878 top5 0.4651
+    step 1300/2250 | avg train loss 2.9043 top1 0.1887 top5 0.4663
+    step 1400/2250 | avg train loss 2.9028 top1 0.1887 top5 0.4670
+    step 1500/2250 | avg train loss 2.8997 top1 0.1892 top5 0.4683
+    step 1600/2250 | avg train loss 2.8985 top1 0.1888 top5 0.4675
+    step 1700/2250 | avg train loss 2.8986 top1 0.1884 top5 0.4662
+    step 1800/2250 | avg train loss 2.8979 top1 0.1875 top5 0.4662
+    step 1900/2250 | avg train loss 2.8966 top1 0.1882 top5 0.4661
+    step 2000/2250 | avg train loss 2.8985 top1 0.1876 top5 0.4660
+    step 2100/2250 | avg train loss 2.8968 top1 0.1883 top5 0.4669
+    step 2200/2250 | avg train loss 2.8968 top1 0.1890 top5 0.4666
+    step 2250/2250 | avg train loss 2.8963 top1 0.1888 top5 0.4665
+Epoch 16/20 | train loss 2.8963 top1 0.1888 | val loss 2.4477 top1 0.3280 top5 0.6260
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.3280)
+    step 100/2250 | avg train loss 2.8584 top1 0.2019 top5 0.4656
+    step 200/2250 | avg train loss 2.8299 top1 0.2128 top5 0.4903
+    step 300/2250 | avg train loss 2.8480 top1 0.2071 top5 0.4875
+    step 400/2250 | avg train loss 2.8373 top1 0.2086 top5 0.4861
+    step 500/2250 | avg train loss 2.8345 top1 0.2131 top5 0.4883
+    step 600/2250 | avg train loss 2.8428 top1 0.2112 top5 0.4864
+    step 700/2250 | avg train loss 2.8506 top1 0.2088 top5 0.4827
+    step 800/2250 | avg train loss 2.8529 top1 0.2045 top5 0.4782
+    step 900/2250 | avg train loss 2.8527 top1 0.2030 top5 0.4765
+    step 1000/2250 | avg train loss 2.8517 top1 0.2041 top5 0.4768
+    step 1100/2250 | avg train loss 2.8500 top1 0.2045 top5 0.4788
+    step 1200/2250 | avg train loss 2.8466 top1 0.2043 top5 0.4808
+    step 1300/2250 | avg train loss 2.8461 top1 0.2039 top5 0.4810
+    step 1400/2250 | avg train loss 2.8467 top1 0.2049 top5 0.4808
+    step 1500/2250 | avg train loss 2.8467 top1 0.2037 top5 0.4798
+    step 1600/2250 | avg train loss 2.8489 top1 0.2025 top5 0.4782
+    step 1700/2250 | avg train loss 2.8474 top1 0.2031 top5 0.4800
+    step 1800/2250 | avg train loss 2.8516 top1 0.2017 top5 0.4780
+    step 1900/2250 | avg train loss 2.8498 top1 0.2014 top5 0.4784
+    step 2000/2250 | avg train loss 2.8486 top1 0.2022 top5 0.4784
+    step 2100/2250 | avg train loss 2.8464 top1 0.2030 top5 0.4790
+    step 2200/2250 | avg train loss 2.8453 top1 0.2030 top5 0.4800
+    step 2250/2250 | avg train loss 2.8449 top1 0.2028 top5 0.4801
+Epoch 17/20 | train loss 2.8449 top1 0.2028 | val loss 2.8704 top1 0.3348 top5 0.6260
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.3348)
+    step 100/2250 | avg train loss 2.8118 top1 0.1969 top5 0.4625
+    step 200/2250 | avg train loss 2.8359 top1 0.2025 top5 0.4700
+    step 300/2250 | avg train loss 2.8284 top1 0.2060 top5 0.4760
+    step 400/2250 | avg train loss 2.8168 top1 0.2067 top5 0.4802
+    step 500/2250 | avg train loss 2.8141 top1 0.2106 top5 0.4815
+    step 600/2250 | avg train loss 2.8109 top1 0.2072 top5 0.4814
+    step 700/2250 | avg train loss 2.8066 top1 0.2098 top5 0.4869
+    step 800/2250 | avg train loss 2.8062 top1 0.2083 top5 0.4889
+    step 900/2250 | avg train loss 2.8037 top1 0.2092 top5 0.4903
+    step 1000/2250 | avg train loss 2.8041 top1 0.2084 top5 0.4884
+    step 1100/2250 | avg train loss 2.8058 top1 0.2076 top5 0.4883
+    step 1200/2250 | avg train loss 2.8013 top1 0.2079 top5 0.4891
+    step 1300/2250 | avg train loss 2.8016 top1 0.2076 top5 0.4894
+    step 1400/2250 | avg train loss 2.8032 top1 0.2070 top5 0.4892
+    step 1500/2250 | avg train loss 2.8013 top1 0.2080 top5 0.4904
+    step 1600/2250 | avg train loss 2.7989 top1 0.2102 top5 0.4921
+    step 1700/2250 | avg train loss 2.7978 top1 0.2104 top5 0.4919
+    step 1800/2250 | avg train loss 2.7963 top1 0.2109 top5 0.4917
+    step 1900/2250 | avg train loss 2.7972 top1 0.2111 top5 0.4920
+    step 2000/2250 | avg train loss 2.7959 top1 0.2115 top5 0.4916
+    step 2100/2250 | avg train loss 2.7952 top1 0.2118 top5 0.4933
+    step 2200/2250 | avg train loss 2.7951 top1 0.2119 top5 0.4938
+    step 2250/2250 | avg train loss 2.7946 top1 0.2121 top5 0.4946
+Epoch 18/20 | train loss 2.7946 top1 0.2121 | val loss 2.4410 top1 0.3660 top5 0.6600
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.3660)
+    step 100/2250 | avg train loss 2.7342 top1 0.2256 top5 0.5138
+    step 200/2250 | avg train loss 2.7379 top1 0.2331 top5 0.5162
+    step 300/2250 | avg train loss 2.7437 top1 0.2317 top5 0.5154
+    step 400/2250 | avg train loss 2.7361 top1 0.2331 top5 0.5172
+    step 500/2250 | avg train loss 2.7384 top1 0.2325 top5 0.5169
+    step 600/2250 | avg train loss 2.7366 top1 0.2348 top5 0.5186
+    step 700/2250 | avg train loss 2.7356 top1 0.2345 top5 0.5210
+    step 800/2250 | avg train loss 2.7340 top1 0.2313 top5 0.5175
+    step 900/2250 | avg train loss 2.7362 top1 0.2297 top5 0.5174
+    step 1000/2250 | avg train loss 2.7364 top1 0.2299 top5 0.5184
+    step 1100/2250 | avg train loss 2.7308 top1 0.2303 top5 0.5206
+    step 1200/2250 | avg train loss 2.7315 top1 0.2303 top5 0.5219
+    step 1300/2250 | avg train loss 2.7323 top1 0.2296 top5 0.5196
+    step 1400/2250 | avg train loss 2.7320 top1 0.2300 top5 0.5202
+    step 1500/2250 | avg train loss 2.7268 top1 0.2326 top5 0.5220
+    step 1600/2250 | avg train loss 2.7261 top1 0.2330 top5 0.5224
+    step 1700/2250 | avg train loss 2.7244 top1 0.2330 top5 0.5222
+    step 1800/2250 | avg train loss 2.7240 top1 0.2331 top5 0.5221
+    step 1900/2250 | avg train loss 2.7227 top1 0.2337 top5 0.5243
+    step 2000/2250 | avg train loss 2.7229 top1 0.2334 top5 0.5230
+    step 2100/2250 | avg train loss 2.7223 top1 0.2333 top5 0.5221
+    step 2200/2250 | avg train loss 2.7199 top1 0.2338 top5 0.5228
+    step 2250/2250 | avg train loss 2.7210 top1 0.2331 top5 0.5225
+Epoch 19/20 | train loss 2.7210 top1 0.2331 | val loss 2.5877 top1 0.3828 top5 0.6745
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.3828)
+    step 100/2250 | avg train loss 2.6991 top1 0.2494 top5 0.5331
+    step 200/2250 | avg train loss 2.7203 top1 0.2462 top5 0.5300
+    step 300/2250 | avg train loss 2.7108 top1 0.2487 top5 0.5383
+    step 400/2250 | avg train loss 2.7020 top1 0.2494 top5 0.5416
+    step 500/2250 | avg train loss 2.6916 top1 0.2500 top5 0.5380
+    step 600/2250 | avg train loss 2.7032 top1 0.2425 top5 0.5299
+    step 700/2250 | avg train loss 2.7151 top1 0.2379 top5 0.5262
+    step 800/2250 | avg train loss 2.7164 top1 0.2359 top5 0.5246
+    step 900/2250 | avg train loss 2.7170 top1 0.2346 top5 0.5226
+    step 1000/2250 | avg train loss 2.7141 top1 0.2354 top5 0.5237
+    step 1100/2250 | avg train loss 2.7094 top1 0.2366 top5 0.5253
+    step 1200/2250 | avg train loss 2.7130 top1 0.2340 top5 0.5232
+    step 1300/2250 | avg train loss 2.7130 top1 0.2352 top5 0.5254
+    step 1400/2250 | avg train loss 2.7104 top1 0.2349 top5 0.5247
+    step 1500/2250 | avg train loss 2.7095 top1 0.2359 top5 0.5254
+    step 1600/2250 | avg train loss 2.7087 top1 0.2365 top5 0.5269
+    step 1700/2250 | avg train loss 2.7076 top1 0.2356 top5 0.5262
+    step 1800/2250 | avg train loss 2.7070 top1 0.2362 top5 0.5265
+    step 1900/2250 | avg train loss 2.7054 top1 0.2362 top5 0.5264
+    step 2000/2250 | avg train loss 2.7075 top1 0.2340 top5 0.5242
+    step 2100/2250 | avg train loss 2.7060 top1 0.2336 top5 0.5236
+    step 2200/2250 | avg train loss 2.7032 top1 0.2341 top5 0.5244
+    step 2250/2250 | avg train loss 2.7029 top1 0.2345 top5 0.5245
+Epoch 20/20 | train loss 2.7029 top1 0.2345 | val loss 2.7751 top1 0.3867 top5 0.6812
+  Saved new best checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt (val top1=0.3867)
+[cuda] cache emptied (run-end). Free: 14.52 / 15.58 GiB
+Done. Best val top1: 0.3867. Checkpoint: /Data/romain.poggi/Modal/project/smth2smth/checkpoints/runs/track_a_avanced_resnet50_tsm_e20_wu10_wd1e-4_f4_es.pt
