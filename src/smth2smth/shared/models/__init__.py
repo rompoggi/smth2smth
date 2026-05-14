@@ -1,11 +1,19 @@
 """Shared model definitions and registry.
 
 Importing this package triggers self-registration of all bundled models
-(``cnn_baseline``, ``cnn_lstm``, ``avanced_resnet50_tsm``).
+(``cnn_baseline``, ``cnn_lstm``, ``avanced_resnet50_tsm``) as well as the
+Track-B-only ``vjepa2`` model. Track-specific subpackages register their
+own models from their ``__init__`` modules; we import those subpackages
+here so a single ``from smth2smth.shared.models import build_model`` is
+enough to resolve every model name.
 """
 
 # Importing modules below has the side effect of populating MODEL_REGISTRY
-# via their @register_model decorators.
+# via their @register_model decorators. The ``smth2smth.track_b`` import is a
+# one-way coupling: ``shared/`` imports the track package only to trigger the
+# track-specific registrations, while ``track_b/`` only depends on the
+# ``registry`` submodule (no circular imports).
+from smth2smth import track_b as _track_b  # noqa: F401
 from smth2smth.shared.models import avanced_resnet50_tsm as _avanced_resnet50_tsm  # noqa: F401
 from smth2smth.shared.models import cnn_baseline as _cnn_baseline  # noqa: F401
 from smth2smth.shared.models import cnn_lstm as _cnn_lstm  # noqa: F401
