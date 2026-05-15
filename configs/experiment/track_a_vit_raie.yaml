@@ -1,15 +1,11 @@
 # @package _global_
-# Experiment 6a — ViT-B + Class Boosting, mean-pool classifier.
+# raie — ViT-B from scratch, no SSL, Class Boosting + Class Balancing.
 #
 # Assigned to: Romain
-# Dependency: run after 1a (and optionally 2a); set init_from to the best
-#             checkpoint if 2a > 1a, otherwise leave null.
 #
 # Run:
 #   PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
-#       experiment=track_a_videomae_6a
-#   # With SSL encoder (if 2a wins):
-#       experiment=track_a_videomae_6a model.init_from=<path>/videomae_encoder.pt
+#       experiment=track_a_vit_raie
 defaults:
   - override /model: video_mae_vit
   - override /augment: randaugment_t
@@ -55,6 +51,9 @@ training:
   ema_enabled: true
   ema_decay: 0.9999
   num_workers: 4
+  class_balance_sampler: sqrt_inverse
+  class_balance_loss: cb
+  class_balance_beta: 0.999
   log_interval_steps: 100
   early_stopping_enabled: true
   early_stopping_patience: 15

@@ -1,14 +1,11 @@
 # @package _global_
-# Experiment 8a — ViT-B + Class Boosting + Class Balancing, mean-pool classifier.
+# roussette — ViT-B from scratch, no SSL, Class Balancing only.
 #
-# Assigned to: whoever finishes 6a/7a first
-# Dependency: run after 1a/2a results are in; set init_from if 2a > 1a.
+# Assigned to: Romain
 #
 # Run:
 #   PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
-#       experiment=track_a_videomae_8a
-#   # With SSL encoder (if 2a wins):
-#       experiment=track_a_videomae_8a model.init_from=<path>/videomae_encoder.pt
+#       experiment=track_a_vit_roussette
 defaults:
   - override /model: video_mae_vit
   - override /augment: randaugment_t
@@ -34,8 +31,6 @@ augment:
 dataset:
   num_frames: 4
   use_official_val: true
-  class_boosting:
-    enabled: true
 
 training:
   batch_size: 16

@@ -11,15 +11,16 @@
 
 ## Experiment matrix (MP only)
 
-| # | Name | Who | Description | SSL pre-train | Class Boost | Class Balance | Config |
-|---|------|-----|-------------|--------------|-------------|---------------|--------|
-| 1a | **truite** | Romain | No-SSL ViT-B baseline | — | — | — | `track_a_videomae_1a` |
-| 2a | — | Thomas | VideoMAE → fine-tune | VideoMAE (75% tube mask) | — | — | `track_a_videomae_2a` |
-| 6a | **rouget** | Romain | ViT + Class Boosting | — | ✓ | — | `track_a_videomae_6a` |
-| 7a | **roussette** | Romain | ViT + Class Balancing | — | — | ✓ | `track_a_videomae_7a` |
-| 8a | **raie** | Romain | ViT + Boosting + Balancing | — | ✓ | ✓ | `track_a_videomae_8a` |
+| # | Name | Who | Description | Config |
+|---|------|-----|-------------|--------|
+| 1a | **truite** | Romain | No-SSL ViT-B, no class tricks | `track_a_vit_truite` |
+| 6a | **rouget** | Romain | No-SSL ViT-B + Class Boosting | `track_a_vit_rouget` |
+| 7a | **roussette** | Romain | No-SSL ViT-B + Class Balancing | `track_a_vit_roussette` |
+| 8a | **raie** | Romain | No-SSL ViT-B + Class Boosting + Class Balancing | `track_a_vit_raie` |
+| 2a | — | Thomas | VideoMAE SSL pre-train → ViT-B fine-tune (75% tube mask) | `track_a_videomae_finetune` |
 
-**Romain** runs 1a/6a/7a/8a in parallel (no SSL, independent). **Thomas** runs the VideoMAE pre-train then 2a.
+**Romain** runs truite/rouget/roussette/raie in parallel on 4 machines — all from scratch, no SSL.  
+**Thomas** runs the VideoMAE pre-train then 2a fine-tune (sequential).
 
 ---
 
@@ -33,28 +34,28 @@ PYTHONPATH=src uv run python -m smth2smth.pipelines.pretrain_videomae \
 
 ### Romain — run all 4 in parallel on separate machines
 
-**truite / 1a**
+**truite**
 ```bash
 PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
-    experiment=track_a_videomae_1a
+    experiment=track_a_vit_truite
 ```
 
-**rouget / 6a**
+**rouget**
 ```bash
 PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
-    experiment=track_a_videomae_6a
+    experiment=track_a_vit_rouget
 ```
 
-**roussette / 7a**
+**roussette**
 ```bash
 PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
-    experiment=track_a_videomae_7a
+    experiment=track_a_vit_roussette
 ```
 
-**raie / 8a**
+**raie**
 ```bash
 PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
-    experiment=track_a_videomae_8a
+    experiment=track_a_vit_raie
 ```
 
 ### Thomas — pre-train then fine-tune
@@ -65,10 +66,10 @@ PYTHONPATH=src uv run python -m smth2smth.pipelines.pretrain_videomae \
     experiment=track_a_videomae_pretrain
 ```
 
-**2a (after pre-training finishes)**
+**Fine-tune (after pre-training finishes)**
 ```bash
 PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
-    experiment=track_a_videomae_2a \
+    experiment=track_a_videomae_finetune \
     model.init_from=<path/to/videomae_encoder.pt>
 ```
 

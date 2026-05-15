@@ -1,16 +1,11 @@
 # @package _global_
-# Experiment 2a — VideoMAE SSL pre-train → ViT-B fine-tune, mean-pool classifier.
+# truite — ViT-B from scratch, no SSL, no class tricks.
 #
-# Assigned to: Thomas
+# Assigned to: Romain
 #
-# Step 1 — pre-train (if not already done):
-#   PYTHONPATH=src uv run python -m smth2smth.pipelines.pretrain_videomae \
-#       experiment=track_a_videomae_pretrain
-#
-# Step 2 — fine-tune:
+# Run:
 #   PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
-#       experiment=track_a_videomae_2a \
-#       model.init_from=<path/to/videomae_encoder.pt>
+#       experiment=track_a_vit_truite
 defaults:
   - override /model: video_mae_vit
   - override /augment: randaugment_t
@@ -21,9 +16,9 @@ model:
   drop_path_rate: 0.1
   dropout: 0.0
   head: mean
-  # Set at CLI: model.init_from=<path>/videomae_encoder.pt
   init_from: null
 
+# No flip (SSv2 direction-sensitive), RandAug-T n=4 m=7.
 augment:
   random_horizontal_flip: false
   random_crop: true
@@ -40,10 +35,9 @@ dataset:
 
 training:
   batch_size: 16
-  # Slightly fewer epochs: SSL warm-start converges faster.
-  epochs: 30
+  epochs: 40
   optimizer: adamw
-  lr: 0.0002
+  lr: 0.0005
   weight_decay: 0.05
   scheduler_cosine: true
   warmup_epochs: 5

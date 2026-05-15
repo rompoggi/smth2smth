@@ -1,11 +1,11 @@
 # @package _global_
-# Experiment 1a — ViT-B from scratch, mean-pool classifier (no SSL).
+# rouget — ViT-B from scratch, no SSL, Class Boosting only.
 #
 # Assigned to: Romain
 #
 # Run:
 #   PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
-#       experiment=track_a_videomae_1a
+#       experiment=track_a_vit_rouget
 defaults:
   - override /model: video_mae_vit
   - override /augment: randaugment_t
@@ -18,7 +18,6 @@ model:
   head: mean
   init_from: null
 
-# VideoMAE SSv2 fine-tune augmentation: no flip, RandAug m=7 n=4.
 augment:
   random_horizontal_flip: false
   random_crop: true
@@ -32,6 +31,8 @@ augment:
 dataset:
   num_frames: 4
   use_official_val: true
+  class_boosting:
+    enabled: true
 
 training:
   batch_size: 16
