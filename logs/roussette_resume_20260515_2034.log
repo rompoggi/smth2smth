@@ -1,0 +1,1260 @@
+model:
+  name: video_mae_vit
+  variant: vit_b
+  num_classes: ${num_classes}
+  tube_t: 2
+  patch_size: 16
+  mlp_ratio: 4.0
+  drop_path_rate: 0.1
+  dropout: 0.0
+  head: mean
+  head_num_heads: 4
+  init_from: null
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: ${hydra:runtime.cwd}/submissions/track_a.csv
+  num_frames: 4
+  val_ratio: 0.2
+  use_official_val: true
+  seed: ${seed}
+  max_samples: null
+  max_samples_per_class: null
+  image_size: 224
+  time_reversal_prob: 0.0
+  temporal_reversal_augment:
+    enabled: false
+    prob: 0.5
+  class_boosting:
+    enabled: false
+training:
+  batch_size: 16
+  lr: 0.0005
+  epochs: 40
+  num_workers: 4
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/best_model.pt
+  resume_from: checkpoints/track_a/best_model.last.pt
+  lora_lr: null
+  lora_lr_ratio: 0.25
+  motion_lr: null
+  motion_lr_ratio: null
+  resume_apply_cfg_lr: false
+  amp: true
+  device: cuda
+  optimizer: adamw
+  momentum: 0.9
+  nesterov: false
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 5
+  min_lr: 1.0e-06
+  label_smoothing: 0.1
+  videomix_alpha: 1.0
+  videomix_prob: 0.5
+  videomix_mode: cube_cutmix
+  early_stopping_enabled: true
+  early_stopping_patience: 15
+  early_stopping_min_delta: 0.001
+  log_interval_steps: 50
+  ema_enabled: true
+  ema_decay: 0.9999
+  eval_every_n_epochs: 1
+  eval_ema: true
+  save_last_checkpoint: true
+  last_checkpoint_path: null
+  tta: true
+  tta_flip: true
+  tta_temporal_shift: 0
+  tta_scales:
+  - 0.875
+  - 1.0
+  - 1.125
+  tta_logit_adjust: 0.0
+  class_balance_sampler: sqrt_inverse
+  class_balance_loss: cb
+  class_balance_beta: 0.999
+augment:
+  name: randaugment_t
+  random_horizontal_flip: false
+  random_crop: true
+  crop_padding: 32
+  color_jitter: false
+  color_jitter_brightness: 0.0
+  color_jitter_contrast: 0.0
+  color_jitter_saturation: 0.0
+  color_jitter_hue: 0.0
+  sync_across_frames: true
+  randaugment:
+    enabled: true
+    'n': 4
+    m: 7.0
+    mode: temporal_plus
+    magnitude_max: 30.0
+    ops: null
+pretrain:
+  epochs: 100
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 50
+  checkpoint_path: ${hydra:runtime.cwd}/ssl_trunk.pt
+  max_frames: null
+  image_size: 224
+  local_image_size: 96
+  num_local_views: 6
+  out_dim: 4096
+  hidden_dim: 2048
+  bottleneck_dim: 256
+  n_layers: 3
+  teacher_temp: 0.04
+  student_temp: 0.1
+  center_momentum: 0.9
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
+track:
+  name: a
+  description: 'Closed-world track: train from scratch.'
+num_classes: 33
+seed: 42
+
+[cuda] cache emptied (run-start). Free: 23.15 / 23.54 GiB
+[data] use_official_val=true: train=44993 (from /Data/romain.poggi/smth2smth/data/train), val=6745 (from /Data/romain.poggi/smth2smth/data/val)
+[class-balance] sampler='sqrt_inverse'; trained classes=32, effective per-class draw equalised by sqrt_inverse.
+[class-balance] loss policy='cb', beta=0.999; min=0.610, max=3.909, never-trained classes set to 0: 1.
+[optim] trainable 86,562,849 / total 86,562,849 params (100.00%)
+[amp] mixed-precision (fp16 + GradScaler) enabled.
+[ema] enabled (decay=0.9999); will eval both live and EMA each epoch.
+Resuming from checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/best_model.last.pt
+  Resumed at epoch 4/40; best val top1 so far = 0.0485
+  Optimizer state restored from checkpoint.
+  Cosine scheduler state restored; resumed LR=0.0004
+  GradScaler state restored from checkpoint.
+  LR after resume: trainable=0.0004 (cosine will step after each train epoch).
+    [20:35:03] step 50/2813 | avg train loss 3.4722 top1 0.0537 top5 0.2000
+    [20:35:08] step 100/2813 | avg train loss 3.4729 top1 0.0406 top5 0.1963
+    [20:35:14] step 150/2813 | avg train loss 3.4748 top1 0.0375 top5 0.1900
+    [20:35:20] step 200/2813 | avg train loss 3.4756 top1 0.0353 top5 0.1837
+    [20:35:25] step 250/2813 | avg train loss 3.4760 top1 0.0360 top5 0.1837
+    [20:35:31] step 300/2813 | avg train loss 3.4762 top1 0.0375 top5 0.1865
+    [20:35:37] step 350/2813 | avg train loss 3.4767 top1 0.0382 top5 0.1879
+    [20:35:43] step 400/2813 | avg train loss 3.4756 top1 0.0392 top5 0.1938
+    [20:35:48] step 450/2813 | avg train loss 3.4745 top1 0.0404 top5 0.1999
+    [20:35:54] step 500/2813 | avg train loss 3.4737 top1 0.0400 top5 0.2030
+    [20:36:00] step 550/2813 | avg train loss 3.4736 top1 0.0408 top5 0.2048
+    [20:36:06] step 600/2813 | avg train loss 3.4728 top1 0.0416 top5 0.2070
+    [20:36:11] step 650/2813 | avg train loss 3.4724 top1 0.0419 top5 0.2068
+    [20:36:17] step 700/2813 | avg train loss 3.4725 top1 0.0417 top5 0.2070
+    [20:36:23] step 750/2813 | avg train loss 3.4721 top1 0.0422 top5 0.2060
+    [20:36:29] step 800/2813 | avg train loss 3.4721 top1 0.0420 top5 0.2051
+    [20:36:34] step 850/2813 | avg train loss 3.4721 top1 0.0425 top5 0.2054
+    [20:36:40] step 900/2813 | avg train loss 3.4723 top1 0.0429 top5 0.2044
+    [20:36:46] step 950/2813 | avg train loss 3.4728 top1 0.0426 top5 0.2028
+    [20:36:52] step 1000/2813 | avg train loss 3.4724 top1 0.0427 top5 0.2023
+    [20:36:57] step 1050/2813 | avg train loss 3.4727 top1 0.0421 top5 0.2019
+    [20:37:03] step 1100/2813 | avg train loss 3.4724 top1 0.0424 top5 0.2022
+    [20:37:09] step 1150/2813 | avg train loss 3.4723 top1 0.0424 top5 0.2023
+    [20:37:15] step 1200/2813 | avg train loss 3.4726 top1 0.0422 top5 0.2016
+    [20:37:20] step 1250/2813 | avg train loss 3.4726 top1 0.0423 top5 0.2021
+    [20:37:26] step 1300/2813 | avg train loss 3.4725 top1 0.0430 top5 0.2027
+    [20:37:32] step 1350/2813 | avg train loss 3.4725 top1 0.0432 top5 0.2032
+    [20:37:38] step 1400/2813 | avg train loss 3.4724 top1 0.0429 top5 0.2032
+    [20:37:43] step 1450/2813 | avg train loss 3.4726 top1 0.0433 top5 0.2023
+    [20:37:49] step 1500/2813 | avg train loss 3.4728 top1 0.0430 top5 0.2018
+    [20:37:55] step 1550/2813 | avg train loss 3.4735 top1 0.0429 top5 0.2012
+    [20:38:01] step 1600/2813 | avg train loss 3.4742 top1 0.0425 top5 0.2002
+    [20:38:06] step 1650/2813 | avg train loss 3.4746 top1 0.0422 top5 0.1991
+    [20:38:12] step 1700/2813 | avg train loss 3.4749 top1 0.0422 top5 0.1988
+    [20:38:18] step 1750/2813 | avg train loss 3.4754 top1 0.0420 top5 0.1980
+    [20:38:24] step 1800/2813 | avg train loss 3.4757 top1 0.0420 top5 0.1974
+    [20:38:29] step 1850/2813 | avg train loss 3.4759 top1 0.0416 top5 0.1963
+    [20:38:35] step 1900/2813 | avg train loss 3.4761 top1 0.0413 top5 0.1951
+    [20:38:41] step 1950/2813 | avg train loss 3.4763 top1 0.0413 top5 0.1943
+    [20:38:47] step 2000/2813 | avg train loss 3.4764 top1 0.0409 top5 0.1935
+    [20:38:53] step 2050/2813 | avg train loss 3.4765 top1 0.0405 top5 0.1925
+    [20:38:58] step 2100/2813 | avg train loss 3.4763 top1 0.0404 top5 0.1921
+    [20:39:04] step 2150/2813 | avg train loss 3.4765 top1 0.0403 top5 0.1917
+    [20:39:10] step 2200/2813 | avg train loss 3.4764 top1 0.0403 top5 0.1924
+    [20:39:16] step 2250/2813 | avg train loss 3.4765 top1 0.0401 top5 0.1923
+    [20:39:21] step 2300/2813 | avg train loss 3.4766 top1 0.0400 top5 0.1922
+    [20:39:27] step 2350/2813 | avg train loss 3.4766 top1 0.0398 top5 0.1915
+    [20:39:33] step 2400/2813 | avg train loss 3.4765 top1 0.0397 top5 0.1911
+    [20:39:39] step 2450/2813 | avg train loss 3.4764 top1 0.0395 top5 0.1910
+    [20:39:44] step 2500/2813 | avg train loss 3.4765 top1 0.0393 top5 0.1901
+    [20:39:50] step 2550/2813 | avg train loss 3.4765 top1 0.0394 top5 0.1908
+    [20:39:56] step 2600/2813 | avg train loss 3.4767 top1 0.0395 top5 0.1907
+    [20:40:02] step 2650/2813 | avg train loss 3.4767 top1 0.0395 top5 0.1907
+    [20:40:07] step 2700/2813 | avg train loss 3.4767 top1 0.0395 top5 0.1910
+    [20:40:13] step 2750/2813 | avg train loss 3.4768 top1 0.0395 top5 0.1912
+    [20:40:19] step 2800/2813 | avg train loss 3.4767 top1 0.0394 top5 0.1906
+    [20:40:20] step 2813/2813 | avg train loss 3.4768 top1 0.0394 top5 0.1904
+Epoch 5/40 | train loss 3.4768 top1 0.0394 | val loss 3.4672 top1 0.0350 top5 0.1904 | ema val top1 0.0308 top5 0.1886
+  No val top1 improvement (1/15); best remains 0.0485
+    [20:40:57] step 50/2813 | avg train loss 3.4866 top1 0.0200 top5 0.1663
+    [20:41:03] step 100/2813 | avg train loss 3.4822 top1 0.0312 top5 0.1700
+    [20:41:09] step 150/2813 | avg train loss 3.4813 top1 0.0338 top5 0.1708
+    [20:41:15] step 200/2813 | avg train loss 3.4795 top1 0.0338 top5 0.1709
+    [20:41:20] step 250/2813 | avg train loss 3.4787 top1 0.0348 top5 0.1757
+    [20:41:26] step 300/2813 | avg train loss 3.4795 top1 0.0346 top5 0.1765
+    [20:41:32] step 350/2813 | avg train loss 3.4793 top1 0.0352 top5 0.1743
+    [20:41:38] step 400/2813 | avg train loss 3.4785 top1 0.0352 top5 0.1730
+    [20:41:43] step 450/2813 | avg train loss 3.4781 top1 0.0336 top5 0.1715
+    [20:41:49] step 500/2813 | avg train loss 3.4776 top1 0.0318 top5 0.1729
+    [20:41:55] step 550/2813 | avg train loss 3.4774 top1 0.0326 top5 0.1740
+    [20:42:01] step 600/2813 | avg train loss 3.4764 top1 0.0323 top5 0.1728
+    [20:42:06] step 650/2813 | avg train loss 3.4758 top1 0.0328 top5 0.1733
+    [20:42:12] step 700/2813 | avg train loss 3.4763 top1 0.0331 top5 0.1739
+    [20:42:18] step 750/2813 | avg train loss 3.4761 top1 0.0335 top5 0.1755
+    [20:42:24] step 800/2813 | avg train loss 3.4761 top1 0.0334 top5 0.1764
+    [20:42:29] step 850/2813 | avg train loss 3.4758 top1 0.0333 top5 0.1787
+    [20:42:35] step 900/2813 | avg train loss 3.4758 top1 0.0328 top5 0.1781
+    [20:42:41] step 950/2813 | avg train loss 3.4756 top1 0.0334 top5 0.1790
+    [20:42:47] step 1000/2813 | avg train loss 3.4758 top1 0.0334 top5 0.1790
+    [20:42:52] step 1050/2813 | avg train loss 3.4758 top1 0.0329 top5 0.1789
+    [20:42:58] step 1100/2813 | avg train loss 3.4751 top1 0.0334 top5 0.1807
+    [20:43:04] step 1150/2813 | avg train loss 3.4753 top1 0.0335 top5 0.1809
+    [20:43:10] step 1200/2813 | avg train loss 3.4752 top1 0.0345 top5 0.1814
+    [20:43:15] step 1250/2813 | avg train loss 3.4749 top1 0.0357 top5 0.1827
+    [20:43:21] step 1300/2813 | avg train loss 3.4748 top1 0.0358 top5 0.1824
+    [20:43:27] step 1350/2813 | avg train loss 3.4748 top1 0.0362 top5 0.1830
+    [20:43:33] step 1400/2813 | avg train loss 3.4745 top1 0.0359 top5 0.1832
+    [20:43:38] step 1450/2813 | avg train loss 3.4743 top1 0.0362 top5 0.1838
+    [20:43:44] step 1500/2813 | avg train loss 3.4740 top1 0.0363 top5 0.1842
+    [20:43:50] step 1550/2813 | avg train loss 3.4739 top1 0.0368 top5 0.1844
+    [20:43:56] step 1600/2813 | avg train loss 3.4737 top1 0.0373 top5 0.1852
+    [20:44:01] step 1650/2813 | avg train loss 3.4737 top1 0.0371 top5 0.1844
+    [20:44:07] step 1700/2813 | avg train loss 3.4737 top1 0.0375 top5 0.1844
+    [20:44:13] step 1750/2813 | avg train loss 3.4739 top1 0.0375 top5 0.1845
+    [20:44:19] step 1800/2813 | avg train loss 3.4741 top1 0.0373 top5 0.1843
+    [20:44:24] step 1850/2813 | avg train loss 3.4740 top1 0.0375 top5 0.1836
+    [20:44:30] step 1900/2813 | avg train loss 3.4740 top1 0.0377 top5 0.1846
+    [20:44:36] step 1950/2813 | avg train loss 3.4739 top1 0.0377 top5 0.1843
+    [20:44:42] step 2000/2813 | avg train loss 3.4737 top1 0.0376 top5 0.1841
+    [20:44:47] step 2050/2813 | avg train loss 3.4735 top1 0.0373 top5 0.1839
+    [20:44:53] step 2100/2813 | avg train loss 3.4736 top1 0.0372 top5 0.1831
+    [20:44:59] step 2150/2813 | avg train loss 3.4736 top1 0.0368 top5 0.1825
+    [20:45:05] step 2200/2813 | avg train loss 3.4735 top1 0.0369 top5 0.1829
+    [20:45:10] step 2250/2813 | avg train loss 3.4735 top1 0.0368 top5 0.1831
+    [20:45:16] step 2300/2813 | avg train loss 3.4734 top1 0.0364 top5 0.1830
+    [20:45:22] step 2350/2813 | avg train loss 3.4735 top1 0.0363 top5 0.1826
+    [20:45:28] step 2400/2813 | avg train loss 3.4734 top1 0.0366 top5 0.1828
+    [20:45:33] step 2450/2813 | avg train loss 3.4734 top1 0.0367 top5 0.1827
+    [20:45:39] step 2500/2813 | avg train loss 3.4732 top1 0.0365 top5 0.1830
+    [20:45:45] step 2550/2813 | avg train loss 3.4731 top1 0.0368 top5 0.1837
+    [20:45:51] step 2600/2813 | avg train loss 3.4731 top1 0.0366 top5 0.1834
+    [20:45:56] step 2650/2813 | avg train loss 3.4731 top1 0.0365 top5 0.1837
+    [20:46:02] step 2700/2813 | avg train loss 3.4729 top1 0.0366 top5 0.1838
+    [20:46:08] step 2750/2813 | avg train loss 3.4729 top1 0.0367 top5 0.1837
+    [20:46:14] step 2800/2813 | avg train loss 3.4728 top1 0.0371 top5 0.1842
+    [20:46:15] step 2813/2813 | avg train loss 3.4728 top1 0.0373 top5 0.1843
+Epoch 6/40 | train loss 3.4728 top1 0.0373 | val loss 3.4586 top1 0.0464 top5 0.1875 | ema val top1 0.0440 top5 0.1806
+  No val top1 improvement (2/15); best remains 0.0485
+    [20:46:52] step 50/2813 | avg train loss 3.4633 top1 0.0413 top5 0.1975
+    [20:46:58] step 100/2813 | avg train loss 3.4648 top1 0.0494 top5 0.2112
+    [20:47:04] step 150/2813 | avg train loss 3.4639 top1 0.0471 top5 0.2021
+    [20:47:09] step 200/2813 | avg train loss 3.4644 top1 0.0462 top5 0.1972
+    [20:47:15] step 250/2813 | avg train loss 3.4656 top1 0.0460 top5 0.1923
+    [20:47:21] step 300/2813 | avg train loss 3.4659 top1 0.0456 top5 0.1915
+    [20:47:27] step 350/2813 | avg train loss 3.4676 top1 0.0434 top5 0.1868
+    [20:47:32] step 400/2813 | avg train loss 3.4679 top1 0.0456 top5 0.1875
+    [20:47:38] step 450/2813 | avg train loss 3.4670 top1 0.0436 top5 0.1904
+    [20:47:44] step 500/2813 | avg train loss 3.4672 top1 0.0406 top5 0.1899
+    [20:47:50] step 550/2813 | avg train loss 3.4682 top1 0.0393 top5 0.1883
+    [20:47:55] step 600/2813 | avg train loss 3.4685 top1 0.0401 top5 0.1917
+    [20:48:01] step 650/2813 | avg train loss 3.4680 top1 0.0407 top5 0.1942
+    [20:48:07] step 700/2813 | avg train loss 3.4676 top1 0.0425 top5 0.1963
+    [20:48:13] step 750/2813 | avg train loss 3.4676 top1 0.0420 top5 0.1965
+    [20:48:18] step 800/2813 | avg train loss 3.4678 top1 0.0425 top5 0.1981
+    [20:48:24] step 850/2813 | avg train loss 3.4675 top1 0.0421 top5 0.1987
+    [20:48:30] step 900/2813 | avg train loss 3.4678 top1 0.0419 top5 0.1974
+    [20:48:36] step 950/2813 | avg train loss 3.4675 top1 0.0426 top5 0.1997
+    [20:48:41] step 1000/2813 | avg train loss 3.4678 top1 0.0423 top5 0.1984
+    [20:48:47] step 1050/2813 | avg train loss 3.4678 top1 0.0424 top5 0.1991
+    [20:48:53] step 1100/2813 | avg train loss 3.4676 top1 0.0429 top5 0.1995
+    [20:48:59] step 1150/2813 | avg train loss 3.4680 top1 0.0422 top5 0.1977
+    [20:49:04] step 1200/2813 | avg train loss 3.4679 top1 0.0423 top5 0.1968
+    [20:49:10] step 1250/2813 | avg train loss 3.4679 top1 0.0421 top5 0.1968
+    [20:49:16] step 1300/2813 | avg train loss 3.4676 top1 0.0426 top5 0.1974
+    [20:49:22] step 1350/2813 | avg train loss 3.4678 top1 0.0424 top5 0.1970
+    [20:49:27] step 1400/2813 | avg train loss 3.4677 top1 0.0422 top5 0.1971
+    [20:49:33] step 1450/2813 | avg train loss 3.4676 top1 0.0421 top5 0.1968
+    [20:49:39] step 1500/2813 | avg train loss 3.4679 top1 0.0419 top5 0.1955
+    [20:49:45] step 1550/2813 | avg train loss 3.4676 top1 0.0424 top5 0.1950
+    [20:49:50] step 1600/2813 | avg train loss 3.4675 top1 0.0422 top5 0.1946
+    [20:49:56] step 1650/2813 | avg train loss 3.4675 top1 0.0414 top5 0.1939
+    [20:50:02] step 1700/2813 | avg train loss 3.4675 top1 0.0409 top5 0.1934
+    [20:50:08] step 1750/2813 | avg train loss 3.4674 top1 0.0410 top5 0.1936
+    [20:50:13] step 1800/2813 | avg train loss 3.4673 top1 0.0413 top5 0.1939
+    [20:50:19] step 1850/2813 | avg train loss 3.4674 top1 0.0414 top5 0.1938
+    [20:50:25] step 1900/2813 | avg train loss 3.4673 top1 0.0415 top5 0.1945
+    [20:50:31] step 1950/2813 | avg train loss 3.4675 top1 0.0410 top5 0.1941
+    [20:50:36] step 2000/2813 | avg train loss 3.4676 top1 0.0409 top5 0.1945
+    [20:50:42] step 2050/2813 | avg train loss 3.4675 top1 0.0409 top5 0.1946
+    [20:50:48] step 2100/2813 | avg train loss 3.4675 top1 0.0407 top5 0.1945
+    [20:50:54] step 2150/2813 | avg train loss 3.4675 top1 0.0406 top5 0.1946
+    [20:50:59] step 2200/2813 | avg train loss 3.4674 top1 0.0407 top5 0.1950
+    [20:51:05] step 2250/2813 | avg train loss 3.4676 top1 0.0406 top5 0.1948
+    [20:51:11] step 2300/2813 | avg train loss 3.4676 top1 0.0404 top5 0.1948
+    [20:51:17] step 2350/2813 | avg train loss 3.4676 top1 0.0403 top5 0.1952
+    [20:51:22] step 2400/2813 | avg train loss 3.4675 top1 0.0403 top5 0.1955
+    [20:51:28] step 2450/2813 | avg train loss 3.4674 top1 0.0405 top5 0.1967
+    [20:51:34] step 2500/2813 | avg train loss 3.4676 top1 0.0408 top5 0.1966
+    [20:51:40] step 2550/2813 | avg train loss 3.4674 top1 0.0412 top5 0.1974
+    [20:51:45] step 2600/2813 | avg train loss 3.4674 top1 0.0411 top5 0.1972
+    [20:51:51] step 2650/2813 | avg train loss 3.4674 top1 0.0410 top5 0.1972
+    [20:51:57] step 2700/2813 | avg train loss 3.4675 top1 0.0409 top5 0.1970
+    [20:52:03] step 2750/2813 | avg train loss 3.4674 top1 0.0409 top5 0.1967
+    [20:52:08] step 2800/2813 | avg train loss 3.4675 top1 0.0410 top5 0.1963
+    [20:52:10] step 2813/2813 | avg train loss 3.4674 top1 0.0411 top5 0.1965
+Epoch 7/40 | train loss 3.4674 top1 0.0411 | val loss 3.4630 top1 0.0431 top5 0.1910 | ema val top1 0.0463 top5 0.1852
+  No val top1 improvement (3/15); best remains 0.0485
+    [20:52:47] step 50/2813 | avg train loss 3.4574 top1 0.0500 top5 0.1938
+    [20:52:53] step 100/2813 | avg train loss 3.4644 top1 0.0450 top5 0.1844
+    [20:52:58] step 150/2813 | avg train loss 3.4656 top1 0.0400 top5 0.1842
+    [20:53:04] step 200/2813 | avg train loss 3.4668 top1 0.0397 top5 0.1819
+    [20:53:10] step 250/2813 | avg train loss 3.4675 top1 0.0377 top5 0.1817
+    [20:53:16] step 300/2813 | avg train loss 3.4673 top1 0.0383 top5 0.1819
+    [20:53:21] step 350/2813 | avg train loss 3.4648 top1 0.0400 top5 0.1854
+    [20:53:27] step 400/2813 | avg train loss 3.4654 top1 0.0411 top5 0.1911
+    [20:53:33] step 450/2813 | avg train loss 3.4656 top1 0.0415 top5 0.1936
+    [20:53:39] step 500/2813 | avg train loss 3.4660 top1 0.0406 top5 0.1931
+    [20:53:45] step 550/2813 | avg train loss 3.4669 top1 0.0405 top5 0.1925
+    [20:53:50] step 600/2813 | avg train loss 3.4672 top1 0.0416 top5 0.1946
+    [20:53:56] step 650/2813 | avg train loss 3.4672 top1 0.0417 top5 0.1967
+    [20:54:02] step 700/2813 | avg train loss 3.4676 top1 0.0418 top5 0.1961
+    [20:54:08] step 750/2813 | avg train loss 3.4674 top1 0.0425 top5 0.1955
+    [20:54:13] step 800/2813 | avg train loss 3.4668 top1 0.0430 top5 0.1944
+    [20:54:19] step 850/2813 | avg train loss 3.4672 top1 0.0427 top5 0.1925
+    [20:54:25] step 900/2813 | avg train loss 3.4671 top1 0.0428 top5 0.1922
+    [20:54:31] step 950/2813 | avg train loss 3.4675 top1 0.0426 top5 0.1917
+    [20:54:36] step 1000/2813 | avg train loss 3.4675 top1 0.0421 top5 0.1899
+    [20:54:42] step 1050/2813 | avg train loss 3.4676 top1 0.0411 top5 0.1885
+    [20:54:48] step 1100/2813 | avg train loss 3.4676 top1 0.0414 top5 0.1888
+    [20:54:54] step 1150/2813 | avg train loss 3.4677 top1 0.0417 top5 0.1893
+    [20:54:59] step 1200/2813 | avg train loss 3.4676 top1 0.0415 top5 0.1902
+    [20:55:05] step 1250/2813 | avg train loss 3.4676 top1 0.0420 top5 0.1914
+    [20:55:11] step 1300/2813 | avg train loss 3.4677 top1 0.0414 top5 0.1920
+    [20:55:17] step 1350/2813 | avg train loss 3.4675 top1 0.0421 top5 0.1942
+    [20:55:22] step 1400/2813 | avg train loss 3.4675 top1 0.0423 top5 0.1956
+    [20:55:28] step 1450/2813 | avg train loss 3.4674 top1 0.0428 top5 0.1969
+    [20:55:34] step 1500/2813 | avg train loss 3.4672 top1 0.0427 top5 0.1977
+    [20:55:40] step 1550/2813 | avg train loss 3.4674 top1 0.0427 top5 0.1980
+    [20:55:45] step 1600/2813 | avg train loss 3.4674 top1 0.0427 top5 0.1979
+    [20:55:51] step 1650/2813 | avg train loss 3.4675 top1 0.0422 top5 0.1977
+    [20:55:57] step 1700/2813 | avg train loss 3.4675 top1 0.0421 top5 0.1978
+    [20:56:03] step 1750/2813 | avg train loss 3.4676 top1 0.0420 top5 0.1973
+    [20:56:08] step 1800/2813 | avg train loss 3.4677 top1 0.0417 top5 0.1965
+    [20:56:14] step 1850/2813 | avg train loss 3.4676 top1 0.0416 top5 0.1964
+    [20:56:20] step 1900/2813 | avg train loss 3.4676 top1 0.0415 top5 0.1962
+    [20:56:26] step 1950/2813 | avg train loss 3.4677 top1 0.0418 top5 0.1961
+    [20:56:31] step 2000/2813 | avg train loss 3.4676 top1 0.0419 top5 0.1968
+    [20:56:37] step 2050/2813 | avg train loss 3.4676 top1 0.0420 top5 0.1971
+    [20:56:43] step 2100/2813 | avg train loss 3.4676 top1 0.0424 top5 0.1979
+    [20:56:49] step 2150/2813 | avg train loss 3.4676 top1 0.0424 top5 0.1980
+    [20:56:54] step 2200/2813 | avg train loss 3.4676 top1 0.0426 top5 0.1982
+    [20:57:00] step 2250/2813 | avg train loss 3.4676 top1 0.0427 top5 0.1983
+    [20:57:06] step 2300/2813 | avg train loss 3.4675 top1 0.0429 top5 0.1984
+    [20:57:12] step 2350/2813 | avg train loss 3.4675 top1 0.0428 top5 0.1980
+    [20:57:17] step 2400/2813 | avg train loss 3.4674 top1 0.0426 top5 0.1977
+    [20:57:23] step 2450/2813 | avg train loss 3.4675 top1 0.0423 top5 0.1966
+    [20:57:29] step 2500/2813 | avg train loss 3.4676 top1 0.0421 top5 0.1960
+    [20:57:35] step 2550/2813 | avg train loss 3.4676 top1 0.0423 top5 0.1963
+    [20:57:41] step 2600/2813 | avg train loss 3.4675 top1 0.0423 top5 0.1963
+    [20:57:46] step 2650/2813 | avg train loss 3.4675 top1 0.0423 top5 0.1968
+    [20:57:52] step 2700/2813 | avg train loss 3.4674 top1 0.0423 top5 0.1972
+    [20:57:58] step 2750/2813 | avg train loss 3.4674 top1 0.0423 top5 0.1976
+    [20:58:04] step 2800/2813 | avg train loss 3.4673 top1 0.0423 top5 0.1975
+    [20:58:05] step 2813/2813 | avg train loss 3.4672 top1 0.0423 top5 0.1977
+Epoch 8/40 | train loss 3.4672 top1 0.0423 | val loss 3.4579 top1 0.0385 top5 0.1858 | ema val top1 0.0523 top5 0.2141
+  Saved new best checkpoint (ema): /Data/romain.poggi/smth2smth/checkpoints/track_a/best_model.pt (val top1=0.0523)
+    [20:58:43] step 50/2813 | avg train loss 3.4615 top1 0.0338 top5 0.1750
+    [20:58:49] step 100/2813 | avg train loss 3.4630 top1 0.0344 top5 0.1913
+    [20:58:54] step 150/2813 | avg train loss 3.4678 top1 0.0312 top5 0.1762
+    [20:59:00] step 200/2813 | avg train loss 3.4686 top1 0.0284 top5 0.1750
+    [20:59:06] step 250/2813 | avg train loss 3.4686 top1 0.0328 top5 0.1815
+    [20:59:12] step 300/2813 | avg train loss 3.4673 top1 0.0335 top5 0.1856
+    [20:59:17] step 350/2813 | avg train loss 3.4662 top1 0.0334 top5 0.1884
+    [20:59:23] step 400/2813 | avg train loss 3.4660 top1 0.0341 top5 0.1883
+    [20:59:29] step 450/2813 | avg train loss 3.4668 top1 0.0346 top5 0.1897
+    [20:59:35] step 500/2813 | avg train loss 3.4673 top1 0.0338 top5 0.1861
+    [20:59:40] step 550/2813 | avg train loss 3.4672 top1 0.0326 top5 0.1848
+    [20:59:46] step 600/2813 | avg train loss 3.4669 top1 0.0328 top5 0.1857
+    [20:59:52] step 650/2813 | avg train loss 3.4669 top1 0.0335 top5 0.1883
+    [20:59:58] step 700/2813 | avg train loss 3.4676 top1 0.0337 top5 0.1886
+    [21:00:03] step 750/2813 | avg train loss 3.4670 top1 0.0350 top5 0.1913
+    [21:00:09] step 800/2813 | avg train loss 3.4668 top1 0.0363 top5 0.1925
+    [21:00:15] step 850/2813 | avg train loss 3.4662 top1 0.0370 top5 0.1938
+    [21:00:21] step 900/2813 | avg train loss 3.4657 top1 0.0367 top5 0.1938
+    [21:00:26] step 950/2813 | avg train loss 3.4663 top1 0.0361 top5 0.1928
+    [21:00:32] step 1000/2813 | avg train loss 3.4663 top1 0.0349 top5 0.1916
+    [21:00:38] step 1050/2813 | avg train loss 3.4663 top1 0.0355 top5 0.1923
+    [21:00:44] step 1100/2813 | avg train loss 3.4663 top1 0.0364 top5 0.1932
+    [21:00:49] step 1150/2813 | avg train loss 3.4660 top1 0.0377 top5 0.1949
+    [21:00:55] step 1200/2813 | avg train loss 3.4658 top1 0.0379 top5 0.1951
+    [21:01:01] step 1250/2813 | avg train loss 3.4658 top1 0.0374 top5 0.1948
+    [21:01:07] step 1300/2813 | avg train loss 3.4657 top1 0.0371 top5 0.1940
+    [21:01:12] step 1350/2813 | avg train loss 3.4658 top1 0.0369 top5 0.1939
+    [21:01:18] step 1400/2813 | avg train loss 3.4657 top1 0.0369 top5 0.1936
+    [21:01:24] step 1450/2813 | avg train loss 3.4661 top1 0.0373 top5 0.1936
+    [21:01:30] step 1500/2813 | avg train loss 3.4663 top1 0.0373 top5 0.1942
+    [21:01:35] step 1550/2813 | avg train loss 3.4662 top1 0.0372 top5 0.1937
+    [21:01:41] step 1600/2813 | avg train loss 3.4662 top1 0.0370 top5 0.1935
+    [21:01:47] step 1650/2813 | avg train loss 3.4662 top1 0.0372 top5 0.1950
+    [21:01:53] step 1700/2813 | avg train loss 3.4660 top1 0.0376 top5 0.1955
+    [21:01:58] step 1750/2813 | avg train loss 3.4658 top1 0.0381 top5 0.1966
+    [21:02:04] step 1800/2813 | avg train loss 3.4657 top1 0.0384 top5 0.1975
+    [21:02:10] step 1850/2813 | avg train loss 3.4657 top1 0.0385 top5 0.1989
+    [21:02:16] step 1900/2813 | avg train loss 3.4659 top1 0.0385 top5 0.1993
+    [21:02:21] step 1950/2813 | avg train loss 3.4658 top1 0.0384 top5 0.1998
+    [21:02:27] step 2000/2813 | avg train loss 3.4658 top1 0.0383 top5 0.2003
+    [21:02:33] step 2050/2813 | avg train loss 3.4658 top1 0.0386 top5 0.2002
+    [21:02:39] step 2100/2813 | avg train loss 3.4656 top1 0.0382 top5 0.2001
+    [21:02:44] step 2150/2813 | avg train loss 3.4656 top1 0.0383 top5 0.2003
+    [21:02:50] step 2200/2813 | avg train loss 3.4655 top1 0.0385 top5 0.2009
+    [21:02:56] step 2250/2813 | avg train loss 3.4651 top1 0.0385 top5 0.2012
+    [21:03:02] step 2300/2813 | avg train loss 3.4650 top1 0.0386 top5 0.2014
+    [21:03:07] step 2350/2813 | avg train loss 3.4650 top1 0.0388 top5 0.2018
+    [21:03:13] step 2400/2813 | avg train loss 3.4651 top1 0.0391 top5 0.2021
+    [21:03:19] step 2450/2813 | avg train loss 3.4647 top1 0.0395 top5 0.2026
+    [21:03:25] step 2500/2813 | avg train loss 3.4648 top1 0.0400 top5 0.2028
+    [21:03:30] step 2550/2813 | avg train loss 3.4648 top1 0.0401 top5 0.2027
+    [21:03:36] step 2600/2813 | avg train loss 3.4648 top1 0.0404 top5 0.2029
+    [21:03:42] step 2650/2813 | avg train loss 3.4647 top1 0.0404 top5 0.2028
+    [21:03:48] step 2700/2813 | avg train loss 3.4648 top1 0.0402 top5 0.2020
+    [21:03:53] step 2750/2813 | avg train loss 3.4650 top1 0.0404 top5 0.2022
+    [21:03:59] step 2800/2813 | avg train loss 3.4649 top1 0.0405 top5 0.2020
+    [21:04:01] step 2813/2813 | avg train loss 3.4649 top1 0.0405 top5 0.2021
+Epoch 9/40 | train loss 3.4649 top1 0.0405 | val loss 3.4621 top1 0.0411 top5 0.1861 | ema val top1 0.0455 top5 0.2165
+  No val top1 improvement (1/15); best remains 0.0523
+    [21:04:38] step 50/2813 | avg train loss 3.4603 top1 0.0688 top5 0.2162
+    [21:04:44] step 100/2813 | avg train loss 3.4592 top1 0.0656 top5 0.2294
+    [21:04:49] step 150/2813 | avg train loss 3.4606 top1 0.0612 top5 0.2246
+    [21:04:55] step 200/2813 | avg train loss 3.4627 top1 0.0553 top5 0.2150
+    [21:05:01] step 250/2813 | avg train loss 3.4626 top1 0.0522 top5 0.2117
+    [21:05:07] step 300/2813 | avg train loss 3.4614 top1 0.0515 top5 0.2150
+    [21:05:12] step 350/2813 | avg train loss 3.4615 top1 0.0495 top5 0.2112
+    [21:05:18] step 400/2813 | avg train loss 3.4614 top1 0.0497 top5 0.2116
+    [21:05:24] step 450/2813 | avg train loss 3.4619 top1 0.0481 top5 0.2076
+    [21:05:30] step 500/2813 | avg train loss 3.4621 top1 0.0471 top5 0.2069
+    [21:05:35] step 550/2813 | avg train loss 3.4626 top1 0.0452 top5 0.2049
+    [21:05:41] step 600/2813 | avg train loss 3.4634 top1 0.0443 top5 0.2023
+    [21:05:47] step 650/2813 | avg train loss 3.4639 top1 0.0437 top5 0.1989
+    [21:05:53] step 700/2813 | avg train loss 3.4639 top1 0.0419 top5 0.1974
+    [21:05:58] step 750/2813 | avg train loss 3.4641 top1 0.0413 top5 0.1973
+    [21:06:04] step 800/2813 | avg train loss 3.4643 top1 0.0414 top5 0.1977
+    [21:06:10] step 850/2813 | avg train loss 3.4643 top1 0.0410 top5 0.1981
+    [21:06:16] step 900/2813 | avg train loss 3.4641 top1 0.0412 top5 0.2002
+    [21:06:21] step 950/2813 | avg train loss 3.4642 top1 0.0410 top5 0.1994
+    [21:06:27] step 1000/2813 | avg train loss 3.4646 top1 0.0409 top5 0.1994
+    [21:06:33] step 1050/2813 | avg train loss 3.4645 top1 0.0409 top5 0.2000
+    [21:06:39] step 1100/2813 | avg train loss 3.4646 top1 0.0415 top5 0.2003
+    [21:06:44] step 1150/2813 | avg train loss 3.4648 top1 0.0418 top5 0.1999
+    [21:06:50] step 1200/2813 | avg train loss 3.4646 top1 0.0417 top5 0.2002
+    [21:06:56] step 1250/2813 | avg train loss 3.4644 top1 0.0420 top5 0.2004
+    [21:07:02] step 1300/2813 | avg train loss 3.4642 top1 0.0423 top5 0.2006
+    [21:07:07] step 1350/2813 | avg train loss 3.4644 top1 0.0420 top5 0.1999
+    [21:07:13] step 1400/2813 | avg train loss 3.4645 top1 0.0419 top5 0.1995
+    [21:07:19] step 1450/2813 | avg train loss 3.4645 top1 0.0417 top5 0.1996
+    [21:07:25] step 1500/2813 | avg train loss 3.4645 top1 0.0416 top5 0.1997
+    [21:07:30] step 1550/2813 | avg train loss 3.4644 top1 0.0416 top5 0.1994
+    [21:07:36] step 1600/2813 | avg train loss 3.4644 top1 0.0414 top5 0.1989
+    [21:07:42] step 1650/2813 | avg train loss 3.4643 top1 0.0412 top5 0.1977
+    [21:07:48] step 1700/2813 | avg train loss 3.4641 top1 0.0411 top5 0.1975
+    [21:07:53] step 1750/2813 | avg train loss 3.4640 top1 0.0411 top5 0.1978
+    [21:07:59] step 1800/2813 | avg train loss 3.4640 top1 0.0410 top5 0.1977
+    [21:08:05] step 1850/2813 | avg train loss 3.4639 top1 0.0409 top5 0.1973
+    [21:08:11] step 1900/2813 | avg train loss 3.4641 top1 0.0404 top5 0.1965
+    [21:08:16] step 1950/2813 | avg train loss 3.4642 top1 0.0405 top5 0.1971
+    [21:08:22] step 2000/2813 | avg train loss 3.4643 top1 0.0404 top5 0.1964
+    [21:08:28] step 2050/2813 | avg train loss 3.4645 top1 0.0403 top5 0.1959
+    [21:08:34] step 2100/2813 | avg train loss 3.4646 top1 0.0402 top5 0.1958
+    [21:08:39] step 2150/2813 | avg train loss 3.4646 top1 0.0397 top5 0.1952
+    [21:08:45] step 2200/2813 | avg train loss 3.4645 top1 0.0398 top5 0.1950
+    [21:08:51] step 2250/2813 | avg train loss 3.4645 top1 0.0399 top5 0.1952
+    [21:08:57] step 2300/2813 | avg train loss 3.4645 top1 0.0398 top5 0.1950
+    [21:09:02] step 2350/2813 | avg train loss 3.4646 top1 0.0397 top5 0.1948
+    [21:09:08] step 2400/2813 | avg train loss 3.4646 top1 0.0398 top5 0.1950
+    [21:09:14] step 2450/2813 | avg train loss 3.4646 top1 0.0398 top5 0.1947
+    [21:09:20] step 2500/2813 | avg train loss 3.4645 top1 0.0401 top5 0.1948
+    [21:09:25] step 2550/2813 | avg train loss 3.4646 top1 0.0401 top5 0.1949
+    [21:09:31] step 2600/2813 | avg train loss 3.4648 top1 0.0399 top5 0.1946
+    [21:09:37] step 2650/2813 | avg train loss 3.4649 top1 0.0396 top5 0.1937
+    [21:09:43] step 2700/2813 | avg train loss 3.4650 top1 0.0393 top5 0.1930
+    [21:09:48] step 2750/2813 | avg train loss 3.4650 top1 0.0391 top5 0.1927
+    [21:09:54] step 2800/2813 | avg train loss 3.4650 top1 0.0395 top5 0.1931
+    [21:09:55] step 2813/2813 | avg train loss 3.4650 top1 0.0395 top5 0.1931
+Epoch 10/40 | train loss 3.4650 top1 0.0395 | val loss 3.4558 top1 0.0492 top5 0.1932 | ema val top1 0.0344 top5 0.2237
+  No val top1 improvement (2/15); best remains 0.0523
+    [21:10:33] step 50/2813 | avg train loss 3.4694 top1 0.0437 top5 0.1950
+    [21:10:38] step 100/2813 | avg train loss 3.4702 top1 0.0450 top5 0.1938
+    [21:10:44] step 150/2813 | avg train loss 3.4682 top1 0.0479 top5 0.1954
+    [21:10:50] step 200/2813 | avg train loss 3.4678 top1 0.0488 top5 0.1953
+    [21:10:56] step 250/2813 | avg train loss 3.4672 top1 0.0465 top5 0.1918
+    [21:11:01] step 300/2813 | avg train loss 3.4671 top1 0.0450 top5 0.1888
+    [21:11:07] step 350/2813 | avg train loss 3.4662 top1 0.0450 top5 0.1911
+    [21:11:13] step 400/2813 | avg train loss 3.4659 top1 0.0433 top5 0.1934
+    [21:11:19] step 450/2813 | avg train loss 3.4652 top1 0.0432 top5 0.1938
+    [21:11:24] step 500/2813 | avg train loss 3.4653 top1 0.0420 top5 0.1933
+    [21:11:30] step 550/2813 | avg train loss 3.4654 top1 0.0411 top5 0.1926
+    [21:11:36] step 600/2813 | avg train loss 3.4655 top1 0.0393 top5 0.1910
+    [21:11:42] step 650/2813 | avg train loss 3.4658 top1 0.0392 top5 0.1914
+    [21:11:47] step 700/2813 | avg train loss 3.4658 top1 0.0396 top5 0.1925
+    [21:11:53] step 750/2813 | avg train loss 3.4654 top1 0.0408 top5 0.1957
+    [21:11:59] step 800/2813 | avg train loss 3.4654 top1 0.0413 top5 0.1972
+    [21:12:05] step 850/2813 | avg train loss 3.4655 top1 0.0413 top5 0.1980
+    [21:12:10] step 900/2813 | avg train loss 3.4651 top1 0.0417 top5 0.1994
+    [21:12:16] step 950/2813 | avg train loss 3.4652 top1 0.0413 top5 0.1995
+    [21:12:22] step 1000/2813 | avg train loss 3.4654 top1 0.0414 top5 0.2001
+    [21:12:28] step 1050/2813 | avg train loss 3.4651 top1 0.0417 top5 0.2011
+    [21:12:33] step 1100/2813 | avg train loss 3.4648 top1 0.0420 top5 0.2025
+    [21:12:39] step 1150/2813 | avg train loss 3.4646 top1 0.0413 top5 0.2020
+    [21:12:45] step 1200/2813 | avg train loss 3.4648 top1 0.0409 top5 0.2023
+    [21:12:51] step 1250/2813 | avg train loss 3.4649 top1 0.0410 top5 0.2030
+    [21:12:56] step 1300/2813 | avg train loss 3.4650 top1 0.0409 top5 0.2019
+    [21:13:02] step 1350/2813 | avg train loss 3.4651 top1 0.0407 top5 0.2015
+    [21:13:08] step 1400/2813 | avg train loss 3.4650 top1 0.0414 top5 0.2015
+    [21:13:14] step 1450/2813 | avg train loss 3.4652 top1 0.0412 top5 0.2015
+    [21:13:19] step 1500/2813 | avg train loss 3.4653 top1 0.0407 top5 0.2011
+    [21:13:25] step 1550/2813 | avg train loss 3.4653 top1 0.0411 top5 0.2017
+    [21:13:31] step 1600/2813 | avg train loss 3.4649 top1 0.0411 top5 0.2020
+    [21:13:37] step 1650/2813 | avg train loss 3.4649 top1 0.0413 top5 0.2021
+    [21:13:42] step 1700/2813 | avg train loss 3.4647 top1 0.0410 top5 0.2020
+    [21:13:48] step 1750/2813 | avg train loss 3.4649 top1 0.0410 top5 0.2016
+    [21:13:54] step 1800/2813 | avg train loss 3.4647 top1 0.0411 top5 0.2018
+    [21:14:00] step 1850/2813 | avg train loss 3.4645 top1 0.0409 top5 0.2020
+    [21:14:05] step 1900/2813 | avg train loss 3.4645 top1 0.0413 top5 0.2023
+    [21:14:11] step 1950/2813 | avg train loss 3.4645 top1 0.0414 top5 0.2023
+    [21:14:17] step 2000/2813 | avg train loss 3.4644 top1 0.0416 top5 0.2029
+    [21:14:23] step 2050/2813 | avg train loss 3.4645 top1 0.0417 top5 0.2030
+    [21:14:28] step 2100/2813 | avg train loss 3.4643 top1 0.0418 top5 0.2027
+    [21:14:34] step 2150/2813 | avg train loss 3.4642 top1 0.0417 top5 0.2026
+    [21:14:40] step 2200/2813 | avg train loss 3.4645 top1 0.0418 top5 0.2018
+    [21:14:46] step 2250/2813 | avg train loss 3.4644 top1 0.0420 top5 0.2022
+    [21:14:51] step 2300/2813 | avg train loss 3.4643 top1 0.0418 top5 0.2029
+    [21:14:57] step 2350/2813 | avg train loss 3.4644 top1 0.0419 top5 0.2029
+    [21:15:03] step 2400/2813 | avg train loss 3.4644 top1 0.0418 top5 0.2024
+    [21:15:09] step 2450/2813 | avg train loss 3.4645 top1 0.0416 top5 0.2022
+    [21:15:14] step 2500/2813 | avg train loss 3.4645 top1 0.0418 top5 0.2022
+    [21:15:20] step 2550/2813 | avg train loss 3.4647 top1 0.0417 top5 0.2017
+    [21:15:26] step 2600/2813 | avg train loss 3.4646 top1 0.0417 top5 0.2017
+    [21:15:32] step 2650/2813 | avg train loss 3.4646 top1 0.0412 top5 0.2009
+    [21:15:37] step 2700/2813 | avg train loss 3.4647 top1 0.0415 top5 0.2014
+    [21:15:43] step 2750/2813 | avg train loss 3.4647 top1 0.0414 top5 0.2013
+    [21:15:49] step 2800/2813 | avg train loss 3.4647 top1 0.0412 top5 0.2011
+    [21:15:50] step 2813/2813 | avg train loss 3.4646 top1 0.0412 top5 0.2011
+Epoch 11/40 | train loss 3.4646 top1 0.0412 | val loss 3.4479 top1 0.0381 top5 0.2111 | ema val top1 0.0421 top5 0.2208
+  No val top1 improvement (3/15); best remains 0.0523
+    [21:16:28] step 50/2813 | avg train loss 3.4661 top1 0.0450 top5 0.2013
+    [21:16:33] step 100/2813 | avg train loss 3.4680 top1 0.0350 top5 0.1900
+    [21:16:39] step 150/2813 | avg train loss 3.4684 top1 0.0396 top5 0.1929
+    [21:16:45] step 200/2813 | avg train loss 3.4694 top1 0.0366 top5 0.1853
+    [21:16:51] step 250/2813 | avg train loss 3.4652 top1 0.0357 top5 0.1860
+    [21:16:56] step 300/2813 | avg train loss 3.4650 top1 0.0362 top5 0.1873
+    [21:17:02] step 350/2813 | avg train loss 3.4654 top1 0.0350 top5 0.1871
+    [21:17:08] step 400/2813 | avg train loss 3.4650 top1 0.0355 top5 0.1850
+    [21:17:14] step 450/2813 | avg train loss 3.4645 top1 0.0368 top5 0.1888
+    [21:17:19] step 500/2813 | avg train loss 3.4647 top1 0.0385 top5 0.1898
+    [21:17:25] step 550/2813 | avg train loss 3.4651 top1 0.0392 top5 0.1898
+    [21:17:31] step 600/2813 | avg train loss 3.4646 top1 0.0404 top5 0.1901
+    [21:17:37] step 650/2813 | avg train loss 3.4642 top1 0.0411 top5 0.1909
+    [21:17:42] step 700/2813 | avg train loss 3.4639 top1 0.0426 top5 0.1918
+    [21:17:48] step 750/2813 | avg train loss 3.4634 top1 0.0423 top5 0.1919
+    [21:17:54] step 800/2813 | avg train loss 3.4634 top1 0.0426 top5 0.1922
+    [21:18:00] step 850/2813 | avg train loss 3.4634 top1 0.0426 top5 0.1917
+    [21:18:05] step 900/2813 | avg train loss 3.4638 top1 0.0423 top5 0.1891
+    [21:18:11] step 950/2813 | avg train loss 3.4635 top1 0.0416 top5 0.1891
+    [21:18:17] step 1000/2813 | avg train loss 3.4635 top1 0.0426 top5 0.1913
+    [21:18:23] step 1050/2813 | avg train loss 3.4640 top1 0.0427 top5 0.1912
+    [21:18:28] step 1100/2813 | avg train loss 3.4641 top1 0.0425 top5 0.1907
+    [21:18:34] step 1150/2813 | avg train loss 3.4642 top1 0.0427 top5 0.1903
+    [21:18:40] step 1200/2813 | avg train loss 3.4640 top1 0.0431 top5 0.1905
+    [21:18:46] step 1250/2813 | avg train loss 3.4641 top1 0.0429 top5 0.1915
+    [21:18:51] step 1300/2813 | avg train loss 3.4643 top1 0.0426 top5 0.1919
+    [21:18:57] step 1350/2813 | avg train loss 3.4642 top1 0.0425 top5 0.1928
+    [21:19:03] step 1400/2813 | avg train loss 3.4642 top1 0.0428 top5 0.1940
+    [21:19:09] step 1450/2813 | avg train loss 3.4641 top1 0.0426 top5 0.1953
+    [21:19:14] step 1500/2813 | avg train loss 3.4642 top1 0.0424 top5 0.1951
+    [21:19:20] step 1550/2813 | avg train loss 3.4645 top1 0.0422 top5 0.1940
+    [21:19:26] step 1600/2813 | avg train loss 3.4648 top1 0.0419 top5 0.1937
+    [21:19:32] step 1650/2813 | avg train loss 3.4647 top1 0.0420 top5 0.1948
+    [21:19:37] step 1700/2813 | avg train loss 3.4645 top1 0.0420 top5 0.1961
+    [21:19:43] step 1750/2813 | avg train loss 3.4644 top1 0.0419 top5 0.1959
+    [21:19:49] step 1800/2813 | avg train loss 3.4645 top1 0.0416 top5 0.1953
+    [21:19:55] step 1850/2813 | avg train loss 3.4646 top1 0.0417 top5 0.1948
+    [21:20:00] step 1900/2813 | avg train loss 3.4645 top1 0.0417 top5 0.1956
+    [21:20:06] step 1950/2813 | avg train loss 3.4644 top1 0.0418 top5 0.1955
+    [21:20:12] step 2000/2813 | avg train loss 3.4645 top1 0.0413 top5 0.1951
+    [21:20:18] step 2050/2813 | avg train loss 3.4645 top1 0.0413 top5 0.1951
+    [21:20:23] step 2100/2813 | avg train loss 3.4644 top1 0.0417 top5 0.1963
+    [21:20:29] step 2150/2813 | avg train loss 3.4643 top1 0.0420 top5 0.1969
+    [21:20:35] step 2200/2813 | avg train loss 3.4643 top1 0.0424 top5 0.1975
+    [21:20:41] step 2250/2813 | avg train loss 3.4643 top1 0.0423 top5 0.1980
+    [21:20:46] step 2300/2813 | avg train loss 3.4644 top1 0.0420 top5 0.1976
+    [21:20:52] step 2350/2813 | avg train loss 3.4644 top1 0.0420 top5 0.1978
+    [21:20:58] step 2400/2813 | avg train loss 3.4646 top1 0.0420 top5 0.1970
+    [21:21:04] step 2450/2813 | avg train loss 3.4645 top1 0.0419 top5 0.1964
+    [21:21:09] step 2500/2813 | avg train loss 3.4645 top1 0.0418 top5 0.1960
+    [21:21:15] step 2550/2813 | avg train loss 3.4644 top1 0.0418 top5 0.1964
+    [21:21:21] step 2600/2813 | avg train loss 3.4643 top1 0.0416 top5 0.1967
+    [21:21:27] step 2650/2813 | avg train loss 3.4644 top1 0.0418 top5 0.1971
+    [21:21:32] step 2700/2813 | avg train loss 3.4643 top1 0.0423 top5 0.1978
+    [21:21:38] step 2750/2813 | avg train loss 3.4643 top1 0.0425 top5 0.1984
+    [21:21:44] step 2800/2813 | avg train loss 3.4642 top1 0.0425 top5 0.1989
+    [21:21:45] step 2813/2813 | avg train loss 3.4643 top1 0.0425 top5 0.1989
+Epoch 12/40 | train loss 3.4643 top1 0.0425 | val loss 3.4457 top1 0.0501 top5 0.2243 | ema val top1 0.0424 top5 0.2182
+  No val top1 improvement (4/15); best remains 0.0523
+    [21:22:22] step 50/2813 | avg train loss 3.4715 top1 0.0437 top5 0.1775
+    [21:22:28] step 100/2813 | avg train loss 3.4668 top1 0.0413 top5 0.1944
+    [21:22:34] step 150/2813 | avg train loss 3.4672 top1 0.0367 top5 0.1883
+    [21:22:40] step 200/2813 | avg train loss 3.4635 top1 0.0400 top5 0.1988
+    [21:22:45] step 250/2813 | avg train loss 3.4641 top1 0.0418 top5 0.1990
+    [21:22:51] step 300/2813 | avg train loss 3.4640 top1 0.0413 top5 0.1940
+    [21:22:57] step 350/2813 | avg train loss 3.4645 top1 0.0404 top5 0.1938
+    [21:23:03] step 400/2813 | avg train loss 3.4647 top1 0.0391 top5 0.1948
+    [21:23:08] step 450/2813 | avg train loss 3.4648 top1 0.0401 top5 0.1943
+    [21:23:14] step 500/2813 | avg train loss 3.4646 top1 0.0408 top5 0.1968
+    [21:23:20] step 550/2813 | avg train loss 3.4644 top1 0.0406 top5 0.1967
+    [21:23:26] step 600/2813 | avg train loss 3.4637 top1 0.0399 top5 0.1988
+    [21:23:31] step 650/2813 | avg train loss 3.4630 top1 0.0395 top5 0.1993
+    [21:23:37] step 700/2813 | avg train loss 3.4627 top1 0.0387 top5 0.1997
+    [21:23:43] step 750/2813 | avg train loss 3.4631 top1 0.0372 top5 0.1976
+    [21:23:49] step 800/2813 | avg train loss 3.4633 top1 0.0359 top5 0.1970
+    [21:23:54] step 850/2813 | avg train loss 3.4636 top1 0.0352 top5 0.1952
+    [21:24:00] step 900/2813 | avg train loss 3.4635 top1 0.0347 top5 0.1947
+    [21:24:06] step 950/2813 | avg train loss 3.4638 top1 0.0350 top5 0.1947
+    [21:24:12] step 1000/2813 | avg train loss 3.4636 top1 0.0346 top5 0.1951
+    [21:24:17] step 1050/2813 | avg train loss 3.4632 top1 0.0347 top5 0.1948
+    [21:24:23] step 1100/2813 | avg train loss 3.4635 top1 0.0343 top5 0.1951
+    [21:24:29] step 1150/2813 | avg train loss 3.4633 top1 0.0343 top5 0.1955
+    [21:24:35] step 1200/2813 | avg train loss 3.4632 top1 0.0345 top5 0.1972
+    [21:24:41] step 1250/2813 | avg train loss 3.4634 top1 0.0348 top5 0.1973
+    [21:24:46] step 1300/2813 | avg train loss 3.4635 top1 0.0356 top5 0.1982
+    [21:24:52] step 1350/2813 | avg train loss 3.4634 top1 0.0358 top5 0.1989
+    [21:24:58] step 1400/2813 | avg train loss 3.4635 top1 0.0358 top5 0.1994
+    [21:25:04] step 1450/2813 | avg train loss 3.4635 top1 0.0365 top5 0.1993
+    [21:25:09] step 1500/2813 | avg train loss 3.4632 top1 0.0368 top5 0.1995
+    [21:25:15] step 1550/2813 | avg train loss 3.4632 top1 0.0370 top5 0.2000
+    [21:25:21] step 1600/2813 | avg train loss 3.4631 top1 0.0373 top5 0.2006
+    [21:25:27] step 1650/2813 | avg train loss 3.4632 top1 0.0372 top5 0.2008
+    [21:25:32] step 1700/2813 | avg train loss 3.4634 top1 0.0372 top5 0.2007
+    [21:25:38] step 1750/2813 | avg train loss 3.4634 top1 0.0371 top5 0.1998
+    [21:25:44] step 1800/2813 | avg train loss 3.4632 top1 0.0377 top5 0.2004
+    [21:25:50] step 1850/2813 | avg train loss 3.4632 top1 0.0379 top5 0.2014
+    [21:25:55] step 1900/2813 | avg train loss 3.4632 top1 0.0384 top5 0.2020
+    [21:26:01] step 1950/2813 | avg train loss 3.4634 top1 0.0386 top5 0.2020
+    [21:26:07] step 2000/2813 | avg train loss 3.4634 top1 0.0389 top5 0.2025
+    [21:26:13] step 2050/2813 | avg train loss 3.4634 top1 0.0393 top5 0.2031
+    [21:26:18] step 2100/2813 | avg train loss 3.4633 top1 0.0394 top5 0.2035
+    [21:26:24] step 2150/2813 | avg train loss 3.4634 top1 0.0398 top5 0.2039
+    [21:26:30] step 2200/2813 | avg train loss 3.4636 top1 0.0401 top5 0.2038
+    [21:26:36] step 2250/2813 | avg train loss 3.4636 top1 0.0401 top5 0.2041
+    [21:26:41] step 2300/2813 | avg train loss 3.4637 top1 0.0396 top5 0.2034
+    [21:26:47] step 2350/2813 | avg train loss 3.4638 top1 0.0394 top5 0.2033
+    [21:26:53] step 2400/2813 | avg train loss 3.4640 top1 0.0392 top5 0.2029
+    [21:26:59] step 2450/2813 | avg train loss 3.4642 top1 0.0393 top5 0.2030
+    [21:27:04] step 2500/2813 | avg train loss 3.4642 top1 0.0394 top5 0.2032
+    [21:27:10] step 2550/2813 | avg train loss 3.4642 top1 0.0394 top5 0.2033
+    [21:27:16] step 2600/2813 | avg train loss 3.4643 top1 0.0394 top5 0.2036
+    [21:27:22] step 2650/2813 | avg train loss 3.4643 top1 0.0393 top5 0.2032
+    [21:27:27] step 2700/2813 | avg train loss 3.4643 top1 0.0395 top5 0.2032
+    [21:27:33] step 2750/2813 | avg train loss 3.4644 top1 0.0395 top5 0.2031
+    [21:27:39] step 2800/2813 | avg train loss 3.4643 top1 0.0397 top5 0.2035
+    [21:27:40] step 2813/2813 | avg train loss 3.4643 top1 0.0396 top5 0.2036
+Epoch 13/40 | train loss 3.4643 top1 0.0396 | val loss 3.4488 top1 0.0408 top5 0.2249 | ema val top1 0.0451 top5 0.2099
+  No val top1 improvement (5/15); best remains 0.0523
+    [21:28:18] step 50/2813 | avg train loss 3.4639 top1 0.0638 top5 0.2000
+    [21:28:23] step 100/2813 | avg train loss 3.4668 top1 0.0550 top5 0.2062
+    [21:28:29] step 150/2813 | avg train loss 3.4670 top1 0.0504 top5 0.2042
+    [21:28:35] step 200/2813 | avg train loss 3.4661 top1 0.0475 top5 0.1991
+    [21:28:40] step 250/2813 | avg train loss 3.4661 top1 0.0465 top5 0.2005
+    [21:28:46] step 300/2813 | avg train loss 3.4650 top1 0.0465 top5 0.2033
+    [21:28:52] step 350/2813 | avg train loss 3.4647 top1 0.0441 top5 0.2005
+    [21:28:58] step 400/2813 | avg train loss 3.4640 top1 0.0436 top5 0.2006
+    [21:29:03] step 450/2813 | avg train loss 3.4637 top1 0.0411 top5 0.2000
+    [21:29:09] step 500/2813 | avg train loss 3.4638 top1 0.0411 top5 0.1984
+    [21:29:15] step 550/2813 | avg train loss 3.4634 top1 0.0426 top5 0.1986
+    [21:29:21] step 600/2813 | avg train loss 3.4639 top1 0.0418 top5 0.1976
+    [21:29:27] step 650/2813 | avg train loss 3.4631 top1 0.0418 top5 0.1988
+    [21:29:32] step 700/2813 | avg train loss 3.4632 top1 0.0421 top5 0.2007
+    [21:29:38] step 750/2813 | avg train loss 3.4628 top1 0.0418 top5 0.2002
+    [21:29:44] step 800/2813 | avg train loss 3.4629 top1 0.0412 top5 0.1997
+    [21:29:50] step 850/2813 | avg train loss 3.4634 top1 0.0417 top5 0.2004
+    [21:29:55] step 900/2813 | avg train loss 3.4634 top1 0.0421 top5 0.2006
+    [21:30:01] step 950/2813 | avg train loss 3.4638 top1 0.0428 top5 0.2005
+    [21:30:07] step 1000/2813 | avg train loss 3.4640 top1 0.0428 top5 0.2006
+    [21:30:13] step 1050/2813 | avg train loss 3.4642 top1 0.0425 top5 0.1998
+    [21:30:18] step 1100/2813 | avg train loss 3.4638 top1 0.0425 top5 0.2007
+    [21:30:24] step 1150/2813 | avg train loss 3.4635 top1 0.0424 top5 0.2009
+    [21:30:30] step 1200/2813 | avg train loss 3.4634 top1 0.0420 top5 0.2012
+    [21:30:36] step 1250/2813 | avg train loss 3.4632 top1 0.0418 top5 0.2012
+    [21:30:41] step 1300/2813 | avg train loss 3.4635 top1 0.0412 top5 0.1996
+    [21:30:47] step 1350/2813 | avg train loss 3.4635 top1 0.0407 top5 0.1994
+    [21:30:53] step 1400/2813 | avg train loss 3.4635 top1 0.0405 top5 0.2003
+    [21:30:59] step 1450/2813 | avg train loss 3.4636 top1 0.0405 top5 0.1998
+    [21:31:04] step 1500/2813 | avg train loss 3.4637 top1 0.0409 top5 0.2001
+    [21:31:10] step 1550/2813 | avg train loss 3.4638 top1 0.0411 top5 0.2004
+    [21:31:16] step 1600/2813 | avg train loss 3.4634 top1 0.0418 top5 0.2017
+    [21:31:22] step 1650/2813 | avg train loss 3.4634 top1 0.0425 top5 0.2020
+    [21:31:27] step 1700/2813 | avg train loss 3.4636 top1 0.0421 top5 0.2011
+    [21:31:33] step 1750/2813 | avg train loss 3.4635 top1 0.0418 top5 0.2007
+    [21:31:39] step 1800/2813 | avg train loss 3.4633 top1 0.0423 top5 0.2015
+    [21:31:45] step 1850/2813 | avg train loss 3.4636 top1 0.0421 top5 0.2007
+    [21:31:50] step 1900/2813 | avg train loss 3.4637 top1 0.0422 top5 0.1997
+    [21:31:56] step 1950/2813 | avg train loss 3.4638 top1 0.0423 top5 0.1996
+    [21:32:02] step 2000/2813 | avg train loss 3.4639 top1 0.0423 top5 0.1998
+    [21:32:08] step 2050/2813 | avg train loss 3.4636 top1 0.0424 top5 0.1999
+    [21:32:13] step 2100/2813 | avg train loss 3.4633 top1 0.0423 top5 0.2009
+    [21:32:19] step 2150/2813 | avg train loss 3.4634 top1 0.0422 top5 0.1999
+    [21:32:25] step 2200/2813 | avg train loss 3.4634 top1 0.0418 top5 0.1994
+    [21:32:31] step 2250/2813 | avg train loss 3.4634 top1 0.0417 top5 0.1995
+    [21:32:36] step 2300/2813 | avg train loss 3.4634 top1 0.0421 top5 0.1995
+    [21:32:42] step 2350/2813 | avg train loss 3.4634 top1 0.0418 top5 0.1990
+    [21:32:48] step 2400/2813 | avg train loss 3.4635 top1 0.0419 top5 0.1987
+    [21:32:54] step 2450/2813 | avg train loss 3.4635 top1 0.0417 top5 0.1982
+    [21:32:59] step 2500/2813 | avg train loss 3.4636 top1 0.0418 top5 0.1983
+    [21:33:05] step 2550/2813 | avg train loss 3.4635 top1 0.0418 top5 0.1983
+    [21:33:11] step 2600/2813 | avg train loss 3.4635 top1 0.0421 top5 0.1988
+    [21:33:17] step 2650/2813 | avg train loss 3.4633 top1 0.0422 top5 0.1992
+    [21:33:22] step 2700/2813 | avg train loss 3.4632 top1 0.0422 top5 0.1994
+    [21:33:28] step 2750/2813 | avg train loss 3.4633 top1 0.0421 top5 0.1990
+    [21:33:34] step 2800/2813 | avg train loss 3.4634 top1 0.0421 top5 0.1988
+    [21:33:35] step 2813/2813 | avg train loss 3.4633 top1 0.0422 top5 0.1988
+Epoch 14/40 | train loss 3.4633 top1 0.0422 | val loss 3.4525 top1 0.0436 top5 0.2006 | ema val top1 0.0451 top5 0.2083
+  No val top1 improvement (6/15); best remains 0.0523
+    [21:34:13] step 50/2813 | avg train loss 3.4611 top1 0.0625 top5 0.2062
+    [21:34:18] step 100/2813 | avg train loss 3.4596 top1 0.0488 top5 0.2000
+    [21:34:24] step 150/2813 | avg train loss 3.4612 top1 0.0446 top5 0.1975
+    [21:34:30] step 200/2813 | avg train loss 3.4606 top1 0.0434 top5 0.2006
+    [21:34:36] step 250/2813 | avg train loss 3.4601 top1 0.0460 top5 0.2013
+    [21:34:41] step 300/2813 | avg train loss 3.4610 top1 0.0471 top5 0.2069
+    [21:34:47] step 350/2813 | avg train loss 3.4612 top1 0.0504 top5 0.2087
+    [21:34:53] step 400/2813 | avg train loss 3.4610 top1 0.0506 top5 0.2094
+    [21:34:59] step 450/2813 | avg train loss 3.4618 top1 0.0492 top5 0.2086
+    [21:35:04] step 500/2813 | avg train loss 3.4614 top1 0.0485 top5 0.2087
+    [21:35:10] step 550/2813 | avg train loss 3.4623 top1 0.0473 top5 0.2060
+    [21:35:16] step 600/2813 | avg train loss 3.4623 top1 0.0466 top5 0.2053
+    [21:35:22] step 650/2813 | avg train loss 3.4625 top1 0.0462 top5 0.2035
+    [21:35:27] step 700/2813 | avg train loss 3.4620 top1 0.0455 top5 0.2046
+    [21:35:33] step 750/2813 | avg train loss 3.4616 top1 0.0459 top5 0.2068
+    [21:35:39] step 800/2813 | avg train loss 3.4615 top1 0.0469 top5 0.2066
+    [21:35:45] step 850/2813 | avg train loss 3.4620 top1 0.0458 top5 0.2053
+    [21:35:50] step 900/2813 | avg train loss 3.4620 top1 0.0453 top5 0.2044
+    [21:35:56] step 950/2813 | avg train loss 3.4623 top1 0.0451 top5 0.2052
+    [21:36:02] step 1000/2813 | avg train loss 3.4626 top1 0.0450 top5 0.2047
+    [21:36:08] step 1050/2813 | avg train loss 3.4624 top1 0.0450 top5 0.2056
+    [21:36:13] step 1100/2813 | avg train loss 3.4626 top1 0.0445 top5 0.2049
+    [21:36:19] step 1150/2813 | avg train loss 3.4628 top1 0.0443 top5 0.2037
+    [21:36:25] step 1200/2813 | avg train loss 3.4628 top1 0.0439 top5 0.2027
+    [21:36:31] step 1250/2813 | avg train loss 3.4629 top1 0.0437 top5 0.2025
+    [21:36:36] step 1300/2813 | avg train loss 3.4627 top1 0.0437 top5 0.2034
+    [21:36:42] step 1350/2813 | avg train loss 3.4627 top1 0.0434 top5 0.2017
+    [21:36:48] step 1400/2813 | avg train loss 3.4624 top1 0.0443 top5 0.2029
+    [21:36:54] step 1450/2813 | avg train loss 3.4621 top1 0.0447 top5 0.2036
+    [21:36:59] step 1500/2813 | avg train loss 3.4622 top1 0.0447 top5 0.2037
+    [21:37:05] step 1550/2813 | avg train loss 3.4619 top1 0.0446 top5 0.2031
+    [21:37:11] step 1600/2813 | avg train loss 3.4617 top1 0.0448 top5 0.2029
+    [21:37:17] step 1650/2813 | avg train loss 3.4616 top1 0.0448 top5 0.2031
+    [21:37:22] step 1700/2813 | avg train loss 3.4618 top1 0.0446 top5 0.2027
+    [21:37:28] step 1750/2813 | avg train loss 3.4616 top1 0.0444 top5 0.2033
+    [21:37:34] step 1800/2813 | avg train loss 3.4618 top1 0.0439 top5 0.2026
+    [21:37:40] step 1850/2813 | avg train loss 3.4618 top1 0.0439 top5 0.2025
+    [21:37:45] step 1900/2813 | avg train loss 3.4618 top1 0.0439 top5 0.2026
+    [21:37:51] step 1950/2813 | avg train loss 3.4616 top1 0.0439 top5 0.2029
+    [21:37:57] step 2000/2813 | avg train loss 3.4616 top1 0.0439 top5 0.2032
+    [21:38:03] step 2050/2813 | avg train loss 3.4617 top1 0.0436 top5 0.2033
+    [21:38:08] step 2100/2813 | avg train loss 3.4617 top1 0.0435 top5 0.2027
+    [21:38:14] step 2150/2813 | avg train loss 3.4616 top1 0.0435 top5 0.2030
+    [21:38:20] step 2200/2813 | avg train loss 3.4615 top1 0.0435 top5 0.2030
+    [21:38:26] step 2250/2813 | avg train loss 3.4615 top1 0.0435 top5 0.2022
+    [21:38:31] step 2300/2813 | avg train loss 3.4614 top1 0.0431 top5 0.2021
+    [21:38:37] step 2350/2813 | avg train loss 3.4617 top1 0.0428 top5 0.2018
+    [21:38:43] step 2400/2813 | avg train loss 3.4615 top1 0.0431 top5 0.2022
+    [21:38:49] step 2450/2813 | avg train loss 3.4614 top1 0.0431 top5 0.2027
+    [21:38:54] step 2500/2813 | avg train loss 3.4613 top1 0.0432 top5 0.2024
+    [21:39:00] step 2550/2813 | avg train loss 3.4613 top1 0.0431 top5 0.2031
+    [21:39:06] step 2600/2813 | avg train loss 3.4613 top1 0.0431 top5 0.2033
+    [21:39:12] step 2650/2813 | avg train loss 3.4615 top1 0.0429 top5 0.2027
+    [21:39:17] step 2700/2813 | avg train loss 3.4617 top1 0.0425 top5 0.2022
+    [21:39:23] step 2750/2813 | avg train loss 3.4618 top1 0.0423 top5 0.2019
+    [21:39:29] step 2800/2813 | avg train loss 3.4618 top1 0.0424 top5 0.2025
+    [21:39:30] step 2813/2813 | avg train loss 3.4618 top1 0.0425 top5 0.2028
+Epoch 15/40 | train loss 3.4618 top1 0.0425 | val loss 3.4430 top1 0.0486 top5 0.2168 | ema val top1 0.0353 top5 0.2061
+  No val top1 improvement (7/15); best remains 0.0523
+    [21:40:08] step 50/2813 | avg train loss 3.4684 top1 0.0425 top5 0.2250
+    [21:40:13] step 100/2813 | avg train loss 3.4663 top1 0.0481 top5 0.2206
+    [21:40:19] step 150/2813 | avg train loss 3.4634 top1 0.0496 top5 0.2275
+    [21:40:25] step 200/2813 | avg train loss 3.4629 top1 0.0497 top5 0.2297
+    [21:40:30] step 250/2813 | avg train loss 3.4638 top1 0.0488 top5 0.2295
+    [21:40:36] step 300/2813 | avg train loss 3.4641 top1 0.0494 top5 0.2267
+    [21:40:42] step 350/2813 | avg train loss 3.4629 top1 0.0480 top5 0.2248
+    [21:40:48] step 400/2813 | avg train loss 3.4628 top1 0.0473 top5 0.2198
+    [21:40:53] step 450/2813 | avg train loss 3.4628 top1 0.0467 top5 0.2161
+    [21:40:59] step 500/2813 | avg train loss 3.4630 top1 0.0455 top5 0.2165
+    [21:41:05] step 550/2813 | avg train loss 3.4631 top1 0.0457 top5 0.2149
+    [21:41:11] step 600/2813 | avg train loss 3.4634 top1 0.0461 top5 0.2158
+    [21:41:16] step 650/2813 | avg train loss 3.4637 top1 0.0456 top5 0.2137
+    [21:41:22] step 700/2813 | avg train loss 3.4640 top1 0.0453 top5 0.2115
+    [21:41:28] step 750/2813 | avg train loss 3.4638 top1 0.0452 top5 0.2132
+    [21:41:34] step 800/2813 | avg train loss 3.4633 top1 0.0456 top5 0.2130
+    [21:41:40] step 850/2813 | avg train loss 3.4636 top1 0.0458 top5 0.2128
+    [21:41:45] step 900/2813 | avg train loss 3.4636 top1 0.0456 top5 0.2142
+    [21:41:51] step 950/2813 | avg train loss 3.4635 top1 0.0455 top5 0.2142
+    [21:41:57] step 1000/2813 | avg train loss 3.4637 top1 0.0459 top5 0.2144
+    [21:42:03] step 1050/2813 | avg train loss 3.4633 top1 0.0464 top5 0.2141
+    [21:42:08] step 1100/2813 | avg train loss 3.4632 top1 0.0461 top5 0.2145
+    [21:42:14] step 1150/2813 | avg train loss 3.4632 top1 0.0462 top5 0.2133
+    [21:42:20] step 1200/2813 | avg train loss 3.4631 top1 0.0457 top5 0.2117
+    [21:42:26] step 1250/2813 | avg train loss 3.4631 top1 0.0457 top5 0.2107
+    [21:42:31] step 1300/2813 | avg train loss 3.4632 top1 0.0458 top5 0.2111
+    [21:42:37] step 1350/2813 | avg train loss 3.4630 top1 0.0460 top5 0.2112
+    [21:42:43] step 1400/2813 | avg train loss 3.4630 top1 0.0458 top5 0.2104
+    [21:42:49] step 1450/2813 | avg train loss 3.4629 top1 0.0454 top5 0.2097
+    [21:42:54] step 1500/2813 | avg train loss 3.4627 top1 0.0446 top5 0.2090
+    [21:43:00] step 1550/2813 | avg train loss 3.4629 top1 0.0437 top5 0.2076
+    [21:43:06] step 1600/2813 | avg train loss 3.4627 top1 0.0441 top5 0.2079
+    [21:43:12] step 1650/2813 | avg train loss 3.4628 top1 0.0439 top5 0.2077
+    [21:43:17] step 1700/2813 | avg train loss 3.4627 top1 0.0439 top5 0.2082
+    [21:43:23] step 1750/2813 | avg train loss 3.4625 top1 0.0440 top5 0.2082
+    [21:43:29] step 1800/2813 | avg train loss 3.4625 top1 0.0443 top5 0.2081
+    [21:43:34] step 1850/2813 | avg train loss 3.4624 top1 0.0444 top5 0.2090
+    [21:43:40] step 1900/2813 | avg train loss 3.4625 top1 0.0442 top5 0.2088
+    [21:43:46] step 1950/2813 | avg train loss 3.4624 top1 0.0446 top5 0.2094
+    [21:43:52] step 2000/2813 | avg train loss 3.4625 top1 0.0444 top5 0.2094
+    [21:43:58] step 2050/2813 | avg train loss 3.4626 top1 0.0443 top5 0.2098
+    [21:44:03] step 2100/2813 | avg train loss 3.4627 top1 0.0442 top5 0.2095
+    [21:44:09] step 2150/2813 | avg train loss 3.4626 top1 0.0441 top5 0.2090
+    [21:44:15] step 2200/2813 | avg train loss 3.4626 top1 0.0438 top5 0.2089
+    [21:44:20] step 2250/2813 | avg train loss 3.4626 top1 0.0439 top5 0.2087
+    [21:44:26] step 2300/2813 | avg train loss 3.4627 top1 0.0440 top5 0.2084
+    [21:44:32] step 2350/2813 | avg train loss 3.4629 top1 0.0438 top5 0.2076
+    [21:44:38] step 2400/2813 | avg train loss 3.4629 top1 0.0437 top5 0.2073
+    [21:44:43] step 2450/2813 | avg train loss 3.4629 top1 0.0434 top5 0.2069
+    [21:44:49] step 2500/2813 | avg train loss 3.4630 top1 0.0436 top5 0.2070
+    [21:44:55] step 2550/2813 | avg train loss 3.4630 top1 0.0437 top5 0.2066
+    [21:45:01] step 2600/2813 | avg train loss 3.4629 top1 0.0440 top5 0.2071
+    [21:45:06] step 2650/2813 | avg train loss 3.4629 top1 0.0442 top5 0.2071
+    [21:45:12] step 2700/2813 | avg train loss 3.4629 top1 0.0442 top5 0.2073
+    [21:45:18] step 2750/2813 | avg train loss 3.4628 top1 0.0442 top5 0.2072
+    [21:45:24] step 2800/2813 | avg train loss 3.4628 top1 0.0440 top5 0.2072
+    [21:45:25] step 2813/2813 | avg train loss 3.4628 top1 0.0440 top5 0.2071
+Epoch 16/40 | train loss 3.4628 top1 0.0440 | val loss 3.4557 top1 0.0332 top5 0.1784 | ema val top1 0.0294 top5 0.1898
+  No val top1 improvement (8/15); best remains 0.0523
+    [21:46:02] step 50/2813 | avg train loss 3.4662 top1 0.0475 top5 0.2112
+    [21:46:08] step 100/2813 | avg train loss 3.4631 top1 0.0488 top5 0.2131
+    [21:46:14] step 150/2813 | avg train loss 3.4622 top1 0.0512 top5 0.2162
+    [21:46:20] step 200/2813 | avg train loss 3.4612 top1 0.0497 top5 0.2147
+    [21:46:25] step 250/2813 | avg train loss 3.4617 top1 0.0465 top5 0.2102
+    [21:46:31] step 300/2813 | avg train loss 3.4600 top1 0.0471 top5 0.2158
+    [21:46:37] step 350/2813 | avg train loss 3.4612 top1 0.0464 top5 0.2141
+    [21:46:43] step 400/2813 | avg train loss 3.4618 top1 0.0461 top5 0.2148
+    [21:46:48] step 450/2813 | avg train loss 3.4614 top1 0.0454 top5 0.2151
+    [21:46:54] step 500/2813 | avg train loss 3.4616 top1 0.0437 top5 0.2131
+    [21:47:00] step 550/2813 | avg train loss 3.4615 top1 0.0425 top5 0.2102
+    [21:47:06] step 600/2813 | avg train loss 3.4619 top1 0.0414 top5 0.2074
+    [21:47:11] step 650/2813 | avg train loss 3.4626 top1 0.0413 top5 0.2041
+    [21:47:17] step 700/2813 | avg train loss 3.4629 top1 0.0404 top5 0.2026
+    [21:47:23] step 750/2813 | avg train loss 3.4633 top1 0.0398 top5 0.2015
+    [21:47:29] step 800/2813 | avg train loss 3.4631 top1 0.0396 top5 0.2013
+    [21:47:34] step 850/2813 | avg train loss 3.4630 top1 0.0399 top5 0.2010
+    [21:47:40] step 900/2813 | avg train loss 3.4625 top1 0.0407 top5 0.2020
+    [21:47:46] step 950/2813 | avg train loss 3.4632 top1 0.0408 top5 0.2015
+    [21:47:52] step 1000/2813 | avg train loss 3.4630 top1 0.0406 top5 0.2011
+    [21:47:57] step 1050/2813 | avg train loss 3.4627 top1 0.0408 top5 0.2014
+    [21:48:03] step 1100/2813 | avg train loss 3.4624 top1 0.0402 top5 0.2014
+    [21:48:09] step 1150/2813 | avg train loss 3.4627 top1 0.0398 top5 0.2005
+    [21:48:15] step 1200/2813 | avg train loss 3.4628 top1 0.0392 top5 0.2000
+    [21:48:20] step 1250/2813 | avg train loss 3.4628 top1 0.0391 top5 0.1999
+    [21:48:26] step 1300/2813 | avg train loss 3.4629 top1 0.0389 top5 0.1988
+    [21:48:32] step 1350/2813 | avg train loss 3.4628 top1 0.0389 top5 0.1987
+    [21:48:38] step 1400/2813 | avg train loss 3.4627 top1 0.0389 top5 0.1985
+    [21:48:43] step 1450/2813 | avg train loss 3.4628 top1 0.0392 top5 0.1987
+    [21:48:49] step 1500/2813 | avg train loss 3.4629 top1 0.0393 top5 0.1988
+    [21:48:55] step 1550/2813 | avg train loss 3.4630 top1 0.0389 top5 0.1974
+    [21:49:01] step 1600/2813 | avg train loss 3.4630 top1 0.0387 top5 0.1970
+    [21:49:06] step 1650/2813 | avg train loss 3.4632 top1 0.0382 top5 0.1958
+    [21:49:12] step 1700/2813 | avg train loss 3.4628 top1 0.0382 top5 0.1957
+    [21:49:18] step 1750/2813 | avg train loss 3.4629 top1 0.0385 top5 0.1963
+    [21:49:24] step 1800/2813 | avg train loss 3.4629 top1 0.0383 top5 0.1959
+    [21:49:29] step 1850/2813 | avg train loss 3.4628 top1 0.0380 top5 0.1957
+    [21:49:35] step 1900/2813 | avg train loss 3.4628 top1 0.0377 top5 0.1954
+    [21:49:41] step 1950/2813 | avg train loss 3.4625 top1 0.0376 top5 0.1955
+    [21:49:47] step 2000/2813 | avg train loss 3.4625 top1 0.0376 top5 0.1957
+    [21:49:52] step 2050/2813 | avg train loss 3.4625 top1 0.0378 top5 0.1967
+    [21:49:58] step 2100/2813 | avg train loss 3.4625 top1 0.0377 top5 0.1969
+    [21:50:04] step 2150/2813 | avg train loss 3.4625 top1 0.0374 top5 0.1964
+    [21:50:10] step 2200/2813 | avg train loss 3.4627 top1 0.0376 top5 0.1967
+    [21:50:15] step 2250/2813 | avg train loss 3.4626 top1 0.0377 top5 0.1966
+    [21:50:21] step 2300/2813 | avg train loss 3.4627 top1 0.0376 top5 0.1970
+    [21:50:27] step 2350/2813 | avg train loss 3.4626 top1 0.0374 top5 0.1969
+    [21:50:33] step 2400/2813 | avg train loss 3.4625 top1 0.0372 top5 0.1968
+    [21:50:38] step 2450/2813 | avg train loss 3.4625 top1 0.0373 top5 0.1972
+    [21:50:44] step 2500/2813 | avg train loss 3.4625 top1 0.0375 top5 0.1971
+    [21:50:50] step 2550/2813 | avg train loss 3.4624 top1 0.0377 top5 0.1977
+    [21:50:56] step 2600/2813 | avg train loss 3.4624 top1 0.0379 top5 0.1981
+    [21:51:01] step 2650/2813 | avg train loss 3.4624 top1 0.0379 top5 0.1977
+    [21:51:07] step 2700/2813 | avg train loss 3.4624 top1 0.0381 top5 0.1983
+    [21:51:13] step 2750/2813 | avg train loss 3.4626 top1 0.0383 top5 0.1985
+    [21:51:19] step 2800/2813 | avg train loss 3.4626 top1 0.0383 top5 0.1983
+    [21:51:20] step 2813/2813 | avg train loss 3.4625 top1 0.0384 top5 0.1984
+Epoch 17/40 | train loss 3.4625 top1 0.0384 | val loss 3.4529 top1 0.0323 top5 0.1865 | ema val top1 0.0383 top5 0.2065
+  No val top1 improvement (9/15); best remains 0.0523
+    [21:51:57] step 50/2813 | avg train loss 3.4530 top1 0.0550 top5 0.2450
+    [21:52:03] step 100/2813 | avg train loss 3.4563 top1 0.0544 top5 0.2450
+    [21:52:09] step 150/2813 | avg train loss 3.4588 top1 0.0529 top5 0.2346
+    [21:52:14] step 200/2813 | avg train loss 3.4612 top1 0.0469 top5 0.2206
+    [21:52:20] step 250/2813 | avg train loss 3.4608 top1 0.0460 top5 0.2122
+    [21:52:26] step 300/2813 | avg train loss 3.4598 top1 0.0442 top5 0.2117
+    [21:52:32] step 350/2813 | avg train loss 3.4614 top1 0.0427 top5 0.2050
+    [21:52:37] step 400/2813 | avg train loss 3.4614 top1 0.0413 top5 0.2014
+    [21:52:43] step 450/2813 | avg train loss 3.4610 top1 0.0424 top5 0.2006
+    [21:52:49] step 500/2813 | avg train loss 3.4606 top1 0.0432 top5 0.2006
+    [21:52:55] step 550/2813 | avg train loss 3.4598 top1 0.0434 top5 0.2022
+    [21:53:00] step 600/2813 | avg train loss 3.4599 top1 0.0429 top5 0.2037
+    [21:53:06] step 650/2813 | avg train loss 3.4603 top1 0.0413 top5 0.2000
+    [21:53:12] step 700/2813 | avg train loss 3.4601 top1 0.0400 top5 0.1988
+    [21:53:18] step 750/2813 | avg train loss 3.4605 top1 0.0395 top5 0.1982
+    [21:53:23] step 800/2813 | avg train loss 3.4601 top1 0.0393 top5 0.1977
+    [21:53:29] step 850/2813 | avg train loss 3.4597 top1 0.0387 top5 0.1976
+    [21:53:35] step 900/2813 | avg train loss 3.4599 top1 0.0387 top5 0.1972
+    [21:53:41] step 950/2813 | avg train loss 3.4591 top1 0.0393 top5 0.1982
+    [21:53:46] step 1000/2813 | avg train loss 3.4595 top1 0.0391 top5 0.1967
+    [21:53:52] step 1050/2813 | avg train loss 3.4595 top1 0.0392 top5 0.1973
+    [21:53:58] step 1100/2813 | avg train loss 3.4598 top1 0.0390 top5 0.1959
+    [21:54:04] step 1150/2813 | avg train loss 3.4598 top1 0.0393 top5 0.1954
+    [21:54:09] step 1200/2813 | avg train loss 3.4599 top1 0.0390 top5 0.1955
+    [21:54:15] step 1250/2813 | avg train loss 3.4599 top1 0.0396 top5 0.1968
+    [21:54:21] step 1300/2813 | avg train loss 3.4597 top1 0.0399 top5 0.1973
+    [21:54:27] step 1350/2813 | avg train loss 3.4600 top1 0.0397 top5 0.1964
+    [21:54:32] step 1400/2813 | avg train loss 3.4599 top1 0.0399 top5 0.1970
+    [21:54:38] step 1450/2813 | avg train loss 3.4603 top1 0.0400 top5 0.1969
+    [21:54:44] step 1500/2813 | avg train loss 3.4603 top1 0.0399 top5 0.1976
+    [21:54:50] step 1550/2813 | avg train loss 3.4603 top1 0.0400 top5 0.1972
+    [21:54:55] step 1600/2813 | avg train loss 3.4600 top1 0.0396 top5 0.1961
+    [21:55:01] step 1650/2813 | avg train loss 3.4598 top1 0.0393 top5 0.1963
+    [21:55:07] step 1700/2813 | avg train loss 3.4597 top1 0.0391 top5 0.1964
+    [21:55:13] step 1750/2813 | avg train loss 3.4599 top1 0.0389 top5 0.1961
+    [21:55:18] step 1800/2813 | avg train loss 3.4600 top1 0.0387 top5 0.1955
+    [21:55:24] step 1850/2813 | avg train loss 3.4601 top1 0.0386 top5 0.1955
+    [21:55:30] step 1900/2813 | avg train loss 3.4601 top1 0.0387 top5 0.1957
+    [21:55:36] step 1950/2813 | avg train loss 3.4603 top1 0.0387 top5 0.1946
+    [21:55:41] step 2000/2813 | avg train loss 3.4603 top1 0.0385 top5 0.1942
+    [21:55:47] step 2050/2813 | avg train loss 3.4602 top1 0.0387 top5 0.1947
+    [21:55:53] step 2100/2813 | avg train loss 3.4602 top1 0.0384 top5 0.1946
+    [21:55:59] step 2150/2813 | avg train loss 3.4602 top1 0.0386 top5 0.1951
+    [21:56:04] step 2200/2813 | avg train loss 3.4600 top1 0.0387 top5 0.1953
+    [21:56:10] step 2250/2813 | avg train loss 3.4601 top1 0.0388 top5 0.1954
+    [21:56:16] step 2300/2813 | avg train loss 3.4601 top1 0.0389 top5 0.1956
+    [21:56:22] step 2350/2813 | avg train loss 3.4602 top1 0.0388 top5 0.1955
+    [21:56:27] step 2400/2813 | avg train loss 3.4601 top1 0.0388 top5 0.1960
+    [21:56:33] step 2450/2813 | avg train loss 3.4602 top1 0.0388 top5 0.1959
+    [21:56:39] step 2500/2813 | avg train loss 3.4603 top1 0.0388 top5 0.1961
+    [21:56:45] step 2550/2813 | avg train loss 3.4601 top1 0.0390 top5 0.1963
+    [21:56:50] step 2600/2813 | avg train loss 3.4600 top1 0.0389 top5 0.1961
+    [21:56:56] step 2650/2813 | avg train loss 3.4597 top1 0.0390 top5 0.1963
+    [21:57:02] step 2700/2813 | avg train loss 3.4599 top1 0.0391 top5 0.1962
+    [21:57:08] step 2750/2813 | avg train loss 3.4599 top1 0.0391 top5 0.1963
+    [21:57:13] step 2800/2813 | avg train loss 3.4599 top1 0.0392 top5 0.1963
+    [21:57:15] step 2813/2813 | avg train loss 3.4600 top1 0.0394 top5 0.1964
+Epoch 18/40 | train loss 3.4600 top1 0.0394 | val loss 3.4476 top1 0.0440 top5 0.2123 | ema val top1 0.0460 top5 0.2200
+  No val top1 improvement (10/15); best remains 0.0523
+    [21:57:52] step 50/2813 | avg train loss 3.4547 top1 0.0362 top5 0.1862
+    [21:57:58] step 100/2813 | avg train loss 3.4639 top1 0.0356 top5 0.1856
+    [21:58:03] step 150/2813 | avg train loss 3.4642 top1 0.0342 top5 0.1850
+    [21:58:09] step 200/2813 | avg train loss 3.4628 top1 0.0362 top5 0.1941
+    [21:58:15] step 250/2813 | avg train loss 3.4635 top1 0.0390 top5 0.1955
+    [21:58:21] step 300/2813 | avg train loss 3.4623 top1 0.0398 top5 0.2015
+    [21:58:26] step 350/2813 | avg train loss 3.4624 top1 0.0398 top5 0.2018
+    [21:58:32] step 400/2813 | avg train loss 3.4612 top1 0.0414 top5 0.2072
+    [21:58:38] step 450/2813 | avg train loss 3.4605 top1 0.0410 top5 0.2074
+    [21:58:44] step 500/2813 | avg train loss 3.4611 top1 0.0416 top5 0.2082
+    [21:58:49] step 550/2813 | avg train loss 3.4609 top1 0.0416 top5 0.2093
+    [21:58:55] step 600/2813 | avg train loss 3.4618 top1 0.0416 top5 0.2081
+    [21:59:01] step 650/2813 | avg train loss 3.4620 top1 0.0419 top5 0.2079
+    [21:59:07] step 700/2813 | avg train loss 3.4621 top1 0.0427 top5 0.2076
+    [21:59:12] step 750/2813 | avg train loss 3.4619 top1 0.0430 top5 0.2086
+    [21:59:18] step 800/2813 | avg train loss 3.4621 top1 0.0422 top5 0.2074
+    [21:59:24] step 850/2813 | avg train loss 3.4621 top1 0.0421 top5 0.2067
+    [21:59:30] step 900/2813 | avg train loss 3.4623 top1 0.0417 top5 0.2055
+    [21:59:35] step 950/2813 | avg train loss 3.4619 top1 0.0418 top5 0.2066
+    [21:59:41] step 1000/2813 | avg train loss 3.4618 top1 0.0413 top5 0.2056
+    [21:59:47] step 1050/2813 | avg train loss 3.4616 top1 0.0412 top5 0.2060
+    [21:59:53] step 1100/2813 | avg train loss 3.4612 top1 0.0413 top5 0.2060
+    [21:59:58] step 1150/2813 | avg train loss 3.4607 top1 0.0411 top5 0.2055
+    [22:00:04] step 1200/2813 | avg train loss 3.4607 top1 0.0413 top5 0.2054
+    [22:00:10] step 1250/2813 | avg train loss 3.4606 top1 0.0420 top5 0.2061
+    [22:00:16] step 1300/2813 | avg train loss 3.4608 top1 0.0419 top5 0.2051
+    [22:00:22] step 1350/2813 | avg train loss 3.4605 top1 0.0426 top5 0.2053
+    [22:00:27] step 1400/2813 | avg train loss 3.4606 top1 0.0429 top5 0.2052
+    [22:00:33] step 1450/2813 | avg train loss 3.4607 top1 0.0434 top5 0.2054
+    [22:00:39] step 1500/2813 | avg train loss 3.4606 top1 0.0435 top5 0.2047
+    [22:00:45] step 1550/2813 | avg train loss 3.4606 top1 0.0441 top5 0.2044
+    [22:00:50] step 1600/2813 | avg train loss 3.4605 top1 0.0443 top5 0.2043
+    [22:00:56] step 1650/2813 | avg train loss 3.4604 top1 0.0444 top5 0.2040
+    [22:01:02] step 1700/2813 | avg train loss 3.4602 top1 0.0443 top5 0.2038
+    [22:01:07] step 1750/2813 | avg train loss 3.4603 top1 0.0441 top5 0.2040
+    [22:01:13] step 1800/2813 | avg train loss 3.4601 top1 0.0438 top5 0.2039
+    [22:01:19] step 1850/2813 | avg train loss 3.4602 top1 0.0435 top5 0.2039
+    [22:01:25] step 1900/2813 | avg train loss 3.4602 top1 0.0439 top5 0.2043
+    [22:01:30] step 1950/2813 | avg train loss 3.4601 top1 0.0441 top5 0.2049
+    [22:01:36] step 2000/2813 | avg train loss 3.4601 top1 0.0442 top5 0.2052
+    [22:01:42] step 2050/2813 | avg train loss 3.4601 top1 0.0441 top5 0.2056
+    [22:01:48] step 2100/2813 | avg train loss 3.4600 top1 0.0439 top5 0.2058
+    [22:01:53] step 2150/2813 | avg train loss 3.4602 top1 0.0436 top5 0.2051
+    [22:01:59] step 2200/2813 | avg train loss 3.4601 top1 0.0433 top5 0.2047
+    [22:02:05] step 2250/2813 | avg train loss 3.4600 top1 0.0433 top5 0.2050
+    [22:02:11] step 2300/2813 | avg train loss 3.4601 top1 0.0433 top5 0.2047
+    [22:02:17] step 2350/2813 | avg train loss 3.4600 top1 0.0432 top5 0.2047
+    [22:02:22] step 2400/2813 | avg train loss 3.4602 top1 0.0432 top5 0.2047
+    [22:02:28] step 2450/2813 | avg train loss 3.4600 top1 0.0432 top5 0.2055
+    [22:02:34] step 2500/2813 | avg train loss 3.4598 top1 0.0432 top5 0.2058
+    [22:02:40] step 2550/2813 | avg train loss 3.4600 top1 0.0431 top5 0.2057
+    [22:02:45] step 2600/2813 | avg train loss 3.4601 top1 0.0432 top5 0.2058
+    [22:02:51] step 2650/2813 | avg train loss 3.4600 top1 0.0434 top5 0.2066
+    [22:02:57] step 2700/2813 | avg train loss 3.4600 top1 0.0433 top5 0.2062
+    [22:03:03] step 2750/2813 | avg train loss 3.4601 top1 0.0431 top5 0.2060
+    [22:03:08] step 2800/2813 | avg train loss 3.4603 top1 0.0429 top5 0.2056
+    [22:03:10] step 2813/2813 | avg train loss 3.4603 top1 0.0429 top5 0.2057
+Epoch 19/40 | train loss 3.4603 top1 0.0429 | val loss 3.4435 top1 0.0470 top5 0.2196 | ema val top1 0.0498 top5 0.2268
+  No val top1 improvement (11/15); best remains 0.0523
+    [22:03:47] step 50/2813 | avg train loss 3.4602 top1 0.0462 top5 0.2225
+    [22:03:53] step 100/2813 | avg train loss 3.4656 top1 0.0431 top5 0.2144
+    [22:03:58] step 150/2813 | avg train loss 3.4625 top1 0.0404 top5 0.2112
+    [22:04:04] step 200/2813 | avg train loss 3.4610 top1 0.0469 top5 0.2162
+    [22:04:10] step 250/2813 | avg train loss 3.4605 top1 0.0473 top5 0.2132
+    [22:04:16] step 300/2813 | avg train loss 3.4610 top1 0.0440 top5 0.2096
+    [22:04:21] step 350/2813 | avg train loss 3.4610 top1 0.0437 top5 0.2087
+    [22:04:27] step 400/2813 | avg train loss 3.4609 top1 0.0433 top5 0.2062
+    [22:04:33] step 450/2813 | avg train loss 3.4603 top1 0.0431 top5 0.2068
+    [22:04:39] step 500/2813 | avg train loss 3.4604 top1 0.0420 top5 0.2025
+    [22:04:45] step 550/2813 | avg train loss 3.4597 top1 0.0426 top5 0.2027
+    [22:04:50] step 600/2813 | avg train loss 3.4602 top1 0.0418 top5 0.1997
+    [22:04:56] step 650/2813 | avg train loss 3.4595 top1 0.0416 top5 0.2016
+    [22:05:02] step 700/2813 | avg train loss 3.4591 top1 0.0415 top5 0.2012
+    [22:05:08] step 750/2813 | avg train loss 3.4595 top1 0.0404 top5 0.1993
+    [22:05:13] step 800/2813 | avg train loss 3.4599 top1 0.0396 top5 0.1986
+    [22:05:19] step 850/2813 | avg train loss 3.4599 top1 0.0398 top5 0.1990
+    [22:05:25] step 900/2813 | avg train loss 3.4603 top1 0.0390 top5 0.1972
+    [22:05:31] step 950/2813 | avg train loss 3.4603 top1 0.0393 top5 0.1976
+    [22:05:36] step 1000/2813 | avg train loss 3.4603 top1 0.0385 top5 0.1974
+    [22:05:42] step 1050/2813 | avg train loss 3.4597 top1 0.0392 top5 0.1989
+    [22:05:48] step 1100/2813 | avg train loss 3.4595 top1 0.0390 top5 0.1997
+    [22:05:54] step 1150/2813 | avg train loss 3.4598 top1 0.0386 top5 0.1989
+    [22:05:59] step 1200/2813 | avg train loss 3.4596 top1 0.0387 top5 0.1993
+    [22:06:05] step 1250/2813 | avg train loss 3.4596 top1 0.0384 top5 0.1992
+    [22:06:11] step 1300/2813 | avg train loss 3.4593 top1 0.0380 top5 0.1992
+    [22:06:17] step 1350/2813 | avg train loss 3.4593 top1 0.0378 top5 0.1994
+    [22:06:22] step 1400/2813 | avg train loss 3.4593 top1 0.0380 top5 0.1994
+    [22:06:28] step 1450/2813 | avg train loss 3.4591 top1 0.0381 top5 0.1991
+    [22:06:34] step 1500/2813 | avg train loss 3.4593 top1 0.0385 top5 0.1991
+    [22:06:40] step 1550/2813 | avg train loss 3.4592 top1 0.0389 top5 0.1993
+    [22:06:45] step 1600/2813 | avg train loss 3.4593 top1 0.0393 top5 0.1999
+    [22:06:51] step 1650/2813 | avg train loss 3.4592 top1 0.0394 top5 0.1997
+    [22:06:57] step 1700/2813 | avg train loss 3.4594 top1 0.0399 top5 0.2002
+    [22:07:03] step 1750/2813 | avg train loss 3.4593 top1 0.0397 top5 0.1998
+    [22:07:08] step 1800/2813 | avg train loss 3.4591 top1 0.0399 top5 0.2006
+    [22:07:14] step 1850/2813 | avg train loss 3.4592 top1 0.0398 top5 0.2002
+    [22:07:20] step 1900/2813 | avg train loss 3.4593 top1 0.0398 top5 0.2001
+    [22:07:26] step 1950/2813 | avg train loss 3.4592 top1 0.0401 top5 0.2006
+    [22:07:31] step 2000/2813 | avg train loss 3.4593 top1 0.0399 top5 0.2006
+    [22:07:37] step 2050/2813 | avg train loss 3.4595 top1 0.0400 top5 0.2012
+    [22:07:43] step 2100/2813 | avg train loss 3.4593 top1 0.0405 top5 0.2016
+    [22:07:49] step 2150/2813 | avg train loss 3.4594 top1 0.0404 top5 0.2013
+    [22:07:54] step 2200/2813 | avg train loss 3.4593 top1 0.0404 top5 0.2010
+    [22:08:00] step 2250/2813 | avg train loss 3.4595 top1 0.0404 top5 0.2011
+    [22:08:06] step 2300/2813 | avg train loss 3.4595 top1 0.0401 top5 0.2008
+    [22:08:12] step 2350/2813 | avg train loss 3.4597 top1 0.0399 top5 0.2009
+    [22:08:17] step 2400/2813 | avg train loss 3.4598 top1 0.0401 top5 0.2014
+    [22:08:23] step 2450/2813 | avg train loss 3.4598 top1 0.0406 top5 0.2017
+    [22:08:29] step 2500/2813 | avg train loss 3.4599 top1 0.0408 top5 0.2019
+    [22:08:35] step 2550/2813 | avg train loss 3.4597 top1 0.0410 top5 0.2023
+    [22:08:40] step 2600/2813 | avg train loss 3.4598 top1 0.0411 top5 0.2020
+    [22:08:46] step 2650/2813 | avg train loss 3.4598 top1 0.0411 top5 0.2020
+    [22:08:52] step 2700/2813 | avg train loss 3.4599 top1 0.0411 top5 0.2025
+    [22:08:58] step 2750/2813 | avg train loss 3.4600 top1 0.0413 top5 0.2030
+    [22:09:03] step 2800/2813 | avg train loss 3.4600 top1 0.0414 top5 0.2035
+    [22:09:05] step 2813/2813 | avg train loss 3.4600 top1 0.0414 top5 0.2036
+Epoch 20/40 | train loss 3.4600 top1 0.0414 | val loss 3.4543 top1 0.0466 top5 0.2156 | ema val top1 0.0408 top5 0.2117
+  No val top1 improvement (12/15); best remains 0.0523
+    [22:09:42] step 50/2813 | avg train loss 3.4674 top1 0.0400 top5 0.1812
+    [22:09:48] step 100/2813 | avg train loss 3.4659 top1 0.0350 top5 0.1781
+    [22:09:53] step 150/2813 | avg train loss 3.4646 top1 0.0371 top5 0.1925
+    [22:09:59] step 200/2813 | avg train loss 3.4640 top1 0.0375 top5 0.2000
+    [22:10:05] step 250/2813 | avg train loss 3.4629 top1 0.0385 top5 0.2015
+    [22:10:11] step 300/2813 | avg train loss 3.4637 top1 0.0394 top5 0.1996
+    [22:10:16] step 350/2813 | avg train loss 3.4639 top1 0.0416 top5 0.2018
+    [22:10:22] step 400/2813 | avg train loss 3.4638 top1 0.0419 top5 0.2023
+    [22:10:28] step 450/2813 | avg train loss 3.4634 top1 0.0419 top5 0.2068
+    [22:10:34] step 500/2813 | avg train loss 3.4630 top1 0.0434 top5 0.2111
+    [22:10:39] step 550/2813 | avg train loss 3.4623 top1 0.0442 top5 0.2131
+    [22:10:45] step 600/2813 | avg train loss 3.4619 top1 0.0451 top5 0.2161
+    [22:10:51] step 650/2813 | avg train loss 3.4616 top1 0.0462 top5 0.2174
+    [22:10:57] step 700/2813 | avg train loss 3.4620 top1 0.0450 top5 0.2146
+    [22:11:02] step 750/2813 | avg train loss 3.4617 top1 0.0461 top5 0.2160
+    [22:11:08] step 800/2813 | avg train loss 3.4619 top1 0.0458 top5 0.2163
+    [22:11:14] step 850/2813 | avg train loss 3.4616 top1 0.0460 top5 0.2165
+    [22:11:20] step 900/2813 | avg train loss 3.4619 top1 0.0458 top5 0.2166
+    [22:11:25] step 950/2813 | avg train loss 3.4622 top1 0.0451 top5 0.2169
+    [22:11:31] step 1000/2813 | avg train loss 3.4623 top1 0.0450 top5 0.2166
+    [22:11:37] step 1050/2813 | avg train loss 3.4622 top1 0.0448 top5 0.2157
+    [22:11:43] step 1100/2813 | avg train loss 3.4624 top1 0.0448 top5 0.2153
+    [22:11:48] step 1150/2813 | avg train loss 3.4626 top1 0.0452 top5 0.2147
+    [22:11:54] step 1200/2813 | avg train loss 3.4627 top1 0.0449 top5 0.2144
+    [22:12:00] step 1250/2813 | avg train loss 3.4626 top1 0.0455 top5 0.2145
+    [22:12:06] step 1300/2813 | avg train loss 3.4626 top1 0.0455 top5 0.2143
+    [22:12:11] step 1350/2813 | avg train loss 3.4627 top1 0.0455 top5 0.2138
+    [22:12:17] step 1400/2813 | avg train loss 3.4627 top1 0.0459 top5 0.2137
+    [22:12:23] step 1450/2813 | avg train loss 3.4627 top1 0.0458 top5 0.2136
+    [22:12:29] step 1500/2813 | avg train loss 3.4630 top1 0.0454 top5 0.2123
+    [22:12:34] step 1550/2813 | avg train loss 3.4631 top1 0.0451 top5 0.2121
+    [22:12:40] step 1600/2813 | avg train loss 3.4631 top1 0.0449 top5 0.2120
+    [22:12:46] step 1650/2813 | avg train loss 3.4632 top1 0.0449 top5 0.2119
+    [22:12:52] step 1700/2813 | avg train loss 3.4633 top1 0.0450 top5 0.2118
+    [22:12:57] step 1750/2813 | avg train loss 3.4633 top1 0.0452 top5 0.2120
+    [22:13:03] step 1800/2813 | avg train loss 3.4632 top1 0.0450 top5 0.2119
+    [22:13:09] step 1850/2813 | avg train loss 3.4634 top1 0.0449 top5 0.2111
+    [22:13:15] step 1900/2813 | avg train loss 3.4634 top1 0.0445 top5 0.2110
+    [22:13:20] step 1950/2813 | avg train loss 3.4634 top1 0.0441 top5 0.2105
+    [22:13:26] step 2000/2813 | avg train loss 3.4636 top1 0.0436 top5 0.2103
+    [22:13:32] step 2050/2813 | avg train loss 3.4639 top1 0.0432 top5 0.2097
+    [22:13:38] step 2100/2813 | avg train loss 3.4639 top1 0.0436 top5 0.2105
+    [22:13:43] step 2150/2813 | avg train loss 3.4640 top1 0.0438 top5 0.2108
+    [22:13:49] step 2200/2813 | avg train loss 3.4637 top1 0.0442 top5 0.2119
+    [22:13:55] step 2250/2813 | avg train loss 3.4637 top1 0.0441 top5 0.2124
+    [22:14:01] step 2300/2813 | avg train loss 3.4637 top1 0.0442 top5 0.2128
+    [22:14:06] step 2350/2813 | avg train loss 3.4637 top1 0.0439 top5 0.2126
+    [22:14:12] step 2400/2813 | avg train loss 3.4638 top1 0.0441 top5 0.2124
+    [22:14:18] step 2450/2813 | avg train loss 3.4638 top1 0.0441 top5 0.2123
+    [22:14:24] step 2500/2813 | avg train loss 3.4639 top1 0.0440 top5 0.2119
+    [22:14:29] step 2550/2813 | avg train loss 3.4640 top1 0.0440 top5 0.2114
+    [22:14:35] step 2600/2813 | avg train loss 3.4640 top1 0.0442 top5 0.2114
+    [22:14:41] step 2650/2813 | avg train loss 3.4640 top1 0.0441 top5 0.2112
+    [22:14:47] step 2700/2813 | avg train loss 3.4641 top1 0.0441 top5 0.2116
+    [22:14:52] step 2750/2813 | avg train loss 3.4640 top1 0.0443 top5 0.2116
+    [22:14:58] step 2800/2813 | avg train loss 3.4639 top1 0.0443 top5 0.2119
+    [22:15:00] step 2813/2813 | avg train loss 3.4639 top1 0.0443 top5 0.2120
+Epoch 21/40 | train loss 3.4639 top1 0.0443 | val loss 3.4507 top1 0.0445 top5 0.2273 | ema val top1 0.0354 top5 0.1953
+  No val top1 improvement (13/15); best remains 0.0523
+    [22:15:37] step 50/2813 | avg train loss 3.4636 top1 0.0400 top5 0.2037
+    [22:15:42] step 100/2813 | avg train loss 3.4617 top1 0.0437 top5 0.2137
+    [22:15:48] step 150/2813 | avg train loss 3.4641 top1 0.0408 top5 0.2062
+    [22:15:54] step 200/2813 | avg train loss 3.4620 top1 0.0406 top5 0.2116
+    [22:16:00] step 250/2813 | avg train loss 3.4642 top1 0.0410 top5 0.2107
+    [22:16:06] step 300/2813 | avg train loss 3.4649 top1 0.0431 top5 0.2090
+    [22:16:11] step 350/2813 | avg train loss 3.4647 top1 0.0430 top5 0.2061
+    [22:16:17] step 400/2813 | avg train loss 3.4644 top1 0.0422 top5 0.2055
+    [22:16:23] step 450/2813 | avg train loss 3.4635 top1 0.0439 top5 0.2071
+    [22:16:29] step 500/2813 | avg train loss 3.4638 top1 0.0441 top5 0.2046
+    [22:16:34] step 550/2813 | avg train loss 3.4638 top1 0.0439 top5 0.2055
+    [22:16:40] step 600/2813 | avg train loss 3.4640 top1 0.0436 top5 0.2041
+    [22:16:46] step 650/2813 | avg train loss 3.4643 top1 0.0429 top5 0.2028
+    [22:16:52] step 700/2813 | avg train loss 3.4638 top1 0.0431 top5 0.2022
+    [22:16:57] step 750/2813 | avg train loss 3.4632 top1 0.0437 top5 0.2038
+    [22:17:03] step 800/2813 | avg train loss 3.4631 top1 0.0438 top5 0.2048
+    [22:17:09] step 850/2813 | avg train loss 3.4630 top1 0.0439 top5 0.2051
+    [22:17:15] step 900/2813 | avg train loss 3.4629 top1 0.0430 top5 0.2053
+    [22:17:20] step 950/2813 | avg train loss 3.4628 top1 0.0423 top5 0.2040
+    [22:17:26] step 1000/2813 | avg train loss 3.4627 top1 0.0417 top5 0.2040
+    [22:17:32] step 1050/2813 | avg train loss 3.4628 top1 0.0421 top5 0.2037
+    [22:17:38] step 1100/2813 | avg train loss 3.4630 top1 0.0424 top5 0.2049
+    [22:17:43] step 1150/2813 | avg train loss 3.4629 top1 0.0424 top5 0.2047
+    [22:17:49] step 1200/2813 | avg train loss 3.4632 top1 0.0422 top5 0.2046
+    [22:17:55] step 1250/2813 | avg train loss 3.4632 top1 0.0422 top5 0.2051
+    [22:18:01] step 1300/2813 | avg train loss 3.4633 top1 0.0421 top5 0.2051
+    [22:18:06] step 1350/2813 | avg train loss 3.4633 top1 0.0427 top5 0.2064
+    [22:18:12] step 1400/2813 | avg train loss 3.4632 top1 0.0432 top5 0.2071
+    [22:18:18] step 1450/2813 | avg train loss 3.4634 top1 0.0436 top5 0.2067
+    [22:18:24] step 1500/2813 | avg train loss 3.4634 top1 0.0435 top5 0.2072
+    [22:18:29] step 1550/2813 | avg train loss 3.4634 top1 0.0439 top5 0.2071
+    [22:18:35] step 1600/2813 | avg train loss 3.4634 top1 0.0439 top5 0.2076
+    [22:18:41] step 1650/2813 | avg train loss 3.4634 top1 0.0439 top5 0.2080
+    [22:18:47] step 1700/2813 | avg train loss 3.4635 top1 0.0438 top5 0.2081
+    [22:18:52] step 1750/2813 | avg train loss 3.4634 top1 0.0437 top5 0.2080
+    [22:18:58] step 1800/2813 | avg train loss 3.4634 top1 0.0440 top5 0.2083
+    [22:19:04] step 1850/2813 | avg train loss 3.4634 top1 0.0440 top5 0.2082
+    [22:19:10] step 1900/2813 | avg train loss 3.4634 top1 0.0439 top5 0.2078
+    [22:19:15] step 1950/2813 | avg train loss 3.4634 top1 0.0437 top5 0.2079
+    [22:19:21] step 2000/2813 | avg train loss 3.4632 top1 0.0437 top5 0.2082
+    [22:19:27] step 2050/2813 | avg train loss 3.4629 top1 0.0439 top5 0.2084
+    [22:19:33] step 2100/2813 | avg train loss 3.4627 top1 0.0437 top5 0.2083
+    [22:19:38] step 2150/2813 | avg train loss 3.4626 top1 0.0438 top5 0.2085
+    [22:19:44] step 2200/2813 | avg train loss 3.4626 top1 0.0440 top5 0.2081
+    [22:19:50] step 2250/2813 | avg train loss 3.4626 top1 0.0441 top5 0.2082
+    [22:19:56] step 2300/2813 | avg train loss 3.4626 top1 0.0438 top5 0.2077
+    [22:20:01] step 2350/2813 | avg train loss 3.4628 top1 0.0435 top5 0.2071
+    [22:20:07] step 2400/2813 | avg train loss 3.4629 top1 0.0434 top5 0.2072
+    [22:20:13] step 2450/2813 | avg train loss 3.4628 top1 0.0435 top5 0.2078
+    [22:20:19] step 2500/2813 | avg train loss 3.4629 top1 0.0437 top5 0.2077
+    [22:20:24] step 2550/2813 | avg train loss 3.4628 top1 0.0436 top5 0.2076
+    [22:20:30] step 2600/2813 | avg train loss 3.4627 top1 0.0435 top5 0.2077
+    [22:20:36] step 2650/2813 | avg train loss 3.4628 top1 0.0434 top5 0.2075
+    [22:20:42] step 2700/2813 | avg train loss 3.4628 top1 0.0436 top5 0.2081
+    [22:20:47] step 2750/2813 | avg train loss 3.4628 top1 0.0437 top5 0.2080
+    [22:20:53] step 2800/2813 | avg train loss 3.4628 top1 0.0438 top5 0.2079
+    [22:20:54] step 2813/2813 | avg train loss 3.4629 top1 0.0438 top5 0.2077
+Epoch 22/40 | train loss 3.4629 top1 0.0438 | val loss 3.4585 top1 0.0531 top5 0.2043 | ema val top1 0.0294 top5 0.1924
+  No val top1 improvement (14/15); best remains 0.0523
+    [22:21:32] step 50/2813 | avg train loss 3.4668 top1 0.0450 top5 0.2025
+    [22:21:37] step 100/2813 | avg train loss 3.4728 top1 0.0356 top5 0.1825
+    [22:21:43] step 150/2813 | avg train loss 3.4712 top1 0.0354 top5 0.1787
+    [22:21:49] step 200/2813 | avg train loss 3.4678 top1 0.0341 top5 0.1837
+    [22:21:55] step 250/2813 | avg train loss 3.4676 top1 0.0310 top5 0.1840
+    [22:22:00] step 300/2813 | avg train loss 3.4670 top1 0.0319 top5 0.1921
+    [22:22:06] step 350/2813 | avg train loss 3.4672 top1 0.0318 top5 0.1886
+    [22:22:12] step 400/2813 | avg train loss 3.4662 top1 0.0331 top5 0.1920
+    [22:22:18] step 450/2813 | avg train loss 3.4663 top1 0.0351 top5 0.1915
+    [22:22:23] step 500/2813 | avg train loss 3.4656 top1 0.0367 top5 0.1958
+    [22:22:29] step 550/2813 | avg train loss 3.4651 top1 0.0373 top5 0.1981
+    [22:22:35] step 600/2813 | avg train loss 3.4651 top1 0.0380 top5 0.1973
+    [22:22:41] step 650/2813 | avg train loss 3.4647 top1 0.0381 top5 0.1996
+    [22:22:46] step 700/2813 | avg train loss 3.4649 top1 0.0383 top5 0.1988
+    [22:22:52] step 750/2813 | avg train loss 3.4648 top1 0.0377 top5 0.1979
+    [22:22:58] step 800/2813 | avg train loss 3.4642 top1 0.0376 top5 0.1988
+    [22:23:04] step 850/2813 | avg train loss 3.4638 top1 0.0374 top5 0.1997
+    [22:23:09] step 900/2813 | avg train loss 3.4635 top1 0.0369 top5 0.1992
+    [22:23:15] step 950/2813 | avg train loss 3.4636 top1 0.0370 top5 0.1989
+    [22:23:21] step 1000/2813 | avg train loss 3.4636 top1 0.0374 top5 0.1993
+    [22:23:27] step 1050/2813 | avg train loss 3.4638 top1 0.0367 top5 0.1982
+    [22:23:32] step 1100/2813 | avg train loss 3.4639 top1 0.0370 top5 0.1982
+    [22:23:38] step 1150/2813 | avg train loss 3.4643 top1 0.0376 top5 0.1984
+    [22:23:44] step 1200/2813 | avg train loss 3.4642 top1 0.0382 top5 0.1987
+    [22:23:50] step 1250/2813 | avg train loss 3.4642 top1 0.0381 top5 0.1984
+    [22:23:55] step 1300/2813 | avg train loss 3.4643 top1 0.0377 top5 0.1973
+    [22:24:01] step 1350/2813 | avg train loss 3.4645 top1 0.0369 top5 0.1959
+    [22:24:07] step 1400/2813 | avg train loss 3.4645 top1 0.0367 top5 0.1958
+    [22:24:13] step 1450/2813 | avg train loss 3.4645 top1 0.0365 top5 0.1949
+    [22:24:18] step 1500/2813 | avg train loss 3.4646 top1 0.0362 top5 0.1942
+    [22:24:24] step 1550/2813 | avg train loss 3.4645 top1 0.0363 top5 0.1945
+    [22:24:30] step 1600/2813 | avg train loss 3.4643 top1 0.0368 top5 0.1955
+    [22:24:36] step 1650/2813 | avg train loss 3.4640 top1 0.0368 top5 0.1960
+    [22:24:41] step 1700/2813 | avg train loss 3.4639 top1 0.0370 top5 0.1967
+    [22:24:47] step 1750/2813 | avg train loss 3.4636 top1 0.0373 top5 0.1974
+    [22:24:53] step 1800/2813 | avg train loss 3.4635 top1 0.0373 top5 0.1971
+    [22:24:59] step 1850/2813 | avg train loss 3.4635 top1 0.0373 top5 0.1966
+    [22:25:04] step 1900/2813 | avg train loss 3.4637 top1 0.0370 top5 0.1955
+    [22:25:10] step 1950/2813 | avg train loss 3.4638 top1 0.0371 top5 0.1957
+    [22:25:16] step 2000/2813 | avg train loss 3.4638 top1 0.0374 top5 0.1965
+    [22:25:22] step 2050/2813 | avg train loss 3.4639 top1 0.0374 top5 0.1961
+    [22:25:27] step 2100/2813 | avg train loss 3.4639 top1 0.0373 top5 0.1962
+    [22:25:33] step 2150/2813 | avg train loss 3.4640 top1 0.0373 top5 0.1967
+    [22:25:39] step 2200/2813 | avg train loss 3.4641 top1 0.0376 top5 0.1970
+    [22:25:45] step 2250/2813 | avg train loss 3.4641 top1 0.0379 top5 0.1979
+    [22:25:50] step 2300/2813 | avg train loss 3.4641 top1 0.0380 top5 0.1982
+    [22:25:56] step 2350/2813 | avg train loss 3.4641 top1 0.0379 top5 0.1981
+    [22:26:02] step 2400/2813 | avg train loss 3.4640 top1 0.0377 top5 0.1979
+    [22:26:08] step 2450/2813 | avg train loss 3.4640 top1 0.0376 top5 0.1980
+    [22:26:13] step 2500/2813 | avg train loss 3.4639 top1 0.0376 top5 0.1982
+    [22:26:19] step 2550/2813 | avg train loss 3.4640 top1 0.0375 top5 0.1981
+    [22:26:25] step 2600/2813 | avg train loss 3.4640 top1 0.0375 top5 0.1984
+    [22:26:31] step 2650/2813 | avg train loss 3.4639 top1 0.0379 top5 0.1991
+    [22:26:36] step 2700/2813 | avg train loss 3.4639 top1 0.0381 top5 0.1997
+    [22:26:42] step 2750/2813 | avg train loss 3.4638 top1 0.0379 top5 0.1993
+    [22:26:48] step 2800/2813 | avg train loss 3.4637 top1 0.0382 top5 0.2000
+    [22:26:49] step 2813/2813 | avg train loss 3.4637 top1 0.0381 top5 0.2001
+Epoch 23/40 | train loss 3.4637 top1 0.0381 | val loss 3.4532 top1 0.0329 top5 0.1920 | ema val top1 0.0325 top5 0.2016
+  No val top1 improvement (15/15); best remains 0.0523
+Early stopping triggered: no improvement > 0.001000 for 15 consecutive epochs.
+[cuda] cache emptied (run-end). Free: 20.88 / 23.54 GiB
+Done. Best val top1: 0.0523. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/best_model.pt

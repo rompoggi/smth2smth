@@ -52,7 +52,7 @@ training:
   class_balance_sampler: sqrt_inverse
   class_balance_loss: cb
   class_balance_beta: 0.999
-  log_interval_steps: 100
+  log_interval_steps: 50
   early_stopping_enabled: true
   early_stopping_patience: 15
   early_stopping_min_delta: 0.001
