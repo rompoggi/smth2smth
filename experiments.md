@@ -11,15 +11,15 @@
 
 ## Experiment matrix (MP only)
 
-| # | Who | Description | SSL pre-train | Class Boost | Class Balance | Config |
-|---|-----|-------------|--------------|-------------|---------------|--------|
-| 1a | Romain | No-SSL ViT-B baseline | — | — | — | `track_a_videomae_1a` |
-| 2a | Thomas | VideoMAE → fine-tune | VideoMAE (75% tube mask) | — | — | `track_a_videomae_2a` |
-| 6a | Romain | ViT + Class Boosting | best of 1a/2a | ✓ | — | `track_a_videomae_6a` |
-| 7a | Thomas | ViT + Class Balancing | best of 1a/2a | — | ✓ | `track_a_videomae_7a` |
-| 8a | first free | ViT + Boosting + Balancing | best of 1a/2a | ✓ | ✓ | `track_a_videomae_8a` |
+| # | Name | Who | Description | SSL pre-train | Class Boost | Class Balance | Config |
+|---|------|-----|-------------|--------------|-------------|---------------|--------|
+| 1a | **truite** | Romain | No-SSL ViT-B baseline | — | — | — | `track_a_videomae_1a` |
+| 2a | — | Thomas | VideoMAE → fine-tune | VideoMAE (75% tube mask) | — | — | `track_a_videomae_2a` |
+| 6a | **rouget** | Romain | ViT + Class Boosting | — | ✓ | — | `track_a_videomae_6a` |
+| 7a | **roussette** | Romain | ViT + Class Balancing | — | — | ✓ | `track_a_videomae_7a` |
+| 8a | **raie** | Romain | ViT + Boosting + Balancing | — | ✓ | ✓ | `track_a_videomae_8a` |
 
-**Dependency**: 6a/7a/8a wait for 1a vs 2a comparison. Add `model.init_from=<ckpt>` if 2a wins.
+**Romain** runs 1a/6a/7a/8a in parallel (no SSL, independent). **Thomas** runs the VideoMAE pre-train then 2a.
 
 ---
 
@@ -31,38 +31,45 @@ PYTHONPATH=src uv run python -m smth2smth.pipelines.pretrain_videomae \
     experiment=track_a_videomae_pretrain
 ```
 
-### Romain — 1a (no dependency)
+### Romain — run all 4 in parallel on separate machines
+
+**truite / 1a**
 ```bash
 PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
     experiment=track_a_videomae_1a
 ```
 
-### Thomas — 2a (after pre-training finishes)
+**rouget / 6a**
+```bash
+PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
+    experiment=track_a_videomae_6a
+```
+
+**roussette / 7a**
+```bash
+PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
+    experiment=track_a_videomae_7a
+```
+
+**raie / 8a**
+```bash
+PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
+    experiment=track_a_videomae_8a
+```
+
+### Thomas — pre-train then fine-tune
+
+**Pre-train (start immediately, long job)**
+```bash
+PYTHONPATH=src uv run python -m smth2smth.pipelines.pretrain_videomae \
+    experiment=track_a_videomae_pretrain
+```
+
+**2a (after pre-training finishes)**
 ```bash
 PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
     experiment=track_a_videomae_2a \
     model.init_from=<path/to/videomae_encoder.pt>
-```
-
-### Romain — 6a (after 1a/2a comparison)
-```bash
-PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
-    experiment=track_a_videomae_6a
-# If 2a > 1a, add: model.init_from=<path/to/videomae_encoder.pt>
-```
-
-### Thomas — 7a (after 1a/2a comparison)
-```bash
-PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
-    experiment=track_a_videomae_7a
-# If 2a > 1a, add: model.init_from=<path/to/videomae_encoder.pt>
-```
-
-### 8a (whoever is free)
-```bash
-PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
-    experiment=track_a_videomae_8a
-# If 2a > 1a, add: model.init_from=<path/to/videomae_encoder.pt>
 ```
 
 ---
