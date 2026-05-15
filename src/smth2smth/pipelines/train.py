@@ -147,6 +147,41 @@ def _split_trainable_params_head_vs_lora(model: nn.Module) -> tuple[list[nn.Para
     return head_params, lora_params
 
 
+def _split_dual_stream_backbone_params(
+    model: nn.Module,
+) -> tuple[list[nn.Parameter], list[nn.Parameter], list[nn.Parameter]]:
+    """Partition trainable params of ``DualStreamRgbDiffTSM`` into 3 groups.
+
+    The dual-stream model fuses a ResNet-50 RGB branch (``rgb_backbone.*``)
+    and a ResNet-34 motion branch (``motion_backbone.*``); all remaining
+    trainable tensors are the fusion projection, optional attention pool,
+    dropout, and the linear classifier. We expose the three groups so the
+    caller can give the smaller motion backbone a different learning rate
+    than the (much larger) RGB backbone.
+
+    Args:
+        model: Instance of ``DualStreamRgbDiffTSM`` (or any module that
+            exposes ``rgb_backbone`` / ``motion_backbone`` submodules).
+
+    Returns:
+        Tuple ``(rgb_params, motion_params, rest_params)``; any of the
+        three lists may be empty (e.g. if a backbone is fully frozen).
+    """
+    rgb_params: list[nn.Parameter] = []
+    motion_params: list[nn.Parameter] = []
+    rest_params: list[nn.Parameter] = []
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+        if name.startswith("rgb_backbone."):
+            rgb_params.append(param)
+        elif name.startswith("motion_backbone."):
+            motion_params.append(param)
+        else:
+            rest_params.append(param)
+    return rgb_params, motion_params, rest_params
+
+
 def _free_cuda_memory(reason: str = "") -> None:
     """Release Python references and empty the CUDA caching allocator.
 
@@ -411,6 +446,25 @@ def run(cfg: DictConfig) -> Path | None:
     head_lr = float(cfg.training.lr)
     weight_decay = float(cfg.training.get("weight_decay", 0.0))
     lora_enabled = bool(cfg.model.get("lora_enabled", False)) if hasattr(cfg, "model") else False
+
+    # Dual-stream (RGB ResNet-50 + motion ResNet-34) per-backbone LR. When
+    # either ``training.motion_lr`` (absolute) or ``training.motion_lr_ratio``
+    # (relative to ``training.lr``) is set AND the model is the dual-stream
+    # builder, we construct three optimizer groups (rgb_backbone /
+    # motion_backbone / rest=fuse+head+classifier) so the smaller ResNet-34
+    # branch can train at a slower / faster rate than the ResNet-50 branch.
+    # Mutually exclusive with the LoRA two-group path; LoRA is not supported
+    # by the dual-stream builder, so this is well-defined.
+    is_dual_stream = (
+        hasattr(cfg, "model")
+        and str(cfg.model.get("name", "")) == "dual_stream_rgb_diff_tsm"
+    )
+    motion_lr_ratio_raw = cfg.training.get("motion_lr_ratio") if hasattr(cfg, "training") else None
+    motion_lr_raw = cfg.training.get("motion_lr") if hasattr(cfg, "training") else None
+    use_dual_stream_groups = is_dual_stream and (
+        motion_lr_ratio_raw is not None or motion_lr_raw is not None
+    )
+
     head_params, lora_params = _split_trainable_params_head_vs_lora(model)
     if not head_params and not lora_params:
         raise RuntimeError(
@@ -423,15 +477,70 @@ def run(cfg: DictConfig) -> Path | None:
     else:
         eff_lora_lr = head_lr * lora_lr_ratio
 
-    use_lora_group = lora_enabled and bool(head_params) and bool(lora_params)
+    use_lora_group = (
+        lora_enabled
+        and bool(head_params)
+        and bool(lora_params)
+        and not use_dual_stream_groups
+    )
     if lora_enabled and not lora_params:
         print(
             "[optim] model.lora_enabled but no trainable lora_A/lora_B tensors; "
             "using a single LR group."
         )
 
-    if use_lora_group:
-        param_groups: list[dict[str, Any]] = [
+    if use_dual_stream_groups:
+        rgb_params, motion_params, rest_params = _split_dual_stream_backbone_params(model)
+        if motion_lr_raw is not None:
+            eff_motion_lr = float(motion_lr_raw)
+            motion_lr_origin = "motion_lr (absolute)"
+        else:
+            eff_motion_lr = head_lr * float(motion_lr_ratio_raw)
+            motion_lr_origin = f"motion_lr_ratio={float(motion_lr_ratio_raw):g}"
+        param_groups: list[dict[str, Any]] = []
+        if rgb_params:
+            param_groups.append(
+                {
+                    "params": rgb_params,
+                    "lr": head_lr,
+                    "weight_decay": weight_decay,
+                    "warmup_lr_max": head_lr,
+                    "name": "rgb_backbone",
+                }
+            )
+        if motion_params:
+            param_groups.append(
+                {
+                    "params": motion_params,
+                    "lr": eff_motion_lr,
+                    "weight_decay": weight_decay,
+                    "warmup_lr_max": eff_motion_lr,
+                    "name": "motion_backbone",
+                }
+            )
+        if rest_params:
+            param_groups.append(
+                {
+                    "params": rest_params,
+                    "lr": head_lr,
+                    "weight_decay": weight_decay,
+                    "warmup_lr_max": head_lr,
+                    "name": "fuse_head",
+                }
+            )
+        if not param_groups:
+            raise RuntimeError(
+                "Dual-stream param-group split produced 0 trainable groups; "
+                "check that rgb_backbone / motion_backbone are not fully frozen."
+            )
+        print(
+            f"[optim] dual-stream three-group LR ({motion_lr_origin}): "
+            f"rgb lr={head_lr:g} (n={len(rgb_params)}), "
+            f"motion lr={eff_motion_lr:g} (n={len(motion_params)}), "
+            f"fuse_head lr={head_lr:g} (n={len(rest_params)})"
+        )
+    elif use_lora_group:
+        param_groups = [
             {
                 "params": head_params,
                 "lr": head_lr,
@@ -599,6 +708,24 @@ def run(cfg: DictConfig) -> Path | None:
                 "  [resume] optimizer not restored; ignoring saved scheduler/scaler "
                 "state (incompatible param groups or missing state). Cosine uses "
                 "fast-forward from the fresh optimizer."
+            )
+
+        resume_apply_cfg_lr = bool(cfg.training.get("resume_apply_cfg_lr", False))
+        if resume_apply_cfg_lr and opt_restored:
+            for group in optimizer.param_groups:
+                name = str(group.get("name", ""))
+                if name == "motion_backbone":
+                    peak = eff_motion_lr if use_dual_stream_groups else head_lr
+                elif name == "lora":
+                    peak = eff_lora_lr
+                else:
+                    peak = head_lr
+                group["lr"] = peak
+                group["warmup_lr_max"] = peak
+            sched_state = None
+            print(
+                "  [resume] resume_apply_cfg_lr=true: applied cfg peak LRs; "
+                "cosine scheduler will fast-forward from new bases."
             )
 
         if cosine_scheduler is not None and sched_state is not None:

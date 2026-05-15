@@ -1,0 +1,4 @@
+[wrapper] 2026-05-15T02:55:57+02:00 starting Run 1: lr=0.0001, motion_lr_ratio=0.3
+[wrapper] log:  logs/track_a_dual_stream_long_lr1_20260515_025557.log
+[wrapper] ckpt: checkpoints/track_a/dual_stream_long_class_boost_lr1_20260515_025557.pt
+[wrapper] Run 1 launched as PID 1809418 (pidfile logs/track_a_dual_stream_long_lr1_20260515_025557.pid)

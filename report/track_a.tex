@@ -750,3 +750,135 @@ the Hydra invocation.
 \S\ref{sec:phase3:initfrom} applies only to \code{AvancedResNet50TSM}
 backbone key names; training with \code{dual\_stream\_rgb\_diff\_tsm}
 skips loading so that mis-matched prefixes are not applied silently.
+
+\subsection{Per-backbone learning rates for the dual-stream model}
+\label{sec:dual-stream-per-backbone-lr}
+
+Empirically, training the RGB ResNet-50 and the motion ResNet-34 with the
+\emph{same} learning rate is suboptimal: the motion branch sees a noisier
+input signal (consecutive-frame difference \(I_t-I_{t-1}\) rather than
+raw RGB), has fewer parameters, and tends to overfit before the deeper
+RGB trunk has converged. Two new keys in \file{configs/train/default.yaml}
+expose a per-branch peak LR without changing legacy behaviour:
+
+\begin{itemize}[leftmargin=2em]
+\item \cfgkey{training.motion\_lr} --- absolute peak LR for the
+   ResNet-34 motion branch.  Overrides the ratio when both are set.
+\item \cfgkey{training.motion\_lr\_ratio} --- relative multiplier; the
+   motion branch peak LR is \(\text{lr}\times\text{ratio}\).  Default
+   \code{null} keeps the historical single-LR-group path.
+\end{itemize}
+
+When either knob is set and the model is the dual-stream builder,
+\code{pipelines/train.py} constructs three optimiser groups
+(\code{rgb\_backbone}, \code{motion\_backbone}, \code{fuse\_head}) with
+per-group \code{warmup\_lr\_max}, so linear warmup and cosine annealing
+both respect the per-branch peak LR.  The shared \cfgkey{min\_lr} is
+reused as the cosine \(\eta_{\min}\) for all groups.  This path is
+mutually exclusive with the LoRA two-group path (LoRA is not used by
+the dual-stream model, so the choice is well-defined).
+
+\paragraph{Long-run preset.}  The companion experiment YAML
+\file{configs/experiment/track\_a\_dual\_stream\_long\_class\_boost.yaml}
+extends the 30-epoch class-boost preset with: an 80-epoch budget so
+cosine has room to anneal, \code{motion\_lr\_ratio: 0.3}, aggressive
+early stopping (\code{early\_stopping\_patience: 3}, \(\Delta=0.001\)),
+and a separate checkpoint path.  The bash launcher
+\file{scripts/run\_dual\_stream\_long\_with\_fallback.sh} chains a
+slower-LR fallback: if Run~1's log contains
+\code{Early stopping triggered}, it launches a second run with
+\code{lr=0.6\,\(\times\)\,lr$_1$} (default \code{6e-5}) into a fresh
+log/checkpoint pair, otherwise it exits cleanly.
+
+\paragraph{Result.}  Run~A1 was stopped externally after epoch~16
+(31.79\,\% EMA val top-1).  Run~A1b resumed from the \texttt{*.last.pt}
+checkpoint with a 20\,\% higher RGB/fuse LR (\texttt{lr}=1.2e-4,
+\texttt{resume\_apply\_cfg\_lr}=1), trained through epoch~39, and
+triggered early stopping (patience~3).  Best EMA validation top-1:
+\(\mathbf{39.47\,\%}\) (\texttt{ckpt}: \file{.../dual\_stream\_long\_class\_boost\_lr1\_20260515\_025557.pt}).
+Flip-TTA CSV \file{.../track\_a\_dual\_stream\_long\_lr1\_resume\_20260515.csv}
+(\(6\,913\) test clips) scored \(\mathbf{37.69\,\%}\) public top-1 on
+the Kaggle leaderboard---\(\sim 1.9\)\,pp above the previous Track-A
+best (35.84\,\%, Tab.~in \S\ref{sec:context}) and within \(\sim 1.8\)\,pp
+of the official validation proxy (39.47\,\%), consistent with the
+official-val fix from Phase~1.
+
+\subsection{Track A symbol glossary (training runs)}
+\label{sec:tracka:glossary}
+
+Mirrors the Track-B convention from \S\ref{sec:phase4:glossary}; symbols
+are reused where they exist in both tracks so a reader does not have to
+juggle two conventions.  Compact assignments below are the ones used in
+the Track-A run logbook (Tab.~\ref{tab:tracka-runlog}).
+
+\begin{table}[ht]
+\centering\footnotesize
+\begin{tabular}{@{}r p{0.36\linewidth} p{0.48\linewidth}@{}}
+\toprule
+\textbf{Sym.} & \textbf{Hydra key(s)} & \textbf{Meaning} \\
+\midrule
+\texttt{expt} & \texttt{experiment=\dots} & Preset YAML under
+\file{configs/experiment/}. \\
+\texttt{T} & \texttt{dataset.num\_frames} & Frames per clip. \\
+\texttt{Sz} & \texttt{dataset.image\_size} & Square crop side. \\
+\texttt{bs} & \texttt{training.batch\_size} & Clips per optimiser step. \\
+\texttt{E} & \texttt{training.epochs} & Total epoch budget. \\
+\texttt{lr} & \texttt{training.lr} & Base / RGB-branch peak LR (AdamW). \\
+\texttt{m\_r} & \texttt{training.motion\_lr\_ratio} & Motion-branch
+peak LR as a fraction of \(\text{lr}\); \code{null} for legacy single-group. \\
+\texttt{wd} & \texttt{training.weight\_decay} & AdamW weight decay. \\
+\texttt{wu} & \texttt{training.warmup\_epochs} & Linear LR warm-up length. \\
+\texttt{cos} & \texttt{training.scheduler\_cosine} & Cosine anneal after warm-up. \\
+\texttt{ls} & \texttt{training.label\_smoothing} & Soft-label smoothing for CE. \\
+\texttt{amp} & \texttt{training.amp} & Mixed precision. \\
+\texttt{ema} & \texttt{training.ema\_enabled} & EMA of weights; decay in \texttt{ema\_decay}. \\
+\texttt{es} & \texttt{training.early\_stopping\_patience} & Patience (val top-1 evals without improvement) before early stop. \\
+\texttt{cb} & \texttt{dataset.class\_boosting.enabled} & Deterministic paired-verb row duplication. \\
+\texttt{aug} & augment group & Spatial/temporal augment preset. \\
+\texttt{ckpt} & \texttt{training.checkpoint\_path} & Primary weights file. \\
+\bottomrule
+\end{tabular}
+\caption{Symbols used in Tab.~\ref{tab:tracka-runlog}.  Extra CLI
+overrides are appended verbatim after a semicolon.}
+\label{tab:tracka-glossary}
+\end{table}
+
+\subsection{Track A training run logbook}
+\label{sec:tracka:runlog}
+
+Statuses: \textbf{RUNNING} (PID alive or log still progressing),
+\textbf{DONE} (trainer printed \texttt{Done.}), \textbf{FAILED}
+(traceback or non-zero exit).  Update the corresponding row when a job
+finishes; add new rows for every fresh \texttt{nohup} launch.
+
+\begin{table}[ht]
+\caption{Chronological log of substantial Track-A training jobs.}
+\label{tab:tracka-runlog}
+\begin{minipage}{\linewidth}\small\sloppy
+\begin{description}[leftmargin=1.5em, style=nextline]
+\item[\textbf{Run A1} (STOPPED)]
+  Wrapper: \file{scripts/run\_dual\_stream\_long\_with\_fallback.sh}.
+  Log: \texttt{logs/track\_a\_dual\_stream\_long\_lr1\_20260515\_025557.log}.
+  Preset \texttt{track\_a\_dual\_stream\_long\_class\_boost}
+  (Tab.~\ref{tab:tracka-glossary}); \texttt{aug}=randaugment\_t;
+  \texttt{T}=4; \texttt{Sz}=224; \texttt{bs}=16;
+  \texttt{E}=80; \texttt{lr}=1e-4; \texttt{m\_r}=0.3
+  (\(\Rightarrow\) motion lr=3e-5);
+  \texttt{wd}=0.05; \texttt{wu}=6; \texttt{cos}=1; \texttt{ls}=0.1;
+  \texttt{amp}=1; \texttt{ema}=0.999;
+  \texttt{es}=3 (\(\Delta=0.001\)); \texttt{cb}=1.
+  Stopped externally mid epoch~17.  Best EMA val top-1 (epoch~16):
+  \textbf{31.79\,\%}.
+\item[\textbf{Run A1b} (DONE)]
+  Log: \texttt{logs/track\_a\_dual\_stream\_long\_lr1\_resume\_20260515\_104715.log}.
+  Resume from \texttt{*.last.pt} (epoch~16); override
+  \texttt{lr}=1.2e-4 (+20\%), \texttt{m\_r}=0.3,
+  \texttt{resume\_apply\_cfg\_lr}=1; same preset otherwise.
+  Early stop at epoch~39 (patience exhausted).  Best EMA val top-1:
+  \textbf{39.47\,\%}; same \texttt{ckpt} as Run~A1.
+  Submit (flip TTA): \texttt{.../track\_a\_dual\_stream\_long\_lr1\_resume\_20260515.csv};
+  log \texttt{.../track\_a\_dual\_stream\_long\_lr1\_resume\_20260515\_submit.log}.
+  Public Kaggle top-1: \textbf{37.69\,\%}.
+\end{description}
+\end{minipage}
+\end{table}
