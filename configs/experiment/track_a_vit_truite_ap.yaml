@@ -1,11 +1,11 @@
 # @package _global_
-# truite — ViT-B from scratch, no SSL, no class tricks.
+# truite AP — ViT-B from scratch with Attentive Probe (not mean pool).
 #
-# Assigned to: Romain
+# Same recipe as track_a_vit_truite; only model.head=attn differs.
 #
 # Run:
 #   PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
-#       experiment=track_a_vit_truite
+#       experiment=track_a_vit_truite_ap
 defaults:
   - override /model: video_mae_vit
   - override /augment: randaugment_t
@@ -15,10 +15,10 @@ model:
   num_classes: ${num_classes}
   drop_path_rate: 0.1
   dropout: 0.0
-  head: mean
+  head: attn
+  head_num_heads: 4
   init_from: null
 
-# No flip (SSv2 direction-sensitive), RandAug-T n=4 m=7.
 augment:
   random_horizontal_flip: false
   random_crop: true
@@ -34,6 +34,7 @@ dataset:
   use_official_val: true
 
 training:
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/vit_truite_ap.pt
   batch_size: 16
   epochs: 40
   optimizer: adamw

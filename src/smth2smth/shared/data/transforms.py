@@ -16,7 +16,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 import torch
-from PIL import Image
+from PIL import Image, ImageFilter, ImageOps
 from torchvision.transforms import ColorJitter, Normalize
 from torchvision.transforms import functional as F
 
@@ -74,6 +74,10 @@ def build_transforms(
               cropping; only used when ``random_crop`` is ``True``.
             - ``color_jitter`` (bool, default ``False``) -- training only.
             - ``color_jitter_{brightness,contrast,saturation,hue}`` (float).
+            - ``random_grayscale`` (bool) and ``random_grayscale_prob`` (float)
+              -- training only; converts to grayscale then back to 3 channels.
+            - ``gaussian_blur`` (bool), ``gaussian_blur_prob`` (float), and
+              ``gaussian_blur_radius_{min,max}`` -- PIL Gaussian blur (training).
 
             When ``None``, the legacy behavior is used: Resize + (optional)
             RandomHorizontalFlip.
@@ -107,6 +111,13 @@ def build_transforms(
 
     randaugment = _build_randaugment(augment) if is_training else None
 
+    random_grayscale = bool(_augment_get(augment, "random_grayscale", False))
+    random_grayscale_prob = float(_augment_get(augment, "random_grayscale_prob", 0.0))
+    gaussian_blur = bool(_augment_get(augment, "gaussian_blur", False))
+    gaussian_blur_prob = float(_augment_get(augment, "gaussian_blur_prob", 0.0))
+    gaussian_blur_radius_min = float(_augment_get(augment, "gaussian_blur_radius_min", 0.1))
+    gaussian_blur_radius_max = float(_augment_get(augment, "gaussian_blur_radius_max", 2.0))
+
     return _FrameOrClipTransform(
         image_size=image_size,
         resize_size=resize_size,
@@ -118,6 +129,12 @@ def build_transforms(
         color_jitter=color_jitter,
         sync_across_frames=sync_across_frames,
         randaugment=randaugment,
+        random_grayscale=random_grayscale,
+        random_grayscale_prob=random_grayscale_prob,
+        gaussian_blur=gaussian_blur,
+        gaussian_blur_prob=gaussian_blur_prob,
+        gaussian_blur_radius_min=gaussian_blur_radius_min,
+        gaussian_blur_radius_max=gaussian_blur_radius_max,
     )
 
 
@@ -155,6 +172,13 @@ class _FrameOrClipTransform:
         color_jitter: ColorJitter,
         sync_across_frames: bool,
         randaugment: RandAugment | None = None,
+        *,
+        random_grayscale: bool = False,
+        random_grayscale_prob: float = 0.0,
+        gaussian_blur: bool = False,
+        gaussian_blur_prob: float = 0.0,
+        gaussian_blur_radius_min: float = 0.1,
+        gaussian_blur_radius_max: float = 2.0,
     ) -> None:
         self.image_size = image_size
         self.resize_size = resize_size
@@ -166,6 +190,12 @@ class _FrameOrClipTransform:
         self.color_jitter = color_jitter
         self.sync_across_frames = sync_across_frames
         self.randaugment = randaugment
+        self.random_grayscale = random_grayscale
+        self.random_grayscale_prob = random_grayscale_prob
+        self.gaussian_blur = gaussian_blur
+        self.gaussian_blur_prob = gaussian_blur_prob
+        self.gaussian_blur_radius_min = gaussian_blur_radius_min
+        self.gaussian_blur_radius_max = gaussian_blur_radius_max
 
     def __call__(
         self, image_or_images: Image.Image | Sequence[Image.Image]
@@ -232,6 +262,19 @@ class _FrameOrClipTransform:
                 self.color_jitter.saturation,
                 self.color_jitter.hue,
             )
+        if self.is_training and self.random_grayscale and self.random_grayscale_prob > 0.0:
+            params["grayscale"] = random.random() < self.random_grayscale_prob
+        else:
+            params["grayscale"] = False
+        if self.is_training and self.gaussian_blur and self.gaussian_blur_prob > 0.0:
+            if random.random() < self.gaussian_blur_prob:
+                r_lo = min(self.gaussian_blur_radius_min, self.gaussian_blur_radius_max)
+                r_hi = max(self.gaussian_blur_radius_min, self.gaussian_blur_radius_max)
+                params["blur_radius"] = random.uniform(r_lo, r_hi)
+            else:
+                params["blur_radius"] = None
+        else:
+            params["blur_radius"] = None
         return params
 
     def _apply_single(
@@ -253,6 +296,11 @@ class _FrameOrClipTransform:
             x = F.crop(x, *crop)
         if bool(params.get("flip", False)):
             x = F.hflip(x)
+        if bool(params.get("grayscale", False)):
+            x = ImageOps.grayscale(x).convert("RGB")
+        blur_r = params.get("blur_radius")
+        if blur_r is not None:
+            x = x.filter(ImageFilter.GaussianBlur(radius=float(blur_r)))
         jitter_fn = params.get("jitter_fn")
         if jitter_fn is not None:
             fn_idx, brightness_factor, contrast_factor, saturation_factor, hue_factor = jitter_fn

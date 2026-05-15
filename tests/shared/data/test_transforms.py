@@ -93,6 +93,60 @@ def test_augment_none_matches_legacy_default() -> None:
     assert torch.allclose(legacy(image), with_none(image))
 
 
+def test_random_grayscale_makes_three_channels_identical_before_norm() -> None:
+    """PIL grayscale→RGB should yield R=G=B in [0,1] before normalization."""
+    augment = {
+        "random_horizontal_flip": False,
+        "random_crop": False,
+        "random_grayscale": True,
+        "random_grayscale_prob": 1.0,
+    }
+    pipe = build_transforms(image_size=32, is_training=True, use_imagenet_norm=False, augment=augment)
+    img = Image.new("RGB", (40, 40), color=(200, 50, 20))
+    t = pipe(img)
+    assert torch.allclose(t[0], t[1]) and torch.allclose(t[1], t[2])
+
+
+def test_gaussian_blur_runs_and_changes_tensor() -> None:
+    augment = {
+        "random_horizontal_flip": False,
+        "random_crop": False,
+        "gaussian_blur": True,
+        "gaussian_blur_prob": 1.0,
+        "gaussian_blur_radius_min": 2.0,
+        "gaussian_blur_radius_max": 2.0,
+    }
+    pipe = build_transforms(image_size=32, is_training=True, use_imagenet_norm=False, augment=augment)
+    img = Image.new("RGB", (40, 40), color=(0, 0, 0))
+    img.putpixel((16, 16), (255, 255, 255))
+    blurred = pipe(img)
+    baseline_aug = {**augment, "gaussian_blur": False, "gaussian_blur_prob": 0.0}
+    base_pipe = build_transforms(image_size=32, is_training=True, use_imagenet_norm=False, augment=baseline_aug)
+    sharp = base_pipe(img)
+    assert not torch.allclose(blurred, sharp)
+
+
+def test_eval_disables_grayscale_and_blur() -> None:
+    """Eval must not sample grayscale/blur even when flags are set in cfg."""
+    augment = {
+        "random_horizontal_flip": False,
+        "random_crop": False,
+        "random_grayscale": True,
+        "random_grayscale_prob": 1.0,
+        "gaussian_blur": True,
+        "gaussian_blur_prob": 1.0,
+        "gaussian_blur_radius_min": 3.0,
+        "gaussian_blur_radius_max": 3.0,
+    }
+    train_pipe = build_transforms(image_size=32, is_training=True, use_imagenet_norm=False, augment=augment)
+    eval_pipe = build_transforms(image_size=32, is_training=False, use_imagenet_norm=False, augment=augment)
+    image = Image.new("RGB", (48, 48), color=(160, 40, 200))
+    tr = train_pipe(image)
+    ev = eval_pipe(image)
+    assert torch.allclose(tr[0], tr[1]) and torch.allclose(tr[1], tr[2])
+    assert not torch.allclose(ev[0], ev[1])
+
+
 def test_sync_across_frames_applies_identical_crop_and_jitter() -> None:
     augment = {
         "random_horizontal_flip": False,

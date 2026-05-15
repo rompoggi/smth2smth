@@ -294,6 +294,7 @@ class VideoMAEViT(nn.Module):
 # ── ViT variant table ──────────────────────────────────────────────────────────
 
 _VIT_VARIANTS: dict[str, dict] = {
+    "vit_s": dict(embed_dim=384,  depth=12, num_heads=6),
     "vit_b": dict(embed_dim=768,  depth=12, num_heads=12),
     "vit_l": dict(embed_dim=1024, depth=24, num_heads=16),
 }
