@@ -17,10 +17,15 @@ Expected folder layout under ``root_dir``::
 Each ``__getitem__`` returns:
     video_tensor: float tensor of shape ``(T, C, H, W)``
     label: int64 scalar class index
+
+``sample_list`` entries may be ``(video_dir, label)`` or, for class boosting,
+``(video_dir, label, class_boost_reverse)``; see
+:func:`expand_train_samples_for_class_boosting`.
 """
 
 from __future__ import annotations
 
+import random
 import re
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -32,6 +37,19 @@ from torch.utils.data import Dataset
 _FRAME_EXTENSIONS: tuple[str, ...] = ("*.jpg", "*.jpeg", "*.png", "*.webp")
 
 VideoSample = tuple[Path, int]
+VideoSampleRecord = tuple[Path, int] | tuple[Path, int, bool]
+
+
+def _unpack_sample(record: VideoSampleRecord) -> tuple[Path, int, bool]:
+    """Return ``(video_dir, label, class_boost_reverse)``.
+
+    ``class_boost_reverse`` is ``True`` for deterministic class-boosting rows:
+    reverse the loaded frame sequence and use the given ``label`` as-is (already
+    the partner class).
+    """
+    if len(record) == 3:
+        return record[0], int(record[1]), bool(record[2])
+    return record[0], int(record[1]), False
 
 
 def _list_frame_paths(video_dir: Path) -> list[Path]:
@@ -152,8 +170,10 @@ class VideoFrameDataset(Dataset):
         num_frames: Number of frames ``T`` to sample per video.
         transform: Per-frame transform mapping a PIL ``Image`` to a
             ``(C, H, W)`` tensor (typically ``Resize`` + ``ToTensor`` + ``Normalize``).
-        sample_list: Optional pre-built list of ``(video_dir, label)`` pairs.
-            Useful for train/val splits.
+        sample_list: Optional pre-built list of ``(video_dir, label)`` or
+            ``(video_dir, label, class_boost_reverse)`` entries (see
+            :func:`expand_train_samples_for_class_boosting`). Useful for train/val
+            splits.
         time_reversal_prob: When ``> 0``, with this probability and only for
             classes whose ``time_reversal_allow_mask`` entry is ``True``, the
             sampled frame sequence is reversed in time *and* the label is
@@ -165,6 +185,12 @@ class VideoFrameDataset(Dataset):
         time_reversal_allow_mask: 1-D ``BoolTensor`` of length
             ``num_classes``; only classes with ``True`` are eligible for
             reversal. Required when ``time_reversal_prob > 0``.
+        temporal_reversal_pair_to_opposite: Optional map from class index to its
+            paired opposite (Track A curated pairs). Used only when
+            ``temporal_reversal_prob > 0``.
+        temporal_reversal_prob: Bernoulli probability to reverse frame order and
+            swap the label via ``temporal_reversal_pair_to_opposite``. Ignored if
+            the map is ``None`` or empty.
     """
 
     def __init__(
@@ -172,18 +198,22 @@ class VideoFrameDataset(Dataset):
         root_dir: str | Path,
         num_frames: int,
         transform: Callable[[Image.Image | Sequence[Image.Image]], torch.Tensor | list[torch.Tensor]],
-        sample_list: list[VideoSample] | None = None,
+        sample_list: list[VideoSampleRecord] | None = None,
         *,
         time_reversal_prob: float = 0.0,
         time_reversal_perm: torch.Tensor | None = None,
         time_reversal_allow_mask: torch.Tensor | None = None,
+        temporal_reversal_pair_to_opposite: dict[int, int] | None = None,
+        temporal_reversal_prob: float = 0.0,
     ) -> None:
         self.root_dir = Path(root_dir)
         self.num_frames = num_frames
         self.transform = transform
+        self.temporal_reversal_pair_to_opposite = temporal_reversal_pair_to_opposite
+        self.temporal_reversal_prob = float(temporal_reversal_prob)
 
         if sample_list is None:
-            self.samples: list[VideoSample] = collect_video_samples(self.root_dir)
+            self.samples: list[VideoSampleRecord] = collect_video_samples(self.root_dir)
         else:
             self.samples = list(sample_list)
 
@@ -201,25 +231,45 @@ class VideoFrameDataset(Dataset):
             )
         self.time_reversal_perm = time_reversal_perm
         self.time_reversal_allow_mask = time_reversal_allow_mask
+        if self.temporal_reversal_prob < 0.0 or self.temporal_reversal_prob > 1.0:
+            raise ValueError(
+                f"temporal_reversal_prob must be in [0, 1], got {self.temporal_reversal_prob}."
+            )
 
     def __len__(self) -> int:
         return len(self.samples)
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
-        video_dir, label = self.samples[index]
+        video_dir, label, class_boost_reverse = _unpack_sample(self.samples[index])
         frame_paths = _list_frame_paths(video_dir)
         indices = pick_frame_indices(len(frame_paths), self.num_frames)
 
-        reverse_now = self._should_reverse(label)
-        if reverse_now:
-            indices = list(reversed(indices))
-            label = int(self.time_reversal_perm[int(label)].item())  # type: ignore[index]
+        if not class_boost_reverse:
+            reverse_now = self._should_reverse(label)
+            if reverse_now:
+                indices = list(reversed(indices))
+                label = int(self.time_reversal_perm[int(label)].item())  # type: ignore[index]
 
         raw_frames: list[Image.Image] = []
         for frame_index in indices:
             path = frame_paths[frame_index]
             with Image.open(path) as image:
                 raw_frames.append(image.convert("RGB"))
+
+        if class_boost_reverse:
+            raw_frames.reverse()
+            label_int = int(label)
+        else:
+            label_int = int(label)
+            pair_map = self.temporal_reversal_pair_to_opposite
+            if (
+                pair_map
+                and self.temporal_reversal_prob > 0.0
+                and label_int in pair_map
+                and random.random() < self.temporal_reversal_prob
+            ):
+                raw_frames.reverse()
+                label_int = int(pair_map[label_int])
 
         try:
             transformed = self.transform(raw_frames)
@@ -231,7 +281,7 @@ class VideoFrameDataset(Dataset):
             frames = [self.transform(frame) for frame in raw_frames]  # type: ignore[arg-type]
 
         video_tensor = torch.stack(frames, dim=0)
-        label_tensor = torch.tensor(label, dtype=torch.long)
+        label_tensor = torch.tensor(label_int, dtype=torch.long)
         return video_tensor, label_tensor
 
     def _should_reverse(self, label: int) -> bool:

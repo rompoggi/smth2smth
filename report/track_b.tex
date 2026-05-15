@@ -1,0 +1,766 @@
+% =====================================================================
+% Track B (Open-World, pretrained backbones allowed): V-JEPA 2 pipeline.
+%
+% This file is \input{}-ed from report/main.tex so that the agent does
+% not have to load the full main.tex into its context window while
+% iterating on Track B. Keep the Phase numbering in lock-step with the
+% rest of the report.
+% =====================================================================
+
+\section{Phase 4: Track B with V-JEPA 2}
+\label{sec:phase4}
+
+Track~B (\emph{Open World}) allows pretrained backbones and external
+data. The highest-impact lever in this regime is therefore the choice of
+backbone itself: a strong, self-supervised \emph{video} encoder will
+dominate any per-frame ResNet trained from scratch. We use
+\textbf{V-JEPA~2} \cite{Assran2025VJEPA2}, Meta~FAIR's 2025 video JEPA
+that reports state-of-the-art results on motion understanding benchmarks
+and, of direct relevance here, the strongest published Something-Something
+v2 numbers among open weights: \(77.3\%\) top-1 with the ViT-g/16~384
+encoder plus an attentive probe (Tab.~\ref{tab:vjepa2-bench}).
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{lcc}
+\toprule
+\textbf{Benchmark} & \textbf{V-JEPA~2} & \textbf{Previous best} \\
+\midrule
+SSv2 (probe)     & \textbf{77.3\%} & 69.7\% (InternVideo2-1B) \\
+Diving48 (probe) & \textbf{90.2\%} & 86.4\% (InternVideo2-1B) \\
+EK100 (probe)    & \textbf{39.7\%} & 27.6\% (PlausiVL) \\
+\bottomrule
+\end{tabular}
+\caption{V-JEPA~2 attentive-probe results reported in
+\cite{Assran2025VJEPA2}. SSv2 is the source distribution of the
+challenge data set: a frozen V-JEPA~2 encoder almost matches the
+previous best \emph{fine-tuned} number.}
+\label{tab:vjepa2-bench}
+\end{table}
+
+\subsection{Track-B compliance and design choices}
+
+Track~B explicitly allows pretrained weights and external data, so using
+the publicly released V-JEPA~2 checkpoints (trained by Meta on
+internet-scale video) is permitted. We choose the HuggingFace integration
+over the upstream PyTorch~Hub one because the
+\code{transformers.AutoModel} path (i) ships a well-tested
+\code{VJEPA2Model} class, (ii) caches checkpoints under \code{\$HF\_HOME}
+so we can swap variants by name, and (iii) gives access to every
+publicly released V-JEPA~2 variant from a single API:
+\begin{center}\small
+\begin{tabular}{llcc}
+\toprule
+\textbf{HF repository} & \textbf{Arch.} & \textbf{Params} & \textbf{Res.} \\
+\midrule
+\code{facebook/vjepa2-vitl-fpc64-256}        & ViT-L & 0.3\,B & 256 \\
+\code{facebook/vjepa2-vith-fpc64-256}        & ViT-H & 0.7\,B & 256 \\
+\code{facebook/vjepa2-vitg-fpc64-256}        & ViT-g & 1.0\,B & 256 \\
+\code{facebook/vjepa2-vitg-fpc64-384}        & ViT-g & 1.0\,B & 384 \\
+\code{facebook/vjepa2-vitl-fpc16-256-ssv2}   & ViT-L & 0.4\,B & 256 \\
+\code{facebook/vjepa2-vitg-fpc64-384-ssv2}   & ViT-g & 1.0\,B & 384 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The two \code{*-ssv2} variants come with an SSv2-finetuned encoder and
+are particularly interesting for our 33-class subset: the features have
+already been adapted to the Something-Something distribution, so the
+probe converges in a handful of epochs.
+
+\paragraph{Why a frozen probe.} Following the standard V-JEPA
+evaluation protocol \cite{Assran2025VJEPA2}, the encoder is frozen and
+only the classifier probe is trained. This:
+\begin{itemize}[leftmargin=2em]
+\item Caps trainable parameters at $\sim$\,1\,M (rather than
+      $0.3$--$1$\,B), which makes the run fit comfortably on a single
+      GPU with batch size~4--8 even at the 384-resolution ViT-g.
+\item Avoids destroying the unsupervised representation by overfitting
+      on a 33-class slice of 50\,k clips.
+\item Reproduces a published number (77.3~\% on the full SSv2) instead
+      of inventing a new training recipe.
+\end{itemize}
+
+\subsection{The \code{vjepa2} model}
+\label{sec:phase4:model}
+
+A new file \file{src/smth2smth/track\_b/vjepa2.py} defines three pieces.
+
+\paragraph{Trunk.} \code{VJEPA2Probe} composes
+\code{AutoModel.from\_pretrained(hf\_repo)} (the V-JEPA~2 encoder) with a
+trainable head. The encoder is loaded with
+\code{attn\_implementation="sdpa"} so PyTorch's scaled-dot-product kernel
+is used (FlashAttention-2 when available; eager fallback otherwise).
+When \code{freeze\_backbone=true} and \textbf{no} LoRA (Phase~4.4), the
+forward path is
+\begin{lstlisting}[style=py]
+def forward(self, video_batch: torch.Tensor) -> torch.Tensor:
+    if self._encoder_needs_grad:
+        tokens = self._encode(video_batch)
+    else:
+        with torch.no_grad():
+            tokens = self._encode(video_batch)
+    return self.head(tokens)
+\end{lstlisting}
+With \code{lora\_enabled=true}, \code{\_encoder\_needs\_grad} is true:
+the pretrained weights stay frozen (via PEFT) but LoRA adapter paths
+receive gradients, so the \code{torch.no\_grad} block is \emph{not} used
+on the encoder forward.
+
+\(\code{video\_batch}\) has the shape \((B, T, C, H, W)\) produced by
+\code{VideoFrameDataset} with ImageNet normalisation. That layout
+matches the HuggingFace \code{VJEPA2Model.forward} contract exactly
+(its \cfgkey{pixel\_values\_videos} is documented as
+``\code{(batch\_size, num\_frames, num\_channels, frame\_size,
+frame\_size)}''), so no reshape is needed.
+
+\paragraph{Frozen-mode invariants.} \code{VJEPA2Probe.train(mode)} keeps
+the backbone in \code{eval()} when it is \emph{fully} frozen (no LoRA), so
+dropout inside the encoder stays off:
+
+\begin{lstlisting}[style=py]
+def train(self, mode: bool = True) -> VJEPA2Probe:
+    super().train(mode)
+    if self.freeze_backbone and not self.lora_enabled:
+        self.backbone.eval()
+    return self
+\end{lstlisting}
+
+When \code{lora\_enabled=true}, the PEFT-wrapped backbone follows the
+parent \code{train()/eval()} so LoRA dropout behaves as intended during
+optimisation.
+
+A unit test (\code{test\_train\_keeps\_frozen\_backbone\_in\_eval\_mode})
+asserts that, without LoRA, after \code{model.train()} the head is in
+train mode but the backbone remains in eval mode. A second test
+(\code{test\_frozen\_forward\_does\_not\_accumulate\_backbone\_grads})
+asserts that, after backprop with a fully frozen trunk, every backbone
+parameter has \code{p.grad is None} while every head parameter has
+non-trivial gradient mass (LoRA-enabled runs instead accumulate adapter
+gradients only).
+
+\paragraph{Head.} Three head types are offered.
+\begin{description}[leftmargin=1.5em, style=nextline]
+\item[\code{attentive} (default).]
+   The V-JEPA paper's attentive probe, \emph{generalised} to \(Q\ge 1\)
+   learnable query tokens \(q \in \mathbb{R}^{Q\times D}\). Each query
+   cross-attends over the \((B, N, D)\) token sequence; the \(Q\) pooled
+   vectors are \textbf{mean-pooled} across queries, then
+   \(\mathrm{LayerNorm}\) and a linear classifier are applied:
+   \[
+   Z \;=\; \mathrm{MHA}(q,\, K{=}V{=}\Phi)\in\mathbb{R}^{B\times Q\times D},
+   \qquad
+   z \;=\; \tfrac{1}{Q}\sum_{i=1}^{Q} Z_{:,i,:},
+   \qquad
+   \widehat{y} = Wz + b.
+   \]
+   The config key \cfgkey{head\_num\_queries} controls \(Q\); the default
+   \(Q{=}1\) recovers the original single-query recipe. Larger \(Q\) adds
+   probe capacity for compositional verbs without widening the backbone.
+\item[\code{linear} / \code{mean\_linear}.]
+   Mean-pool the token sequence and project with a single Linear.
+   Fewer parameters, marginally faster; useful as an ablation baseline.
+\end{description}
+
+\paragraph{Builder.} A \code{@register\_model("vjepa2")} decorator
+exposes the model under the same registry the rest of the project uses:
+
+\begin{lstlisting}[style=py]
+@register_model("vjepa2")
+def build_vjepa2(cfg: DictConfig) -> nn.Module:
+    return VJEPA2Probe(
+        num_classes=int(cfg.model.num_classes),
+        hf_repo=str(cfg.model.get("hf_repo", DEFAULT_HF_REPO)),
+        head_type=str(cfg.model.get("head_type", "attentive")),
+        head_num_heads=int(cfg.model.get("head_num_heads", 8)),
+        head_num_queries=int(cfg.model.get("head_num_queries", 1)),
+        head_dropout=float(cfg.model.get("head_dropout", 0.0)),
+        freeze_backbone=bool(cfg.model.get("freeze_backbone", True)),
+        lora_enabled=bool(cfg.model.get("lora_enabled", False)),
+        lora_r=int(cfg.model.get("lora_r", 8)),
+        lora_alpha=int(cfg.model.get("lora_alpha", 16)),
+        lora_dropout=float(cfg.model.get("lora_dropout", 0.05)),
+        lora_target_modules=...,
+        attn_implementation=str(cfg.model.get("attn_implementation", "sdpa")),
+    )
+\end{lstlisting}
+The ellipsis stands for optional \code{lora\_target\_modules} parsed from
+Hydra (default \code{null} \(\Rightarrow\) HF V-JEPA~2
+\code{query}, \code{key}, \code{value}, \code{proj}).
+
+\subsection{Registration hook}
+
+\code{shared/models/\_\_init\_\_.py} imports \code{smth2smth.track\_b} at
+module load time so that the \code{@register\_model("vjepa2")} decorator
+runs before \code{build\_model(cfg)} is ever called. This is the only
+cross-package import between \code{shared/} and \code{track\_b/}; the
+opposite direction is empty (\code{track\_b/vjepa2.py} only imports from
+\code{shared.models.registry}), so there is no circularity:
+\begin{lstlisting}[style=py]
+% src/smth2smth/shared/models/__init__.py
+from smth2smth import track_b as _track_b  % noqa: F401
+\end{lstlisting}
+
+A unit test (\code{test\_vjepa2\_is\_registered}) asserts that
+\code{"vjepa2"} is in \code{list\_registered\_models()} after a clean
+import. A second test (\code{test\_build\_model\_dispatches\_via\_registry})
+goes one step further and runs \code{build\_model(cfg)} with a mocked
+HuggingFace backbone (\code{sys.modules["transformers"]} is replaced
+with a stub) to check that the dispatch works end-to-end through the
+public API.
+
+\subsection{The bundled experiment configuration}
+
+\file{configs/experiment/track\_b\_vjepa2.yaml} composes the V-JEPA~2
+model with sensible Track-B training defaults:
+
+\begin{lstlisting}[style=yaml]
+defaults:
+  - override /model: vjepa2
+
+model:
+  pretrained: true                     # ImageNet normalisation
+  hf_repo: facebook/vjepa2-vitl-fpc64-256
+  head_type: attentive
+  head_num_heads: 8
+  freeze_backbone: true
+
+dataset:
+  num_frames: 16                       # must be even (tubelet_size=2)
+  image_size: 256                      # match the backbone's crop_size
+  use_official_val: true
+
+training:
+  batch_size: 4
+  epochs: 30
+  lr: 0.001
+  optimizer: adamw
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 2
+  label_smoothing: 0.1
+  amp: true
+  ema_enabled: true
+  ema_decay: 0.999
+  tta: true
+  tta_flip: true
+\end{lstlisting}
+
+Three settings are non-negotiable:
+\begin{enumerate}[leftmargin=2em]
+\item \cfgkey{model.pretrained: true}.\\
+      \code{build\_transforms} reads this and applies the ImageNet mean
+      and std, which is what V-JEPA~2 was trained with. Setting it to
+      \code{false} would normalise with \((0.5, 0.5, 0.5)\) and silently
+      give wrong inputs to the encoder.
+\item \cfgkey{dataset.image\_size: 256} (or 384 for the
+      \code{vitg-384} variants).\\
+      The V-JEPA~2 encoders are tied to a fixed crop size by their
+      learned positional embeddings; resizing inputs to anything else is
+      not supported by the public weights.
+\item \cfgkey{dataset.num\_frames} must be even.\\
+      The V-JEPA~2 tubelet size is~2; an odd \(T\) is not handled by the
+      encoder's temporal patchifier and raises a runtime error.
+\end{enumerate}
+
+The remaining settings (AMP, EMA, TTA, label smoothing, cosine schedule
+with 2-epoch warmup) carry over from the Phase-2 recipe with no
+changes, because the supervised \code{train.py} is generic over
+\code{cfg.model.name}.
+
+\subsection{Hydra symbol glossary (training runs)}
+\label{sec:phase4:glossary}
+
+Every long training job we care about is summarised in
+Tab.~\ref{tab:trackb-runlog}.  Hyperparameters are written in
+\textbf{compact form} using the symbols below; the full English meaning
+lives here once, not repeated in each run row.
+
+\begin{table}[ht]
+\centering\footnotesize
+\begin{tabular}{@{}r p{0.32\linewidth} p{0.52\linewidth}@{}}
+\toprule
+\textbf{Sym.} & \textbf{Hydra key(s)} & \textbf{Meaning} \\
+\midrule
+\texttt{expt} & \texttt{experiment=\dots} & Preset YAML under
+\file{configs/experiment/} (composed defaults). \\
+\texttt{repo} & \texttt{model.hf\_repo} & HuggingFace V-JEPA~2 checkpoint id. \\
+\texttt{T} & \texttt{dataset.num\_frames} & Frames per clip (must be even). \\
+\texttt{Sz} & \texttt{dataset.image\_size} & Square crop side (256 or 384). \\
+\texttt{bs} & \texttt{training.batch\_size} & Clips per optimisation step. \\
+\texttt{E} & \texttt{training.epochs} & Total epoch budget for the run. \\
+\texttt{lr} & \texttt{training.lr} & Base learning rate (AdamW). \\
+\texttt{wd} & \texttt{training.weight\_decay} & AdamW weight decay. \\
+\texttt{wu} & \texttt{training.warmup\_epochs} & Linear LR warm-up length. \\
+\texttt{cos} & \texttt{training.scheduler\_cosine} & Cosine anneal after warm-up. \\
+\texttt{ls} & \texttt{training.label\_smoothing} & Soft-label smoothing for CE. \\
+\texttt{amp} & \texttt{training.amp} & Automatic mixed precision. \\
+\texttt{ema} & \texttt{training.ema\_enabled} & Exponential moving average
+of weights (0/1); decay in \texttt{ema\_decay}. \\
+\texttt{ev} & \texttt{training.eval\_every\_n\_epochs} & Validate every
+\(n\) epochs. \\
+\texttt{mz} & \texttt{dataset.max\_samples\_per\_class} & Cap clips per class
+(\texttt{null} = use all). \\
+\texttt{aug} & \texttt{defaults} / augment group & Spatial/temporal augment
+preset (e.g. \texttt{vjepa2\_heavy}). \\
+\texttt{LoRA} & \texttt{model.lora\_enabled}, \texttt{lora\_r},
+\texttt{lora\_alpha} & PEFT adapters on attention projections; pretrained
+weights stay frozen. \\
+\texttt{ckpt} & \texttt{training.checkpoint\_path} & Primary weights file. \\
+\texttt{rs} & \texttt{training.resume\_from} & Optional optimiser/epoch
+resume path. \\
+\bottomrule
+\end{tabular}
+\caption{Symbols used in Tab.~\ref{tab:trackb-runlog}.  Extra CLI overrides
+are appended verbatim after a semicolon.}
+\label{tab:trackb-glossary}
+\end{table}
+
+\subsection{Track B training run logbook}
+\label{sec:phase4:runlog}
+
+Statuses: \textbf{RUNNING} (PID alive or log still progressing),
+\textbf{DONE} (trainer printed \texttt{Done.}), \textbf{FAILED} (traceback
+or non-zero exit).  After any merge or local pull, refresh this table
+from \texttt{logs/} and PID files.
+
+\begin{table}[ht]
+\caption{Chronological log of substantial Track-B training jobs.  Update
+status and metrics when processes finish; add new rows for every fresh
+\texttt{nohup} launch.}
+\label{tab:trackb-runlog}
+\begin{minipage}{\linewidth}\small
+\begin{description}[leftmargin=1.5em, style=nextline]
+\item[\textbf{Run 1} (DONE)]
+  Log: \texttt{logs/track\_b\_vitg384\_heavy\_aug\_20260512\_0159.log}.
+  Preset: \texttt{track\_b\_vjepa2\_vitg384\_heavy\_aug}.
+  Params (Tab.~\ref{tab:trackb-glossary}): \texttt{repo}=vitg-fpc64-384-ssv2;
+  \texttt{T}=16; \texttt{Sz}=384; \texttt{bs}=4; \texttt{E}=10; \texttt{lr}=3e-4;
+  \texttt{wd}=0.05; \texttt{wu}=1; \texttt{mz}=100; \texttt{ev}=5; \texttt{ema}=0.
+  Best val top-1: \textbf{53.68\,\%}.
+\item[\textbf{Run 2} (DONE)]
+  Log: \texttt{logs/track\_b\_vitg384\_continue\_20260512\_1322.log};
+  PID: \texttt{logs/track\_b\_vitg384\_continue.pid}.
+  Preset: \texttt{track\_b\_vjepa2\_vitg384\_continue}.
+  Params: inherits Run~1 + \texttt{rs}=vitg384\_heavy\_aug.last.pt;
+  \texttt{E}=20 (epochs 11--20); \texttt{wu}=0; \texttt{ev}=1; \texttt{cos}=0.
+  Best val top-1: \textbf{53.94\,\%}.
+\item[\textbf{Run 3} (RUNNING)]
+  Log: \texttt{logs/track\_b\_vitl\_30e\_warmup\_lora\_20260514\_1536.log};
+  PID: \texttt{logs/track\_b\_vitl\_30e\_warmup.pid}.
+  Preset: \texttt{track\_b\_vjepa2\_vitl\_30e\_warmup}.
+  Params: \texttt{repo}=vitl-fpc64-256; \texttt{T}=16; \texttt{Sz}=256; \texttt{bs}=4;
+  \texttt{E}=30; \texttt{wu}=3; \texttt{ev}=1; \texttt{ema}=0; LoRA \texttt{r}=8, $\alpha$=16.
+  Interim (epoch~1) val top-1: \textbf{60.21\,\%}.
+\end{description}
+\end{minipage}
+\end{table}
+
+\subsection{Running V-JEPA 2 on Track B}
+
+The dependencies grow by exactly one entry --- \code{transformers}~$\geq
+4.45$, which is the release that ships \code{VJEPA2Model}:
+
+\begin{lstlisting}[style=shell]
+uv add 'transformers>=4.45'
+\end{lstlisting}
+
+After that, training, evaluation and submission all go through the
+existing entrypoints:
+
+\begin{lstlisting}[style=shell]
+% Train (V-JEPA 2 ViT-L / 256 / 16 frames, frozen + attentive probe)
+PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
+    track=b experiment=track_b_vjepa2
+
+% Evaluate on the official val/ split
+PYTHONPATH=src uv run python -m smth2smth.pipelines.evaluate \
+    track=b training.checkpoint_path=checkpoints/track_b/best_model.pt
+
+% Submit with TTA flip + auto class-pair remap
+PYTHONPATH=src uv run python -m smth2smth.pipelines.submit \
+    track=b training.checkpoint_path=checkpoints/track_b/best_model.pt \
+    training.tta=true training.tta_flip=true
+\end{lstlisting}
+
+The encoder is downloaded from HuggingFace Hub on first use
+($\approx$\,1.2\,GiB for \code{vitl-fpc64-256}) and cached under
+\code{\$HF\_HOME}; subsequent runs reuse the cache.
+
+% =====================================================================
+% Phase 4.1: zero-shot evaluation and submission with the SSv2-finetuned
+% V-JEPA 2 checkpoint -- run \emph{without any training of our own}.
+% =====================================================================
+
+\subsection{Phase 4.1: zero-shot evaluation with the SSv2 head}
+\label{sec:phase4:zero_shot}
+
+The SSv2-finetuned checkpoint
+\code{facebook/vjepa2-vitl-fpc16-256-ssv2} ships a full 174-class
+classifier head trained by Meta on the full SSv2 distribution. Our
+33-class subset is a strict subset of those 174 classes, so we can
+evaluate -- and submit -- with no training of our own. Two small
+artifacts implement this in the codebase:
+
+\begin{itemize}[leftmargin=2em]
+\item \file{src/smth2smth/track\_b/zero\_shot.py} -- reusable helpers:
+   \code{normalize\_class\_name}, \code{build\_label\_mapping} (with a
+   token-aligned unique-prefix fallback that recovers the truncated
+   folder \code{015\_Pretending\_to\_pour\_something\_out\_of\_something\_but\_something\_})
+   and \code{VideoFramesDataset} that reads 16 evenly-spaced frames per
+   clip, resizes to 256, ImageNet-normalises, and stacks to \((T,3,H,W)\).
+\item \file{scripts/eval\_vjepa2\_ssv2\_zero\_shot.py} -- CLI that loads
+   \code{VJEPA2ForVideoClassification}, slices the 174-d logits to the
+   matched 32 classes, and reports top-1, top-5, and a per-class
+   accuracy table.
+\item \file{scripts/submit\_vjepa2\_ssv2\_zero\_shot.py} -- same
+   forward, but consumes \code{data/test/} and writes
+   \code{submissions/track\_b\_vjepa2\_vitl\_fpc16\_256\_ssv2\_zero\_shot.csv}
+   in the official two-column format; the file is re-validated with
+   \code{validate\_submission\_csv} before exit. An optional
+   \code{--tta-flip} flag mirrors the horizontal-flip TTA + auto
+   left/right class-pair remap that \code{pipelines/submit.py} performs
+   for trained checkpoints.
+\end{itemize}
+
+\paragraph{Result.} On the official \code{data/val/} split (6\,745
+clips, 32 of 33 classes -- class 27 has no validation data) the
+zero-shot top-1 is \(\mathbf{44.0\%}\) with top-5 at
+\(\mathbf{74.5\%}\), in 373\,s on a single NVIDIA RTX~A4000
+(18 vid/s). The public Kaggle leaderboard score on the
+\(6\,913\)-video test set is \(\mathbf{45\%}\) top-1 -- already
+\(\sim 8\)\,pp ahead of the Track-A from-scratch baseline (37.2\%).
+The result is documented in detail in \code{notebooks/06\_vjepa2\_feature\_geometry.ipynb}
+together with PCA and t-SNE visualisations of the encoder's
+pre-classifier features, which confirm that many of the 32 classes form
+visually well-separated clusters in 2D even before any training of our
+own --- predicting that a thin probe should comfortably beat the
+zero-shot baseline.
+
+% =====================================================================
+% Phase 4.2: heavy data augmentation for the V-JEPA 2 probe.
+% Mirrors the Track-A RandAugment-T + FrameMixUp recipe (Kim et al.
+% 2020) and reuses the existing augmentation infrastructure that was
+% built in Phase 2.
+% =====================================================================
+
+\subsection{Phase 4.2: heavy data augmentation for the V-JEPA 2 probe}
+\label{sec:phase4:heavy_aug}
+
+The default \file{track\_b\_vjepa2.yaml} above only composes the model
+group; the augmentation group falls back to \code{augment=none}
+(resize + horizontal flip). That is a deliberate choice for the
+zero-shot evaluation, but for any training run we want to inject as
+much randomness as possible: the V-JEPA~2 encoder is frozen (only
+\(\sim\,4\,\)M probe parameters receive gradients) so the probe will
+overfit our 33-class slice in a handful of epochs unless we vary the
+features it sees per epoch. Heavy augmentation does exactly that.
+
+\paragraph{Mirroring Track A.}
+The Track-A side of the project (\code{track\_a\_randaugment\_t.yaml})
+already implements Kim~et~al.~2020's best recipe (Tab.~7): RandAugment-T
+(\code{mode: temporal\_plus}) layered with FrameMixUp. The same
+infrastructure transfers to Track~B without code changes -- both
+\code{shared/data/transforms.py} (per-frame augmentations) and
+\code{shared/engine/trainer.py} (clip-level VideoMix) are agnostic to
+the model name and the track. The only thing missing is the Track-B
+experiment that composes these knobs in the right place.
+
+\paragraph{What \code{augment=vjepa2\_heavy} stacks.}
+\file{configs/augment/vjepa2\_heavy.yaml} (kept from earlier
+exploration) chains, in order, with all randomness \emph{synchronised
+across the frames of a clip} so that motion direction is preserved:
+\begin{enumerate}[leftmargin=2em]
+\item \textbf{RandAugment-T} (Kim et~al. 2020, Sec.~3.1+4.2) -- 14-op
+   palette, \(N{=}2\), \(M{=}9\), \code{magnitude\_max=30},
+   \code{mode: temporal\_plus} which is the strongest setting in
+   Tab.~2: a magnitude \(M\) is drawn per clip and the per-frame
+   magnitude varies linearly from \(M-\delta\) to \(M+\delta\) with
+   \(\delta\sim U(0, 0.5M)\). This injects temporally-coherent
+   geometric/photometric noise that mimics camera motion and lighting
+   drift.
+\item \textbf{Random crop} 256\,+\,32~\(\to\)~256, mild zoom jitter
+   that prevents the SSv2 prior from latching onto absolute pixel
+   positions.
+\item \textbf{Random horizontal flip}. The class-pair remap for
+   ``pulling left~\(\to\)~right'' vs ``right~\(\to\)~left'' lives in
+   the submission TTA path, not at train-time -- the flip here just
+   adds variety.
+\item \textbf{Color jitter} (\code{brightness=0.3}, \code{contrast=0.3},
+   \code{saturation=0.3}, \code{hue=0.05}) on top of RandAugment.
+\end{enumerate}
+
+\paragraph{Clip-level VideoMix.}
+On top of the spatial augmentation, the Track-B heavy-aug experiment
+also enables one of the
+spatio-temporal mix strategies plumbed in \code{trainer.py}: we
+default to \code{videomix\_mode: cube\_cutmix} with
+\code{videomix\_alpha: 1.0} and \code{videomix\_prob: 0.5}. CubeCutMix
+\cite{Yun2019CutMix} samples a 3-D spatio-temporal sub-volume from a
+second clip in the same batch and pastes it onto the current clip;
+labels are mixed in proportion to the sub-volume's relative volume.
+This is the regularizer of choice for motion-sensitive datasets
+(Kim~et~al.~2020 Tab.~7), where naive MixUp blurs motion cues across
+the entire clip.
+
+\paragraph{Slim validation loop.}
+\code{pipelines/train.py} historically runs two full validation passes
+per epoch (live~+~EMA), each at 18\,vid/s on the A4000 \(\to\) 12
+minutes for the 6\,745-clip val split. With heavy aug + 15 epochs that
+adds up to \(\sim\)\,3\,h of pure-eval wall time, dwarfing the actual
+training. Two new Hydra knobs in \code{configs/train/default.yaml}
+gate this without breaking any earlier experiment:
+\begin{lstlisting}[style=yaml]
+training:
+  eval_every_n_epochs: 1        # default: eval every epoch (legacy)
+  eval_ema: true                # default: also evaluate the EMA snapshot
+\end{lstlisting}
+With \code{eval\_every\_n\_epochs: 3} and \code{eval\_ema: false} we
+shrink the per-epoch overhead from 12\,min to 4\,min averaged over the
+schedule, which is exactly the optimisation the per-epoch timing run
+(Sec.~\ref{sec:phase4:heavy_aug}) flagged as the dominant cost.
+
+\paragraph{The bundled \code{track\_b\_vjepa2\_heavy\_aug} experiment.}
+\texttt{configs/\allowbreak experiment/\allowbreak track\_b\_vjepa2\_heavy\_aug.yaml}
+composes the V-JEPA~2 SSv2 backbone with the heavy aug, CubeCutMix, the slim
+validation loop, and a small-subset training schedule that fits a
+single run in about two hours on the A4000:
+\begin{lstlisting}[style=yaml]
+defaults:
+  - override /model: vjepa2
+  - override /augment: vjepa2_heavy
+
+model:
+  pretrained: true
+  hf_repo: facebook/vjepa2-vitl-fpc16-256-ssv2
+  head_type: attentive
+  head_num_heads: 8
+  head_dropout: 0.1
+  freeze_backbone: true
+
+dataset:
+  num_frames: 16
+  image_size: 256
+  use_official_val: true
+  max_samples_per_class: 50
+
+training:
+  batch_size: 12
+  epochs: 15
+  lr: 0.0005
+  optimizer: adamw
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 2
+  min_lr: 0.00001
+  label_smoothing: 0.1
+  amp: true
+  ema_enabled: true
+  ema_decay: 0.999
+  eval_every_n_epochs: 3
+  eval_ema: false
+  videomix_mode: cube_cutmix
+  videomix_alpha: 1.0
+  videomix_prob: 0.5
+  tta: true
+  tta_flip: true
+\end{lstlisting}
+
+\paragraph{Why this is the "smallest" V-JEPA 2.}
+The smallest V-JEPA~2 SSv2-finetuned checkpoint available on
+HuggingFace Hub is \code{vitl-fpc16-256-ssv2} (0.4\,B parameters).
+V-JEPA~2.1 ViT-B (80\,M, distilled from ViT-G) was announced by Meta
+in March~2026 \cite{MurLabadia2026VJEPA21} but is not yet uploaded
+to the Hub at the time of writing; a tracking PR on
+\code{transformers} adds inference support, and once weights are
+public swapping \code{model.hf\_repo} is the only change required.
+For now ViT-L 256 is both the smallest SSv2-finetuned encoder and
+also the encoder behind the 44\,\% zero-shot floor, so we keep it as
+the iteration baseline.
+
+\paragraph{Why we did not add extra positional encoding.}
+V-JEPA~2 already includes a learned 3-D positional embedding per token
+(\(T_{\text{tubelet}}{=}2\) along time \(\times\) \(H/16\,\times\,W/16\)
+in space, 2\,048 tokens for 16 frames at 256\,px). The attentive
+probe's cross-attention reads from this positionally-aware token
+sequence with a learnable query, so the global pooling already has
+full positional context. Stacking another positional embedding on top
+would be redundant. The ceiling we hit at the zero-shot baseline is
+\emph{informational}, not positional: \code{data/train/} only contains
+four unique frames per video, repeated 4\(\times\) to fill 16
+tubelet-aligned positions, so motion-direction-only classes (closing
+vs opening, moving-up vs moving-down) lose information at the source.
+Mitigations on this front (frame interpolation, optical flow channel)
+are deferred to a later phase.
+
+\subsection{Phase 4.3: overnight ViT-g 384 heavy-aug run}
+\label{sec:phase4-vitg384}
+
+\paragraph{Motivation.}
+The Phase~4.2 ViT-L 256 run topped out at \(53.09\,\%\) val top-1
+(checkpoint \code{checkpoints/track\_b/vjepa2\_heavy\_aug.pt}, 15
+epochs, 200 clips/class, EMA off, no augmentation). That is only
+\(+8.7\) percentage points over the \(44\,\%\) zero-shot floor and
+\emph{below} the \(>70\,\%\) anchor reported by peer submissions. The
+bottleneck is not augmentation strength but \emph{backbone capacity}:
+a 0.4\,B-parameter ViT-L probed on 6\,400 clips is now competing with
+1\,B-parameter encoders trained on the same task. The Phase~4.3 run
+swaps to the largest SSv2-finetuned V-JEPA~2 available on the Hub --
+\code{facebook/vjepa2-vitg-fpc64-384-ssv2} (1.0\,B parameters, 384\,px
+input, \(77.3\,\%\) SSv2 in the paper) -- and combines it with the
+Phase~4.2 augmentation recipe. To keep wall time inside an overnight
+slot we shrink the training subset accordingly.
+
+\paragraph{Memory and throughput smoke check.}
+On the lab A4000 (16\,GiB total, 12.2\,GiB free at launch) a forward
+pass with \code{torch.float16} and \code{skip\_predictor=True} measures
+2.27\,GiB resident after weight load and the following inference-only
+costs:
+\begin{itemize}
+  \item batch 1, 16 frames @ 384\,px: 882\,ms/clip (\(\approx 1.13\)
+        vid/s), 2.49\,GiB peak.
+  \item batch 2: 1\,548\,ms/step (\(1.29\) vid/s), 2.70\,GiB peak.
+  \item batch 4: 3\,148\,ms/step (\(1.27\) vid/s), 3.10\,GiB peak.
+  \item batch 6: 4\,553\,ms/step (\(1.32\) vid/s), 3.52\,GiB peak.
+\end{itemize}
+Throughput plateaus at \(\sim\!1.3\) vid/s -- the encoder is
+memory-bandwidth-bound, so larger batches mostly reduce host-side
+overhead. We pick batch 4 to keep the optimiser stable while staying
+well below the 12\,GiB free budget.
+
+\paragraph{Recipe.}
+The experiment lives at
+\code{configs/experiment/track\_b\_vjepa2\_vitg384\_heavy\_aug.yaml}
+and overrides Phase~4.2 with the following changes:
+\begin{itemize}
+  \item \code{model.hf\_repo: facebook/vjepa2-vitg-fpc64-384-ssv2}
+        (frozen, \(\sim\!1.0\,\)B params, \(\sim\!8.0\,\)M trainable
+        in the attentive probe).
+  \item \code{dataset.num\_frames: 16}, \code{image\_size: 384}.
+  \item \code{dataset.max\_samples\_per\_class: 100} (\(100\!\times\!32
+        = 3\,200\) train clips, balanced).
+  \item \code{training.batch\_size: 4}, \code{epochs: 10}, cosine LR
+        with 1 warm-up epoch, \(\text{lr}{=}3\!\times\!10^{-4}\),
+        \(\text{wd}{=}0.05\), label smoothing 0.1.
+  \item \code{augment=vjepa2\_heavy} (RandAugment-T temporal\_plus +
+        random crop + flip + colour jitter) and clip-level CubeCutMix
+        (\(\alpha{=}1.0\), \(p{=}0.5\)).
+  \item Slim validation: \code{eval\_every\_n\_epochs: 5} (only
+        2 val passes total, epochs 5 and 10), \code{ema\_enabled:
+        false} so no \(\sim\!4\,\)GiB deepcopy.
+  \item TTA flip + class-pair remap at submission time.
+\end{itemize}
+
+\paragraph{Resume-safe checkpointing.}
+A long run that crashes between val checkpoints can lose hours of
+work: the previous trainer only wrote \code{best\_model.pt} on
+validation improvements. We added two new \code{training.\,*} knobs
+(see \code{configs/train/default.yaml}):
+\begin{itemize}
+  \item \code{save\_last\_checkpoint: true} -- end of every epoch the
+        live model state, optimiser state, cosine scheduler state and
+        AMP \code{GradScaler} state are written to a companion file.
+  \item \code{last\_checkpoint\_path: null} -- by default derived from
+        \code{checkpoint\_path} by inserting \code{.last} before the
+        extension (\code{vitg384\_heavy\_aug.pt} \(\to\)
+        \code{vitg384\_heavy\_aug.last.pt}).
+\end{itemize}
+On a crash, restart with
+\begin{verbatim}
+PYTHONPATH=src python -m smth2smth.pipelines.train \
+  track=b experiment=track_b_vjepa2_vitg384_heavy_aug \
+  training.checkpoint_path=checkpoints/track_b/vitg384_heavy_aug.pt \
+  training.resume_from=checkpoints/track_b/vitg384_heavy_aug.last.pt
+\end{verbatim}
+The trainer reads back the saved epoch counter, restores
+optimiser/scheduler/scaler state, and resumes at the next epoch
+boundary. The existing
+\code{tests/pipelines/test\_last\_checkpoint.py} unit-tests pin all
+three contract points (write-every-epoch, opt-out, override path).
+
+\paragraph{Launch command.}
+Detached, with a timestamped log file and a PID file for monitoring:
+\begin{verbatim}
+PYTHONPATH=src nohup .venv/bin/python -u \
+  -m smth2smth.pipelines.train \
+  track=b experiment=track_b_vjepa2_vitg384_heavy_aug \
+  training.checkpoint_path=checkpoints/track_b/vitg384_heavy_aug.pt \
+  hydra.run.dir=outputs/track_b_vitg384_heavy_aug_<stamp> \
+  > logs/track_b_vitg384_heavy_aug_<stamp>.log 2>&1 < /dev/null &
+echo $! > logs/track_b_vitg384_heavy_aug.pid
+\end{verbatim}
+\code{nohup} keeps the run alive after the shell disconnects;
+\code{-u} forces unbuffered stdout so the log file reflects progress
+in real time; \code{< /dev/null} stops the worker from blocking on
+\code{stdin}.
+
+\paragraph{Wall-time projection (overnight slot).}
+With \(800\) training steps per epoch (\(3\,200\) clips / batch 4)
+and the smoke-measured \(\sim\!1.3\) vid/s effective training
+throughput (encoder forward dominates; backward only flows through
+the 8\,M-param probe), one epoch costs \(\approx 41\,\)min, observed
+to be \(\approx 45\,\)min in the actual log including data-loader
+overhead. The full \code{data/val/} pass costs \(\sim\!78\,\)min at
+the same throughput. Total budget: \(10\times 45 + 2 \times 78
+\approx 606\,\)min, i.e. \(\sim\!10\,\)h -- fits a
+01:59\,\(\to\)\,12:00 window.
+
+\paragraph{Outcome.}
+Finished ViT-g~384 heavy-aug jobs are summarised in
+Tab.~\ref{tab:trackb-runlog} (rows~1--2) with compact notation from
+Tab.~\ref{tab:trackb-glossary}.  Phase~4.3 supersedes Phase~4.2 as the
+flagship Track-B recipe for large backbones; the submission CSV is
+produced via \code{python -m smth2smth.pipelines.submit} pointing at
+\code{checkpoints/track\_b/vitg384\_heavy\_aug.pt}.
+
+\subsection{Phase 4.4: multi-query probe and PEFT LoRA}
+\label{sec:phase4-peft}
+
+\paragraph{Motivation.}
+The gap between course val (\(\sim\!54\%\) with ViT-g~384) and the
+paper's \(77.3\,\%\) SSv2 benchmark is only partly model-size: the
+frozen encoder cannot adapt its internal features to the 33-class
+slice or to domain shift, while a single-query attentive probe may
+under-represent compositional verbs. Phase~4.4 adds two orthogonal
+extensions implemented in \file{src/smth2smth/track\_b/vjepa2.py} and
+exposed through \file{configs/model/vjepa2.yaml}:
+
+\begin{enumerate}[leftmargin=2em]
+\item \textbf{Multi-query attentive head} ---
+      config key \cfgkey{head\_num\_queries} (default \code{1}).
+      \(Q\) learnable queries each run cross-attention over the full
+      token grid; outputs are mean-pooled across \(Q\) before
+      \code{LayerNorm} and the classifier. This increases probe capacity
+      without touching the ViT trunk.
+\item \textbf{PEFT LoRA} --- optional low-rank adapters (LoRA, Hu et al.,
+      ICLR~2022) on attention linear projections
+      (\code{query}, \code{key}, \code{value}, \code{proj} by default for
+      the HuggingFace \code{VJEPA2Model} encoder; configurable via
+      \cfgkey{lora\_target\_modules}).
+      The \texttt{peft} package wraps the HuggingFace encoder with
+      \code{get\_peft\_model}; pretrained weights stay frozen while
+      adapter matrices train. Forward passes run \emph{with} autograd
+      through the adapters (\code{\_encoder\_needs\_grad=true}), unlike
+      the pure frozen trunk. Full encoder fine-tuning remains available
+      via \code{freeze\_backbone=false} with \code{lora\_enabled=false}
+      (not combinable with LoRA in the current implementation).
+\end{enumerate}
+
+\paragraph{Dependencies.}
+The project declares \texttt{peft>=0.13} in \file{pyproject.toml}.
+LoRA is inactive unless \code{model.lora\_enabled=true}.
+
+\paragraph{Experiment preset.}
+\file{configs/experiment/track\_b\_vjepa2\_peft.yaml} composes the Phase~4.3
+ViT-g~384 heavy-aug recipe with \code{head\_num\_queries: 4},
+\code{lora\_enabled: true}, \code{lora\_r: 8}, \code{lora\_alpha: 16},
+and a slightly reduced learning rate (\code{training.lr: 2e-4}) so
+adapter updates remain stable. Checkpoints are written to
+\code{checkpoints/track\_b/vitg384\_peft\_mq.pt} by default.
+
+\paragraph{Caveats.}
+If PEFT cannot match \code{lora\_target\_modules} to the encoder's
+module names, construction raises a clear \code{RuntimeError}; adjust
+the list for the specific \code{hf\_repo}. QLoRA (4-bit base weights) is
+\emph{not} implemented here---only BF16/FP16 training as before. Dense
+multi-crop / multi-clip test-time ensembling remains future work.

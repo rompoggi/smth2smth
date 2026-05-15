@@ -1,0 +1,52 @@
+# @package _global_
+# Track B (open-world): V-JEPA 2 frozen-encoder attentive probe.
+#
+# The encoder is downloaded once from HuggingFace Hub and cached under
+# ``$HF_HOME`` (default ``~/.cache/huggingface``). At training time the probe
+# is the only thing that receives gradients; ``freeze_backbone: true`` and
+# ``torch.no_grad`` around the encoder forward keep the activation memory low.
+#
+# Mandatory overrides from the default Hydra config:
+#   - ``dataset.image_size: 256`` -- V-JEPA 2 ViT-L 256 was trained at 256 px.
+#     Switch to 384 if you change ``model.hf_repo`` to a 384-variant.
+#   - ``dataset.num_frames`` must be even (tubelet size is 2). 16 is the
+#     same fpc the SSv2-finetuned checkpoint was evaluated with.
+#   - ``training.amp: true`` -- SDPA attention runs in FP16 efficiently and
+#     keeps the encoder forward fast even for ViT-L/g.
+#   - ``training.optimizer: adamw`` with weight decay -- standard for
+#     transformer probes.
+defaults:
+  - override /model: vjepa2
+
+model:
+  pretrained: true
+  hf_repo: facebook/vjepa2-vitl-fpc64-256
+  head_type: attentive
+  head_num_heads: 8
+  head_dropout: 0.0
+  freeze_backbone: true
+
+dataset:
+  num_frames: 16
+  image_size: 256
+  use_official_val: true
+
+training:
+  batch_size: 4
+  epochs: 30
+  lr: 0.001
+  optimizer: adamw
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 2
+  min_lr: 0.00001
+  label_smoothing: 0.1
+  amp: true
+  ema_enabled: true
+  ema_decay: 0.999
+  tta: true
+  tta_flip: true
+  early_stopping_enabled: true
+  early_stopping_patience: 8
+  early_stopping_min_delta: 0.001
+  log_interval_steps: 50

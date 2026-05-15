@@ -1,0 +1,23 @@
+# @package _global_
+# Track B Phase 4.4: ViT-G 384 SSv2 + heavy aug + PEFT LoRA + multi-query probe.
+#
+# Extends track_b_vjepa2_vitg384_heavy_aug with:
+#   - model.lora_enabled: true  (PEFT LoRA on q/k/v/out projections)
+#   - model.head_num_queries: 4 (wider attentive probe before classifier)
+#
+# Optimizer updates: LoRA adapters + probe only (~0.5--2% of backbone params
+# depending on rank). Keep LR moderate; reduce weight_decay on adapters if needed.
+defaults:
+  - track_b_vjepa2_vitg384_heavy_aug
+
+model:
+  head_num_queries: 4
+  lora_enabled: true
+  lora_r: 8
+  lora_alpha: 16
+  lora_dropout: 0.05
+  lora_target_modules: null
+
+training:
+  lr: 0.0002
+  checkpoint_path: checkpoints/track_b/vitg384_peft_mq.pt

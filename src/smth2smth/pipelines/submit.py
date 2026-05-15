@@ -154,6 +154,10 @@ def run(cfg: DictConfig) -> Path:
             device=device,
         )
 
+    amp_infer = bool(cfg.training.get("amp", False)) and device.type == "cuda"
+    if amp_infer:
+        print("[submit] inference autocast fp16 enabled (matches training.amp).")
+
     predictions = _predict(
         model=model,
         loader=loader,
@@ -164,6 +168,7 @@ def run(cfg: DictConfig) -> Path:
         flip_perm=flip_perm,
         tta_scales=tta_scales,
         logit_adjust=logit_adjust,
+        amp_infer=amp_infer,
     )
     if len(predictions) != len(video_names):
         raise RuntimeError(f"Prediction count {len(predictions)} != video count {len(video_names)}")
@@ -265,8 +270,14 @@ def _logits_for_batch(
     video_batch: torch.Tensor,
     untrained_mask: torch.Tensor | None,
     logit_adjust: torch.Tensor | None = None,
+    *,
+    amp_infer: bool = False,
 ) -> torch.Tensor:
-    logits = model(video_batch)
+    if amp_infer:
+        with torch.autocast(device_type="cuda", dtype=torch.float16):
+            logits = model(video_batch)
+    else:
+        logits = model(video_batch)
     if untrained_mask is not None:
         logits = logits + untrained_mask
     if logit_adjust is not None:
@@ -303,6 +314,7 @@ def _predict(
     flip_perm: torch.Tensor | None,
     tta_scales: list[float] | None = None,
     logit_adjust: torch.Tensor | None = None,
+    amp_infer: bool = False,
 ) -> list[int]:
     """Argmax inference, optionally with multi-view TTA.
 
@@ -326,7 +338,11 @@ def _predict(
         video_batch = video_batch.to(device, non_blocking=True)
         if not tta_enabled:
             logits = _logits_for_batch(
-                model, video_batch, untrained_mask, logit_adjust=logit_adjust
+                model,
+                video_batch,
+                untrained_mask,
+                logit_adjust=logit_adjust,
+                amp_infer=amp_infer,
             )
             predictions.extend(int(p) for p in logits.argmax(dim=1).cpu().tolist())
             continue
@@ -336,7 +352,11 @@ def _predict(
         for scale in tta_scales:
             scaled = _rescale_video(video_batch, scale)
             scaled_logits = _logits_for_batch(
-                model, scaled, untrained_mask, logit_adjust=logit_adjust
+                model,
+                scaled,
+                untrained_mask,
+                logit_adjust=logit_adjust,
+                amp_infer=amp_infer,
             )
             scaled_probs = torch.softmax(scaled_logits, dim=1)
             probs_total = scaled_probs if probs_total is None else probs_total + scaled_probs
@@ -344,7 +364,11 @@ def _predict(
             if tta_flip:
                 flipped = torch.flip(scaled, dims=[-1])
                 flipped_logits = _logits_for_batch(
-                    model, flipped, untrained_mask, logit_adjust=logit_adjust
+                    model,
+                    flipped,
+                    untrained_mask,
+                    logit_adjust=logit_adjust,
+                    amp_infer=amp_infer,
                 )
                 flipped_probs = torch.softmax(flipped_logits, dim=1)
                 if flip_perm is not None:

@@ -1,0 +1,38 @@
+# @package _global_
+# Track B: pretrained ViT-L (256), 30 epochs, cosine LR with warmup, val every epoch.
+#
+# - Backbone: ``facebook/vjepa2-vitl-fpc64-256`` (SSL pretrained ViT-L).
+# - PEFT LoRA on attention projections (``lora_enabled: true``); pretrained
+#   weights stay frozen, adapters + probe train.
+# - Probe: attentive head with N(0, 0.01^2) init on learnable queries + classifier
+#   (see ``AttentiveProbe`` / ``MeanLinearHead`` in ``track_b/vjepa2.py``).
+# - ``eval_every_n_epochs: 1`` so each epoch logs val loss + val top1/top5.
+# - EMA off: single val pass per epoch and no duplicate-model VRAM.
+# - Early stopping off: full 30-epoch schedule always runs.
+defaults:
+  - track_b_vjepa2
+
+model:
+  hf_repo: facebook/vjepa2-vitl-fpc64-256
+  freeze_backbone: true
+  lora_enabled: true
+  lora_r: 8
+  lora_alpha: 16
+  lora_dropout: 0.05
+  lora_target_modules: null
+
+training:
+  epochs: 30
+  warmup_epochs: 3
+  scheduler_cosine: true
+  eval_every_n_epochs: 1
+  eval_ema: false
+  ema_enabled: false
+  early_stopping_enabled: false
+  checkpoint_path: checkpoints/track_b/vitl_30e_warmup_lora.pt
+  # Resume the last completed epoch (``*.last.pt``). Remove or set to null for a
+  # fresh run from random head init.
+  resume_from: checkpoints/track_b/vitl_30e_warmup_lora.last.pt
+  # Lower head LR + dedicated LoRA LR (see ``pipelines.train`` param groups).
+  lr: 0.0005
+  lora_lr: 0.0001

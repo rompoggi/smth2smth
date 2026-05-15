@@ -6,6 +6,7 @@ Forwards every CLI argument to ``smth2smth.pipelines.train`` after pinning
 
     python scripts/run_track_a.py training.epochs=20 training.batch_size=16
     python scripts/run_track_a.py -m training.lr=1e-3,5e-4 training.epochs=20
+    python scripts/run_track_a.py experiment=track_a_dual_stream_30e_class_boost
 """
 
 from __future__ import annotations

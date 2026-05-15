@@ -37,6 +37,19 @@ _BUNDLED_MODELS = [
             "dropout": 0.5,
         },
     ),
+    (
+        "dual_stream_rgb_diff_tsm",
+        {
+            "num_classes": 7,
+            "pretrained": False,
+            "shift_div": 8,
+            "shift_place": "blockres",
+            "dropout": 0.5,
+            "drop_path_rate": 0.0,
+            "head": "mean",
+            "fuse_dim": 512,
+        },
+    ),
 ]
 
 
@@ -52,6 +65,7 @@ class TestRegistry:
         assert "cnn_baseline" in registered
         assert "cnn_lstm" in registered
         assert "avanced_resnet50_tsm" in registered
+        assert "dual_stream_rgb_diff_tsm" in registered
 
     def test_build_model_returns_correct_class(self) -> None:
         cfg = OmegaConf.create(

@@ -1,0 +1,87 @@
+[load] facebook/vjepa2-vitl-fpc16-256-ssv2
+Loading weights:   0%|          | 0/652 [00:00<?, ?it/s]Loading weights: 100%|██████████| 652/652 [00:00<00:00, 24706.26it/s]
+[load] backbone hidden_size=1024 num_labels=174
+[map] prefix-matched our class 015 ('015_Pretending_to_pour_something_out_of_something_but_something_') to SSv2 idx 70 ('Pretending to pour [something] out of [something], but [something] is empty')
+[map] matched 32 / 32 of our classes to SSv2 indices
+[data] indexing test videos under /Data/romain.poggi/Modal/project/smth2smth/data/test
+[data] 6913 test videos.
+  step 20/865  seen=160/6913  speed=18.0 vid/s
+  step 40/865  seen=320/6913  speed=18.6 vid/s
+  step 60/865  seen=480/6913  speed=18.8 vid/s
+  step 80/865  seen=640/6913  speed=18.8 vid/s
+  step 100/865  seen=800/6913  speed=18.8 vid/s
+  step 120/865  seen=960/6913  speed=18.7 vid/s
+  step 140/865  seen=1120/6913  speed=18.7 vid/s
+  step 160/865  seen=1280/6913  speed=18.7 vid/s
+  step 180/865  seen=1440/6913  speed=18.6 vid/s
+  step 200/865  seen=1600/6913  speed=18.6 vid/s
+  step 220/865  seen=1760/6913  speed=18.5 vid/s
+  step 240/865  seen=1920/6913  speed=18.5 vid/s
+  step 260/865  seen=2080/6913  speed=18.5 vid/s
+  step 280/865  seen=2240/6913  speed=18.5 vid/s
+  step 300/865  seen=2400/6913  speed=18.4 vid/s
+  step 320/865  seen=2560/6913  speed=18.4 vid/s
+  step 340/865  seen=2720/6913  speed=18.4 vid/s
+  step 360/865  seen=2880/6913  speed=18.4 vid/s
+  step 380/865  seen=3040/6913  speed=18.3 vid/s
+  step 400/865  seen=3200/6913  speed=18.3 vid/s
+  step 420/865  seen=3360/6913  speed=18.3 vid/s
+  step 440/865  seen=3520/6913  speed=18.3 vid/s
+  step 460/865  seen=3680/6913  speed=18.3 vid/s
+  step 480/865  seen=3840/6913  speed=18.3 vid/s
+  step 500/865  seen=4000/6913  speed=18.2 vid/s
+  step 520/865  seen=4160/6913  speed=18.2 vid/s
+  step 540/865  seen=4320/6913  speed=18.2 vid/s
+  step 560/865  seen=4480/6913  speed=18.2 vid/s
+  step 580/865  seen=4640/6913  speed=18.2 vid/s
+  step 600/865  seen=4800/6913  speed=18.2 vid/s
+  step 620/865  seen=4960/6913  speed=18.2 vid/s
+  step 640/865  seen=5120/6913  speed=18.1 vid/s
+  step 660/865  seen=5280/6913  speed=18.1 vid/s
+  step 680/865  seen=5440/6913  speed=18.1 vid/s
+  step 700/865  seen=5600/6913  speed=18.1 vid/s
+  step 720/865  seen=5760/6913  speed=18.1 vid/s
+  step 740/865  seen=5920/6913  speed=18.1 vid/s
+  step 760/865  seen=6080/6913  speed=18.1 vid/s
+  step 780/865  seen=6240/6913  speed=18.1 vid/s
+  step 800/865  seen=6400/6913  speed=18.1 vid/s
+  step 820/865  seen=6560/6913  speed=18.1 vid/s
+  step 840/865  seen=6720/6913  speed=18.1 vid/s
+  step 860/865  seen=6880/6913  speed=18.1 vid/s
+[done] processed 6913 videos in 383.0 s (18.0 vid/s)
+[csv ] wrote 6913 rows to /Data/romain.poggi/Modal/project/smth2smth/submissions/track_b_vjepa2_vitl_fpc16_256_ssv2_zero_shot.csv
+[csv ] validation OK: 6913 rows, 6913 unique video_name, all predicted_class in [0, 33)
+
+Prediction histogram (predicted_class -> count):
+    0    216  000_Closing_something
+    1    263  001_Covering_something_with_something
+    2    179  002_Dropping_something_into_something
+    3    298  003_Folding_something
+    4    740  004_Hitting_something_with_something
+    5    691  005_Holding_something
+    6    183  006_Moving_something_away_from_something
+    7    392  007_Moving_something_closer_to_something
+    8    104  008_Moving_something_down
+    9    183  009_Moving_something_up
+   10    193  010_Opening_something
+   11    147  011_Picking_something_up
+   12    330  012_Pouring_something_into_something
+   13     92  013_Pouring_something_out_of_something
+   14    871  014_Pretending_to_pick_something_up
+   15    175  015_Pretending_to_pour_something_out_of_something_but_something_
+   16    128  016_Pretending_to_put_something_into_something
+   17     90  017_Pretending_to_throw_something
+   18     99  018_Pulling_something_from_left_to_right
+   19     89  019_Pulling_something_from_right_to_left
+   20     54  020_Putting_something_behind_something
+   21     52  021_Putting_something_in_front_of_something
+   22    252  022_Putting_something_into_something
+   23    185  023_Putting_something_next_to_something
+   24     91  024_Putting_something_onto_something
+   25    201  025_Showing_something_to_the_camera
+   26     63  026_Spilling_something_next_to_something
+   28    114  028_Taking_something_out_of_something
+   29    107  029_Throwing_something
+   30     35  030_Turning_something_upside_down
+   31    112  031_Uncovering_something
+   32    184  032_Unfolding_something
