@@ -16,6 +16,24 @@ training:
   # trainable LoRA weights.
   lora_lr: null
   lora_lr_ratio: 0.25
+  # Dual-stream (``model.name=dual_stream_rgb_diff_tsm``) per-backbone LR.
+  # Splits trainable params into three groups: ``rgb_backbone`` (ResNet-50,
+  # peak LR = ``training.lr``), ``motion_backbone`` (ResNet-34), and
+  # ``fuse_head`` (fusion projection + attention pool + classifier, peak LR
+  # = ``training.lr``). The motion-branch peak LR is taken from
+  # ``motion_lr`` (absolute) when set, otherwise from
+  # ``training.lr * motion_lr_ratio``. When BOTH are ``null`` the legacy
+  # single-group path is used (all trainables at ``training.lr``), so
+  # default behaviour is unchanged. Mutually exclusive with the LoRA
+  # two-group path; LoRA is not used by the dual-stream builder.
+  motion_lr: null
+  motion_lr_ratio: null
+  # When true and ``training.resume_from`` is set, peak LRs from the current
+  # Hydra config (``training.lr``, motion/lora knobs) replace the values stored
+  # in the checkpoint optimizer state, and the cosine scheduler is fast-forwarded
+  # from the new bases instead of loading ``scheduler_state_dict``. Use this to
+  # resume with a slightly different learning rate while keeping Adam momentum.
+  resume_apply_cfg_lr: false
   # When true and the device is CUDA, training and evaluation forward passes
   # run under ``torch.amp.autocast`` (mixed FP16/BF16 + GradScaler). Off by
   # default for byte-for-byte parity with historical runs.

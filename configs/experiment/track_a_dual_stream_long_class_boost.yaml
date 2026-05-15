@@ -1,0 +1,59 @@
+# @package _global_
+# Track A: dual-stream RGB + frame-difference TSM with per-backbone LR
+# (smaller for the motion ResNet-34) and aggressive early stopping
+# (val top-1 must improve at least every 3 evaluated epochs). Uses cosine
+# schedule with warmup over a generous epoch budget so cosine has time to
+# anneal even when the run finishes early. Same data stack as the
+# 30-epoch class-boost preset (RandAugment-T + FrameMixUp, official val,
+# AMP, EMA, deterministic class boosting).
+defaults:
+  - override /model: dual_stream_rgb_diff_tsm
+  - override /augment: randaugment_t
+
+model:
+  pretrained: false
+  drop_path_rate: 0.1
+  head: attn
+  head_num_heads: 4
+  fuse_dim: 512
+
+dataset:
+  num_frames: 4
+  use_official_val: true
+  class_boosting:
+    enabled: true
+  temporal_reversal_augment:
+    enabled: false
+
+training:
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/dual_stream_long_class_boost.pt
+  batch_size: 16
+  epochs: 80
+  lr: 0.0001
+  # Smaller LR for the motion ResNet-34 branch (consecutive-frame diffs are
+  # noisier than RGB; the smaller backbone overfits faster). 0.3 x lr keeps
+  # both groups synchronised through warmup + cosine via per-group
+  # ``warmup_lr_max`` and shared ``min_lr``.
+  motion_lr_ratio: 0.3
+  optimizer: adamw
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 6
+  min_lr: 0.000001
+  label_smoothing: 0.1
+  videomix_mode: frame_mixup
+  videomix_alpha: 5.0
+  videomix_prob: 0.5
+  amp: true
+  ema_enabled: true
+  ema_decay: 0.999
+  eval_every_n_epochs: 1
+  eval_ema: true
+  tta: true
+  tta_flip: true
+  early_stopping_enabled: true
+  # Patience = 3: stop if val top-1 has not improved for 3 consecutive
+  # evaluated epochs (the user's "increase at least every 3 epochs" rule).
+  early_stopping_patience: 3
+  early_stopping_min_delta: 0.001
+  log_interval_steps: 100
