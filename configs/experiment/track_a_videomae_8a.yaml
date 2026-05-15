@@ -1,0 +1,63 @@
+# @package _global_
+# Experiment 8a — ViT-B + Class Boosting + Class Balancing, mean-pool classifier.
+#
+# Assigned to: whoever finishes 6a/7a first
+# Dependency: run after 1a/2a results are in; set init_from if 2a > 1a.
+#
+# Run:
+#   PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
+#       experiment=track_a_videomae_8a
+#   # With SSL encoder (if 2a wins):
+#       experiment=track_a_videomae_8a model.init_from=<path>/videomae_encoder.pt
+defaults:
+  - override /model: video_mae_vit
+  - override /augment: randaugment_t
+
+model:
+  variant: vit_b
+  num_classes: ${num_classes}
+  drop_path_rate: 0.1
+  dropout: 0.0
+  head: mean
+  init_from: null
+
+augment:
+  random_horizontal_flip: false
+  random_crop: true
+  crop_padding: 32
+  randaugment:
+    enabled: true
+    n: 4
+    m: 7.0
+    mode: temporal_plus
+
+dataset:
+  num_frames: 4
+  use_official_val: true
+  class_boosting:
+    enabled: true
+
+training:
+  batch_size: 16
+  epochs: 40
+  optimizer: adamw
+  lr: 0.0005
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 5
+  min_lr: 0.000001
+  label_smoothing: 0.1
+  videomix_mode: cube_cutmix
+  videomix_alpha: 1.0
+  videomix_prob: 0.5
+  amp: true
+  ema_enabled: true
+  ema_decay: 0.9999
+  num_workers: 4
+  class_balance_sampler: sqrt_inverse
+  class_balance_loss: cb
+  class_balance_beta: 0.999
+  log_interval_steps: 100
+  early_stopping_enabled: true
+  early_stopping_patience: 15
+  early_stopping_min_delta: 0.001

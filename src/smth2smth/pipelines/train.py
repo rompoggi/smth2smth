@@ -279,7 +279,7 @@ def run(cfg: DictConfig) -> Path | None:
             f"(deterministic paired-verb duplicates)"
         )
 
-    use_imagenet_norm = bool(cfg.model.pretrained)
+    use_imagenet_norm = bool(cfg.model.get("pretrained", False)) if hasattr(cfg.model, "get") else bool(cfg.model.pretrained)
     augment_cfg = cfg.get("augment") if hasattr(cfg, "get") else None
     train_transform = build_transforms(
         image_size=int(cfg.dataset.image_size),
@@ -408,17 +408,31 @@ def run(cfg: DictConfig) -> Path | None:
                     f"{init_path} does not contain a 'trunk_state_dict' key; "
                     "expected an SSL checkpoint produced by pretrain_ssl.py."
                 )
-            prefixed = _ssl_trunk_to_supervised_keys(trunk_state)
-            missing, unexpected = model.load_state_dict(prefixed, strict=False)
-            # ``missing`` will include classifier / attn_pool keys -- expected.
-            backbone_missing = [k for k in missing if k.startswith("backbone.")]
-            print(
-                f"[init_from] loaded {len(prefixed)} trunk tensors from {init_path}. "
-                f"backbone-missing={len(backbone_missing)}, unexpected={len(unexpected)}"
-            )
-            if backbone_missing:
-                # If the SSL trunk doesn't cover every backbone key, we want to know.
-                print(f"[init_from] backbone keys NOT covered by SSL: {backbone_missing[:8]}...")
+            model_name = str(cfg.model.name)
+            if model_name == "video_mae_vit":
+                # VideoMAE checkpoints store keys with ``encoder.`` prefix
+                # already present (saved by pretrain_videomae.py). Load
+                # directly without the ResNet-specific key renaming.
+                encoder_keys = {k for k in trunk_state if k.startswith("encoder.")}
+                missing, unexpected = model.load_state_dict(trunk_state, strict=False)
+                encoder_missing = [k for k in missing if k.startswith("encoder.")]
+                print(
+                    f"[init_from] loaded {len(encoder_keys)} encoder tensors from {init_path}. "
+                    f"encoder-missing={len(encoder_missing)}, unexpected={len(unexpected)}"
+                )
+                if encoder_missing:
+                    print(f"[init_from] encoder keys NOT covered by SSL: {encoder_missing[:8]}...")
+            else:
+                prefixed = _ssl_trunk_to_supervised_keys(trunk_state)
+                missing, unexpected = model.load_state_dict(prefixed, strict=False)
+                # ``missing`` will include classifier / attn_pool keys -- expected.
+                backbone_missing = [k for k in missing if k.startswith("backbone.")]
+                print(
+                    f"[init_from] loaded {len(prefixed)} trunk tensors from {init_path}. "
+                    f"backbone-missing={len(backbone_missing)}, unexpected={len(unexpected)}"
+                )
+                if backbone_missing:
+                    print(f"[init_from] backbone keys NOT covered by SSL: {backbone_missing[:8]}...")
 
     # Class-balanced cross-entropy weights (opt-in). Composes with
     # label-smoothing and video-mixing: the same tensor is passed both to

@@ -18,6 +18,7 @@ from smth2smth.shared.models import avanced_resnet50_tsm as _avanced_resnet50_ts
 from smth2smth.shared.models import dual_stream_rgb_diff_tsm as _dual_stream_rgb_diff_tsm  # noqa: F401
 from smth2smth.shared.models import cnn_baseline as _cnn_baseline  # noqa: F401
 from smth2smth.shared.models import cnn_lstm as _cnn_lstm  # noqa: F401
+from smth2smth.shared.models import video_mae as _video_mae  # noqa: F401
 from smth2smth.shared.models.avanced_resnet50_tsm import AvancedResNet50TSM
 from smth2smth.shared.models.cnn_baseline import CNNBaseline
 from smth2smth.shared.models.cnn_lstm import CNNLSTM
