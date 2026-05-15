@@ -11,6 +11,7 @@ Tests can call :func:`run` directly with a hand-built ``DictConfig``; only the
 from __future__ import annotations
 
 import gc
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +41,17 @@ from smth2smth.shared.utils import (
 )
 
 CONFIGS_DIR = str(Path(__file__).resolve().parents[3] / "configs")
+
+
+def _epoch_progress_stamp(epoch_one_indexed: int, total_epochs: int) -> str:
+    """Prefix epoch logs with an ISO timestamp on a coarse grid (every 50 epochs)."""
+    if (
+        epoch_one_indexed == 1
+        or epoch_one_indexed == total_epochs
+        or epoch_one_indexed % 50 == 0
+    ):
+        return f"[{datetime.now().isoformat(timespec='seconds')}] "
+    return ""
 
 
 def _resolve_device(device_str: str) -> torch.device:
@@ -808,8 +820,10 @@ def run(cfg: DictConfig) -> Path | None:
             is_last_epoch = (epoch + 1) == int(cfg.training.epochs)
             should_eval = is_last_epoch or ((epoch + 1) % eval_every_n_epochs == 0)
             if not should_eval:
+                et = int(cfg.training.epochs)
+                pfx = _epoch_progress_stamp(epoch + 1, et)
                 print(
-                    f"Epoch {epoch + 1}/{cfg.training.epochs} | "
+                    f"{pfx}Epoch {epoch + 1}/{et} | "
                     f"train loss {train_stats.loss:.4f} top1 {train_stats.top1:.4f} | "
                     f"val skipped (eval_every_n_epochs={eval_every_n_epochs})"
                 )
@@ -826,9 +840,11 @@ def run(cfg: DictConfig) -> Path | None:
                 ema_stats = evaluate_epoch(
                     ema_model, val_loader, loss_fn, device, amp_enabled=amp_enabled
                 )
+            et = int(cfg.training.epochs)
+            pfx = _epoch_progress_stamp(epoch + 1, et)
             if ema_stats is not None:
                 print(
-                    f"Epoch {epoch + 1}/{cfg.training.epochs} | "
+                    f"{pfx}Epoch {epoch + 1}/{et} | "
                     f"train loss {train_stats.loss:.4f} top1 {train_stats.top1:.4f} | "
                     f"val loss {val_stats.loss:.4f} top1 {val_stats.top1:.4f} "
                     f"top5 {val_stats.top5:.4f} | "
@@ -837,7 +853,7 @@ def run(cfg: DictConfig) -> Path | None:
             else:
                 ema_tag = " | ema eval skipped" if (ema_model is not None and not eval_ema) else ""
                 print(
-                    f"Epoch {epoch + 1}/{cfg.training.epochs} | "
+                    f"{pfx}Epoch {epoch + 1}/{et} | "
                     f"train loss {train_stats.loss:.4f} top1 {train_stats.top1:.4f} | "
                     f"val loss {val_stats.loss:.4f} top1 {val_stats.top1:.4f} "
                     f"top5 {val_stats.top5:.4f}{ema_tag}"

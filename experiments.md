@@ -9,18 +9,19 @@
 
 ---
 
-## Experiment matrix (MP only)
+## Experiment matrix (supervised ViT from scratch — **all failed**; use SSL)
 
 | # | Name | Who | Description | Config |
 |---|------|-----|-------------|--------|
-| 1a | **truite** | Romain | No-SSL ViT-B, no class tricks | `track_a_vit_truite` |
+| 1a | **truite** | Romain | No-SSL ViT-B, mean pool, no class tricks | `track_a_vit_truite` |
+| 1b | **truite AP** | Romain | No-SSL ViT-B, attentive probe (same recipe as 1a); **stopped**, no gain vs MP | `track_a_vit_truite_ap` |
+| — | **sardine** | Romain | No-SSL ViT-S, mean pool, large batch + heavy RandAug | `track_a_vit_sardine` |
 | 6a | **rouget** | Romain | No-SSL ViT-B + Class Boosting | `track_a_vit_rouget` |
 | 7a | **roussette** | Romain | No-SSL ViT-B + Class Balancing | `track_a_vit_roussette` |
 | 8a | **raie** | Romain | No-SSL ViT-B + Class Boosting + Class Balancing | `track_a_vit_raie` |
 | 2a | — | Thomas | VideoMAE SSL pre-train → ViT-B fine-tune (75% tube mask) | `track_a_videomae_finetune` |
 
-**Romain** runs truite/rouget/roussette/raie in parallel on 4 machines — all from scratch, no SSL.  
-**Thomas** runs the VideoMAE pre-train then 2a fine-tune (sequential).
+**Conclusion:** supervised VideoMAE-style ViT from random init does not learn on this dataset at Track-A scale (\(\sim 45\)k clips). **Next step:** `track_a_videomae_pretrain` → `track_a_videomae_finetune` with `model.init_from`.
 
 ---
 
@@ -34,10 +35,16 @@ PYTHONPATH=src uv run python -m smth2smth.pipelines.pretrain_videomae \
 
 ### Romain — run all 4 in parallel on separate machines
 
-**truite**
+**truite** (mean pool)
 ```bash
 PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
     experiment=track_a_vit_truite
+```
+
+**truite AP** (attentive probe, same hyperparams as truite)
+```bash
+PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
+    experiment=track_a_vit_truite_ap
 ```
 
 **rouget**

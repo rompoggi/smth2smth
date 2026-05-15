@@ -879,6 +879,63 @@ finishes; add new rows for every fresh \texttt{nohup} launch.
   Submit (flip TTA): \texttt{.../track\_a\_dual\_stream\_long\_lr1\_resume\_20260515.csv};
   log \texttt{.../track\_a\_dual\_stream\_long\_lr1\_resume\_20260515\_submit.log}.
   Public Kaggle top-1: \textbf{37.69\,\%}.
+\item[\textbf{Run A2 / truite} (DONE -- FAILED LEARNING)]
+  Log: \texttt{logs/truite.log}.
+  Preset \texttt{track\_a\_vit\_truite}: video\_mae\_vit \texttt{variant}=vit\_b,
+  \texttt{head}=\textbf{mean} (mean pool, MP), \(\sim\)87\,M params;
+  same train recipe as the fish-matrix presets below.
+  \texttt{T}=4; \texttt{Sz}=224; \texttt{bs}=16; \texttt{E}=40;
+  \texttt{lr}=5e-4; \texttt{wu}=5; RandAug-T (\texttt{n}=4, \texttt{m}=7);
+  cube CutMix; \texttt{cb}=0.  Early stop after 18 epochs; best val top-1
+  \textbf{5.41\,\%}; train top-1 plateaued near \(\sim 7\)\,\%
+  (loss \(\ln 33 \approx 3.5\)).
+\item[\textbf{Run A3 / sardine} (STOPPED -- FAILED LEARNING)]
+  Log: \texttt{logs/track\_a\_vit\_sardine\_20260515\_230200.log}.
+  Preset \texttt{track\_a\_vit\_sardine}; \texttt{variant}=vit\_s; MP;
+  \(\sim\)22\,M; \texttt{bs}=64; \texttt{lr}=1e-3; \texttt{wu}=10;
+  RandAug-T (\texttt{n}=6, \texttt{m}=10).  Stopped manually after epoch~3:
+  \(\sim 6.7\,\%\) train / \textbf{6.15\,\%} best val (epoch~2)---same
+  failure mode as truite despite 4\(\times\) larger batch and heavier aug.
+\item[\textbf{Run A4 / truite AP} (STOPPED -- FAILED LEARNING)]
+  Log: \texttt{logs/track\_a\_vit\_truite\_ap\_20260515\_234500.log}.
+  Preset \texttt{track\_a\_vit\_truite\_ap}: ViT-B with \textbf{attentive probe}
+  (\texttt{head=attn}, 4 heads), \(\sim\)89\,M params; otherwise identical to
+  truite.  Stopped manually mid-training (same plateau as MP): e.g.\ mid-epoch
+  steps still show train loss \(\approx 3.35\) and train top-1 \(\approx
+  6.5\)--\(7\)\,\%---\emph{no gain} from replacing mean pool.  Confirms the
+  bottleneck is not the temporal readout.
+\item[\textbf{Run rouget} (ViT-B + MP + class boosting; DONE -- FAILED)]
+  Preset \texttt{track\_a\_vit\_rouget}: truite stack + deterministic class
+  boosting (\texttt{cb}=1).  Representative log (epoch~16): train
+  \(\sim 8.6\,\%\) top-1, val \(\sim 4.6\,\%\), best val still only
+  \textbf{5.59\,\%} with patience counting down---no useful convergence.
+\item[\textbf{Run roussette} (ViT-B + MP + class balancing; DONE -- FAILED)]
+  Preset \texttt{track\_a\_vit\_roussette}: sqrt-inverse sampler + CB loss,
+  no boosting.  Early stop at epoch~23; best val top-1 \textbf{5.23\,\%}.
+\item[\textbf{Run raie} (ViT-B + MP + boosting + balancing; DONE -- FAILED)]
+  Preset \texttt{track\_a\_vit\_raie}: both \texttt{cb} and balancing.
+  Best val top-1 \textbf{6.00\,\%}; example epoch~15: val \(\sim
+  6.1\,\%\) live / \(\sim 5.9\,\%\) EMA with train top-1 still
+  \(\sim 5.7\)--\(5.8\,\%\)---long-tail tricks do not substitute for
+  convolutional inductive bias or SSL features.
 \end{description}
 \end{minipage}
 \end{table}
+
+\subsection{Supervised VideoMAE-style ViT from scratch: verdict}
+\label{sec:tracka:vit-from-scratch-verdict}
+
+Every supervised \texttt{video\_mae\_vit} run above---ViT-B vs ViT-S, mean pool
+vs attentive probe, with or without class boosting / balancing---stayed near
+\(\sim 1/33\) random chance scaled by a small factor (\(\sim 5\)--\(8\,\%\)
+train top-1, \(\sim 3\)--\(6\,\%\) val top-1).  The attentive probe (Run~A4)
+did \emph{not} unlock learning: mid-training logs still show loss \(\approx
+\ln(33)\) and \(\sim 6.5\,\%\) train accuracy, indistinguishable from mean pool
+(Run~A2).  Class tricks (rouget / roussette / raie) marginally move numbers
+but remain \(\ll\) the \(\sim 39\,\%\) val regime of the dual-stream CNN
+(Runs~A1/A1b).  \textbf{Conclusion:} training this ViT \emph{from random init}
+on \(\sim 45\,k\) labelled clips alone is not viable for Track~A; the
+practical path is \textbf{VideoMAE self-supervised pretraining} on
+provided frames (\texttt{track\_a\_videomae\_pretrain}) followed by supervised
+fine-tune (\texttt{track\_a\_videomae\_finetune} with
+\texttt{model.init\_from}), as configured in this repository.

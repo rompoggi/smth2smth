@@ -17,6 +17,7 @@ Run from the repo root::
 from __future__ import annotations
 
 import math
+from datetime import datetime
 from pathlib import Path
 
 import hydra
@@ -113,7 +114,8 @@ def run(cfg: DictConfig) -> Path:
 
     # ── Model ─────────────────────────────────────────────────────────────────
     variant = str(cfg.model.get("variant", "vit_b"))
-    _variants = {"vit_b": dict(embed_dim=768, depth=12, num_heads=12),
+    _variants = {"vit_s": dict(embed_dim=384, depth=12, num_heads=6),
+                 "vit_b": dict(embed_dim=768, depth=12, num_heads=12),
                  "vit_l": dict(embed_dim=1024, depth=24, num_heads=16)}
     if variant not in _variants:
         raise SystemExit(f"Unknown variant {variant!r}; choose from {sorted(_variants)}")
@@ -217,7 +219,12 @@ def run(cfg: DictConfig) -> Path:
                 )
 
         avg_loss = epoch_loss / max(1, n_batches)
-        print(f"[videomae] epoch {epoch + 1}/{epochs} avg loss {avg_loss:.4f}")
+        ep = epoch + 1
+        ts = datetime.now().isoformat(timespec="seconds")
+        if ep == 1 or ep == epochs or ep % 50 == 0:
+            print(f"[videomae] {ts} epoch {ep}/{epochs} avg loss {avg_loss:.4f}")
+        else:
+            print(f"[videomae] epoch {ep}/{epochs} avg loss {avg_loss:.4f}")
 
         # Save encoder-only state dict with ``encoder.`` prefix so supervised
         # trainer can load directly with strict=False.

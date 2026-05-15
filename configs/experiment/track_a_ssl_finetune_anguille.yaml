@@ -1,11 +1,7 @@
 # @package _global_
-# truite — ViT-B from scratch, no SSL, no class tricks.
-#
-# Assigned to: Romain
-#
-# Run:
-#   PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
-#       experiment=track_a_vit_truite
+# SSL sweep slot — fine-tune with attentive probe. Run after pretrain wrote encoder.
+# ``model.init_from`` must match the pretrain checkpoint for this fish.
+
 defaults:
   - override /model: video_mae_vit
   - override /augment: randaugment_t
@@ -15,10 +11,10 @@ model:
   num_classes: ${num_classes}
   drop_path_rate: 0.1
   dropout: 0.0
-  head: mean
-  init_from: null
+  head: attn
+  head_num_heads: 4
+  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/anguille_encoder.pt
 
-# No flip (SSv2 direction-sensitive), RandAug-T n=4 m=7.
 augment:
   random_horizontal_flip: false
   random_crop: true
@@ -33,11 +29,14 @@ dataset:
   num_frames: 4
   use_official_val: true
 
+seed: 42
+
 training:
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/anguille_ft.pt
   batch_size: 16
-  epochs: 40
+  epochs: 30
   optimizer: adamw
-  lr: 0.0005
+  lr: 0.0002
   weight_decay: 0.05
   scheduler_cosine: true
   warmup_epochs: 5
@@ -50,7 +49,7 @@ training:
   ema_enabled: true
   ema_decay: 0.9999
   num_workers: 4
-  log_interval_steps: 50
+  log_interval_steps: 100
   early_stopping_enabled: true
   early_stopping_patience: 15
   early_stopping_min_delta: 0.001
