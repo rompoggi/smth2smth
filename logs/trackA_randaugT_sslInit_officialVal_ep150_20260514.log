@@ -1459,3 +1459,5 @@ Epoch 31/150 | train loss 1.8492 top1 0.6001 | val loss 2.3380 top1 0.3638 top5 
     step 1800/2813 | avg train loss 1.8014 top1 0.6168 top5 0.8838
     step 1900/2813 | avg train loss 1.8002 top1 0.6165 top5 0.8839
     step 2000/2813 | avg train loss 1.7987 top1 0.6167 top5 0.8838
+    step 2100/2813 | avg train loss 1.7993 top1 0.6163 top5 0.8836
+    step 2200/2813 | avg train loss 1.7994 top1 0.6160 top5 0.8836

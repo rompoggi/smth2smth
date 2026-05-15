@@ -11,6 +11,10 @@ track:
 
 training:
   checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/best_model.pt
+  # Used by pipelines.submit (and any code that forwards cfg.training): multi-view TTA.
+  tta: true
+  tta_flip: true
+  tta_scales: [0.875, 1.0, 1.125]
 
 dataset:
   submission_output: ${hydra:runtime.cwd}/submissions/track_a.csv

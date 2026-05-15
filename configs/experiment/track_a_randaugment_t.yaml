@@ -17,6 +17,8 @@ model:
 
 dataset:
   num_frames: 8
+  # Align early-stopping / best-checkpoint selection with held-out leaderboard-style val.
+  use_official_val: true
 
 training:
   batch_size: 16
