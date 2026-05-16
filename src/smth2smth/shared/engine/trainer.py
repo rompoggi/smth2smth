@@ -37,7 +37,11 @@ def train_one_epoch(
     videomix_alpha: float = 0.0,
     videomix_prob: float = 1.0,
     videomix_mode: str = "cube_cutmix",
+    videomix_mixup_alpha: float | None = None,
+    videomix_cutmix_alpha: float | None = None,
+    videomix_switch_prob: float = 0.5,
     log_interval_steps: int = 0,
+    grad_accum_steps: int = 1,
     scaler: torch.amp.GradScaler | None = None,
     amp_dtype: torch.dtype = torch.float16,
     ema_model: torch.optim.swa_utils.AveragedModel | None = None,
@@ -77,27 +81,35 @@ def train_one_epoch(
     total = 0
 
     use_amp = scaler is not None and device.type == "cuda"
+    accum_steps = max(1, int(grad_accum_steps))
 
     total_steps = len(data_loader)
+    optimizer.zero_grad(set_to_none=True)
     for step_idx, (video_batch, labels) in enumerate(data_loader, start=1):
         video_batch = video_batch.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
 
-        optimizer.zero_grad(set_to_none=True)
         mixed_labels: torch.Tensor | None = None
         train_labels = labels
-        if (
+        use_videomix = (
             num_classes is not None
-            and videomix_alpha > 0.0
             and videomix_mode != "none"
             and torch.rand(1).item() < videomix_prob
-        ):
+            and (
+                videomix_alpha > 0.0
+                or videomix_mode == "mixup_cutmix_switch"
+            )
+        )
+        if use_videomix:
             video_batch, train_labels, mixed_labels = apply_video_mixing(
                 video_batch,
                 labels,
                 num_classes=num_classes,
                 alpha=videomix_alpha,
                 mode=videomix_mode,
+                mixup_alpha=videomix_mixup_alpha,
+                cutmix_alpha=videomix_cutmix_alpha,
+                switch_prob=videomix_switch_prob,
             )
 
         with torch.amp.autocast(device_type="cuda", dtype=amp_dtype, enabled=use_amp):
@@ -117,16 +129,22 @@ def train_one_epoch(
                 else:
                     loss = loss_fn(logits, train_labels)
 
+        scaled_loss = loss / float(accum_steps)
         if use_amp:
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
+            scaler.scale(scaled_loss).backward()
         else:
-            loss.backward()
-            optimizer.step()
+            scaled_loss.backward()
 
-        if ema_model is not None:
-            ema_model.update_parameters(model)
+        is_accum_step = (step_idx % accum_steps == 0) or (step_idx == total_steps)
+        if is_accum_step:
+            if use_amp:
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
+            if ema_model is not None:
+                ema_model.update_parameters(model)
 
         batch_size = labels.size(0)
         top1, top5 = accuracy_topk(logits.detach(), train_labels, topk=(1, 5))
@@ -204,6 +222,7 @@ VIDEOMIX_MODES: frozenset[str] = frozenset(
         "cutmixup",
         "frame_cutmixup",
         "cube_cutmixup",
+        "mixup_cutmix_switch",
     }
 )
 
@@ -215,6 +234,9 @@ def apply_video_mixing(
     num_classes: int,
     alpha: float,
     mode: str = "cube_cutmix",
+    mixup_alpha: float | None = None,
+    cutmix_alpha: float | None = None,
+    switch_prob: float = 0.5,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Apply a video-level mixing/deleting augmentation, returning soft targets.
 
@@ -249,6 +271,24 @@ def apply_video_mixing(
         raise ValueError(f"alpha must be positive for video mixing, got {alpha}")
     if mode not in VIDEOMIX_MODES:
         raise ValueError(f"mode must be one of {sorted(VIDEOMIX_MODES)}, got {mode!r}")
+
+    # SSv2 fine-tune recipe: per-batch coin flip between MixUp and (cube)CutMix
+    # with independent Beta parameters (VideoMAE FINETUNE.md: mixup 0.8,
+    # cutmix 1.0, switch_prob 0.5). Resolves to a concrete sub-mode + alpha so
+    # the rest of this function is unchanged.
+    if mode == "mixup_cutmix_switch":
+        if torch.rand(1).item() < switch_prob:
+            mode = "mixup"
+            alpha = float(mixup_alpha) if mixup_alpha is not None else alpha
+        else:
+            mode = "cube_cutmix"
+            alpha = float(cutmix_alpha) if cutmix_alpha is not None else alpha
+        if alpha <= 0:
+            raise ValueError(
+                "mixup_cutmix_switch resolved to a non-positive alpha; set "
+                "videomix_mixup_alpha / videomix_cutmix_alpha."
+            )
+
     if mode == "none":
         return videos, labels, _one_hot_targets(labels, num_classes=num_classes, smoothing=0.0)
 

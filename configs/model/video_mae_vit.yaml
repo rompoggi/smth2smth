@@ -11,3 +11,11 @@ model:
   head: mean              # mean (VideoMAE paper) or attn (attentive probe)
   head_num_heads: 4       # only used when head=attn
   init_from: null         # path to a VideoMAE SSL encoder checkpoint
+  # Fine-tune at a different resolution than pretrain (e.g. 224→256).
+  interpolate_pos_embed: false
+  interpolate_src_image_size: 224
+  interpolate_src_num_frames: ${dataset.num_frames}
+  # Activation checkpointing inside encoder blocks (saves VRAM, slower).
+  gradient_checkpointing: false
+  # cRT stage 2: freeze encoder + attentive pool; train classifier only.
+  freeze_backbone: false

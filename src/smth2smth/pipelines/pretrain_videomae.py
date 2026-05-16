@@ -42,6 +42,14 @@ from smth2smth.shared.models.video_mae_resnet import (
 from smth2smth.shared.utils import set_seed
 
 
+def _cosine_mask_ratio(epoch: int, total_epochs: int, start: float, end: float) -> float:
+    """Cosine schedule from ``start`` (epoch 0) to ``end`` (last epoch)."""
+    if total_epochs <= 1:
+        return float(end)
+    progress = float(epoch) / float(total_epochs - 1)
+    return float(end + 0.5 * (start - end) * (1.0 + math.cos(math.pi * progress)))
+
+
 def _warmup_cosine_lr(
     optimizer: torch.optim.Optimizer,
     step: int,
@@ -81,12 +89,18 @@ def run(cfg: DictConfig) -> Path:
     image_size = int(pcfg.get("image_size", int(cfg.dataset.image_size)))
     num_frames = int(pcfg.get("num_frames", int(cfg.dataset.num_frames)))
 
-    # ── Dataset: all unlabeled clips (train + val + test) ─────────────────────
+    # ── Dataset: unlabeled clips (default train + test; val opt-in) ───────────
     train_dir = Path(cfg.dataset.train_dir)
     val_dir = Path(cfg.dataset.val_dir)
     test_dir = Path(cfg.dataset.test_dir)
-    print(f"[videomae] scanning video folders from {train_dir}, {val_dir}, {test_dir}")
-    video_dirs = collect_all_video_dirs([train_dir, val_dir, test_dir])
+    include_val = bool(pcfg.get("include_val_in_pretrain", False))
+    ssl_roots = [train_dir, test_dir]
+    if include_val:
+        ssl_roots = [train_dir, val_dir, test_dir]
+        print(f"[videomae] SSL roots: train + val + test ({len(ssl_roots)} dirs)")
+    else:
+        print(f"[videomae] SSL roots: train + test only (val excluded)")
+    video_dirs = collect_all_video_dirs(ssl_roots)
     if len(video_dirs) == 0:
         raise SystemExit("No video folders found for VideoMAE pretraining; check dataset paths.")
     max_videos = pcfg.get("max_videos")
@@ -148,6 +162,9 @@ def run(cfg: DictConfig) -> Path:
             raise SystemExit(f"Unknown variant {variant!r}; choose from {sorted(_variants)}")
         arch = _variants[variant]
 
+        grad_ckpt = bool(cfg.model.get("gradient_checkpointing", False)) or bool(
+            pcfg.get("gradient_checkpointing", False)
+        )
         model = VideoMAEPretrainModel(
             num_frames=num_frames,
             img_size=image_size,
@@ -159,7 +176,10 @@ def run(cfg: DictConfig) -> Path:
             mlp_ratio=float(cfg.model.get("mlp_ratio", 4.0)),
             drop_path_rate=float(pcfg.get("drop_path_rate", 0.0)),
             mask_ratio=float(pcfg.get("mask_ratio", 0.75)),
+            gradient_checkpointing=grad_ckpt,
         ).to(device)
+        if grad_ckpt:
+            print("[videomae] encoder gradient checkpointing enabled.")
 
         n_params = sum(p.numel() for p in model.parameters())
         n_enc = sum(p.numel() for p in model.encoder.parameters())
@@ -198,11 +218,23 @@ def run(cfg: DictConfig) -> Path:
     patch_size = int(cfg.model.get("patch_size", 16))
     norm_pix = bool(pcfg.get("norm_pix", True))
     norm_feat = bool(pcfg.get("norm_feat", True))
+    grad_accum_steps = max(1, int(pcfg.get("grad_accum_steps", 1)))
+    mask_schedule = bool(pcfg.get("mask_ratio_schedule", False))
+    mask_start = float(pcfg.get("mask_ratio_start", 0.90))
+    mask_end = float(pcfg.get("mask_ratio_end", pcfg.get("mask_ratio", 0.75)))
+    if mask_schedule:
+        print(f"[videomae] mask_ratio cosine schedule {mask_start:g} -> {mask_end:g}")
 
     global_step = 0
     model.train()
+    optimizer.zero_grad(set_to_none=True)
 
     for epoch in range(epochs):
+        if mask_schedule and not use_resnet:
+            model.mask_ratio = _cosine_mask_ratio(epoch, epochs, mask_start, mask_end)
+            if epoch == 0 or epoch == epochs - 1 or (epoch + 1) % 50 == 0:
+                print(f"[videomae] epoch {epoch + 1}: mask_ratio={model.mask_ratio:.4f}")
+
         epoch_loss = 0.0
         n_batches = 0
         for batch_idx, clip in enumerate(loader):
@@ -229,17 +261,26 @@ def run(cfg: DictConfig) -> Path:
                         norm_pix=norm_pix,
                     )
 
-            optimizer.zero_grad(set_to_none=True)
+            scaled_loss = loss / float(grad_accum_steps)
             if scaler is not None:
-                scaler.scale(loss).backward()
-                scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 3.0)
-                scaler.step(optimizer)
-                scaler.update()
+                scaler.scale(scaled_loss).backward()
             else:
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 3.0)
-                optimizer.step()
+                scaled_loss.backward()
+
+            is_accum_step = (
+                (batch_idx + 1) % grad_accum_steps == 0
+                or (batch_idx + 1) == len(loader)
+            )
+            if is_accum_step:
+                if scaler is not None:
+                    scaler.unscale_(optimizer)
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), 3.0)
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), 3.0)
+                    optimizer.step()
+                optimizer.zero_grad(set_to_none=True)
 
             global_step += 1
             loss_val = float(loss.item())

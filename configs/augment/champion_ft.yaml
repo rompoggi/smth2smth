@@ -1,0 +1,17 @@
+# @package _global_
+# Champion VideoMAE fine-tune augmentation (experiment batch 2026-05-16, E1 stack).
+augment:
+  name: champion_ft
+  random_horizontal_flip: true
+  random_horizontal_flip_prob: 0.5
+  random_crop: true
+  crop_padding: 32
+  color_jitter: false
+  sync_across_frames: true
+  randaugment:
+    enabled: true
+    n: 2
+    m: 9.0
+    mode: temporal_plus
+    magnitude_max: 30.0
+    ops: null

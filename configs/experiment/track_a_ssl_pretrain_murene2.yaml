@@ -1,0 +1,43 @@
+# @package _global_
+# E2 murene2 — MAE pretrain with flip/jitter/grayscale (150 ep). No RandAugment-T.
+defaults:
+  - override /model: video_mae_vit
+  - override /pretrain: videomae
+
+model:
+  variant: vit_s
+  tube_t: 2
+  patch_size: 16
+  mlp_ratio: 4.0
+
+augment:
+  random_crop: true
+  crop_padding: 32
+  random_horizontal_flip: true
+  random_horizontal_flip_prob: 0.5
+  color_jitter: true
+  color_jitter_prob: 0.8
+  color_jitter_brightness: 0.4
+  color_jitter_contrast: 0.4
+  color_jitter_saturation: 0.4
+  color_jitter_hue: 0.1
+  random_grayscale: true
+  random_grayscale_prob: 0.2
+  randaugment:
+    enabled: false
+
+seed: 42
+
+pretrain:
+  epochs: 150
+  warmup_epochs: 5
+  batch_size: 16
+  lr: 0.00015
+  mask_ratio: 0.75
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/murene2_encoder.pt
+
+training:
+  num_workers: 4
+  device: cuda
+  amp: true
+  batch_size: 16

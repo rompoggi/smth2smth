@@ -38,3 +38,15 @@ pretrain:
   num_frames: 4
 
   log_interval_steps: 100
+
+  # SSL data roots: default is train + test only (no val labels). Set true to
+  # also include ``dataset.val_dir`` (legacy behaviour).
+  include_val_in_pretrain: false
+
+  # Cosine mask-ratio schedule (E7): ``mask_ratio_start`` → ``mask_ratio_end``.
+  mask_ratio_schedule: false
+  mask_ratio_start: 0.90
+  mask_ratio_end: 0.75
+
+  # Gradient accumulation during MAE pretrain (``1`` = every step).
+  grad_accum_steps: 1

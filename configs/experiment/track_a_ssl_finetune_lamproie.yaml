@@ -1,0 +1,28 @@
+# @package _global_
+# E7 lamproie — champion FT. Pair with track_a_ssl_pretrain_lamproie.
+defaults:
+  - override /model: video_mae_vit
+  - override /augment: champion_ft
+  - override /train: champion_videomae
+
+model:
+  variant: vit_s
+  num_classes: ${num_classes}
+  drop_path_rate: 0.2
+  dropout: 0.5
+  head: attn
+  head_num_heads: 4
+  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/lamproie_encoder.pt
+
+dataset:
+  num_frames: 4
+  use_official_val: true
+  include_val_in_train: false
+
+seed: 42
+
+training:
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/lamproie_ft.pt
+  tta: true
+  tta_flip: true
+  tta_scales: [0.857, 1.0, 1.143]

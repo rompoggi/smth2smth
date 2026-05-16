@@ -23,9 +23,59 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from omegaconf import DictConfig
+from torch.utils.checkpoint import checkpoint
 
 from smth2smth.shared.models.registry import register_model
+
+# ── Positional embedding resize (resolution / temporal transfer) ───────────────
+
+
+def interpolate_pos_embed(
+    pos_embed: torch.Tensor,
+    *,
+    src_num_frames: int,
+    src_img_size: int,
+    dst_num_frames: int,
+    dst_img_size: int,
+    tube_t: int = 2,
+    patch_size: int = 16,
+) -> torch.Tensor:
+    """Trilinearly resize a VideoMAE ``pos_embed`` to a new spatiotemporal grid.
+
+    Args:
+        pos_embed: ``(1, N_src, D)`` learnable positional encoding.
+        src_num_frames / src_img_size: grid the checkpoint was trained with.
+        dst_num_frames / dst_img_size: target supervised or pretrain grid.
+
+    Returns:
+        ``(1, N_dst, D)`` tensor on the same device/dtype as ``pos_embed``.
+    """
+    if pos_embed.ndim != 3 or pos_embed.shape[0] != 1:
+        raise ValueError(f"pos_embed must be (1, N, D), got {tuple(pos_embed.shape)}")
+    dim = pos_embed.shape[-1]
+    n_t_old = src_num_frames // tube_t
+    n_h_old = src_img_size // patch_size
+    n_w_old = src_img_size // patch_size
+    n_t_new = dst_num_frames // tube_t
+    n_h_new = dst_img_size // patch_size
+    n_w_new = dst_img_size // patch_size
+    expected_old = n_t_old * n_h_old * n_w_old
+    if pos_embed.shape[1] != expected_old:
+        raise ValueError(
+            f"pos_embed length {pos_embed.shape[1]} != "
+            f"{expected_old} for src T={src_num_frames} size={src_img_size}."
+        )
+    pe = pos_embed.reshape(1, n_t_old, n_h_old, n_w_old, dim).permute(0, 4, 1, 2, 3)
+    pe = F.interpolate(
+        pe,
+        size=(n_t_new, n_h_new, n_w_new),
+        mode="trilinear",
+        align_corners=False,
+    )
+    return pe.permute(0, 2, 3, 4, 1).reshape(1, n_t_new * n_h_new * n_w_new, dim)
+
 
 # ── Building blocks ────────────────────────────────────────────────────────────
 
@@ -144,11 +194,13 @@ class VideoMAEEncoder(nn.Module):
         num_heads: int = 12,
         mlp_ratio: float = 4.0,
         drop_path_rate: float = 0.0,
+        gradient_checkpointing: bool = False,
     ) -> None:
         super().__init__()
         self.embed_dim = embed_dim
         self.patch_embed = PatchEmbed3D(num_frames, img_size, tube_t, patch_size, embed_dim)
         self.num_tokens = self.patch_embed.num_tokens
+        self.gradient_checkpointing = bool(gradient_checkpointing)
 
         self.pos_embed = nn.Parameter(torch.zeros(1, self.num_tokens, embed_dim))
 
@@ -192,7 +244,10 @@ class VideoMAEEncoder(nn.Module):
             )
 
         for block in self.blocks:
-            tokens = block(tokens)
+            if self.gradient_checkpointing and self.training:
+                tokens = checkpoint(block, tokens, use_reentrant=False)
+            else:
+                tokens = block(tokens)
         return self.norm(tokens)
 
 
@@ -257,6 +312,7 @@ class VideoMAEViT(nn.Module):
         dropout: float = 0.0,
         head: str = "mean",
         head_num_heads: int = 4,
+        gradient_checkpointing: bool = False,
     ) -> None:
         super().__init__()
         if head not in {"mean", "attn"}:
@@ -271,6 +327,7 @@ class VideoMAEViT(nn.Module):
             num_heads=num_heads,
             mlp_ratio=mlp_ratio,
             drop_path_rate=drop_path_rate,
+            gradient_checkpointing=gradient_checkpointing,
         )
         self.head_kind = head
         self.attn_pool: AttentiveProbeHead | None = (
@@ -289,6 +346,11 @@ class VideoMAEViT(nn.Module):
         else:
             pooled = features.mean(dim=1)       # (B, D)
         return self.classifier(self.dropout(pooled))
+
+    def freeze_backbone_for_classifier_tune(self) -> None:
+        """Freeze encoder + attentive pool; train classifier only (cRT stage 2)."""
+        for name, param in self.named_parameters():
+            param.requires_grad = name.startswith("classifier.")
 
 
 # ── ViT variant table ──────────────────────────────────────────────────────────
@@ -475,12 +537,13 @@ class VideoMAEPretrainModel(nn.Module):
         mlp_ratio: float = 4.0,
         drop_path_rate: float = 0.0,
         mask_ratio: float = 0.75,
+        gradient_checkpointing: bool = False,
     ) -> None:
         super().__init__()
         self.mask_ratio = mask_ratio
         self.encoder = VideoMAEEncoder(
             num_frames=num_frames,
-            img_size=img_size,
+            img_size=image_size,
             tube_t=tube_t,
             patch_size=patch_size,
             embed_dim=embed_dim,
@@ -488,6 +551,7 @@ class VideoMAEPretrainModel(nn.Module):
             num_heads=num_heads,
             mlp_ratio=mlp_ratio,
             drop_path_rate=drop_path_rate,
+            gradient_checkpointing=gradient_checkpointing,
         )
         self.decoder = VideoMAEDecoder(
             encoder_dim=embed_dim,
@@ -581,4 +645,5 @@ def build_video_mae_vit(cfg: DictConfig) -> nn.Module:
         dropout=float(cfg.model.get("dropout", 0.0)),
         head=str(cfg.model.get("head", "mean")),
         head_num_heads=int(cfg.model.get("head_num_heads", 4)),
+        gradient_checkpointing=bool(cfg.model.get("gradient_checkpointing", False)),
     )

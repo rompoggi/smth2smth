@@ -33,6 +33,11 @@ from smth2smth.shared.data import (
 from smth2smth.shared.engine import EpochStats, evaluate_epoch, train_one_epoch
 from smth2smth.shared.io.checkpoints import load_checkpoint, save_checkpoint
 from smth2smth.shared.models import build_model
+from smth2smth.shared.models.video_mae import (
+    VideoMAEViT,
+    _VIT_VARIANTS,
+    interpolate_pos_embed,
+)
 from smth2smth.shared.utils import (
     compute_class_weights,
     compute_sample_weights,
@@ -192,6 +197,103 @@ def _split_dual_stream_backbone_params(
         else:
             rest_params.append(param)
     return rgb_params, motion_params, rest_params
+
+
+def _videomae_layer_id(name: str, depth: int) -> int:
+    """Map a ``VideoMAEViT`` parameter name to a depth index for LLRD.
+
+    Layer 0 is the patch/positional embedding (lowest, most decayed LR);
+    encoder block ``i`` is layer ``i + 1``; the final encoder LayerNorm, the
+    attentive-pool head, and the classifier are the top layer ``depth + 1``
+    (full base LR). Mirrors the BEiT / MAE ``get_num_layer`` convention.
+    """
+    if name.startswith("encoder.patch_embed") or name == "encoder.pos_embed":
+        return 0
+    if name.startswith("encoder.blocks."):
+        try:
+            return int(name.split(".")[2]) + 1
+        except (IndexError, ValueError):
+            return depth + 1
+    # encoder.norm, attn_pool.*, classifier.* (and any future head params).
+    return depth + 1
+
+
+def _build_llrd_param_groups(
+    model: nn.Module,
+    *,
+    base_lr: float,
+    weight_decay: float,
+    layer_decay: float,
+    depth: int,
+) -> list[dict[str, Any]]:
+    """Layer-wise LR decay param groups for ``video_mae_vit`` fine-tuning.
+
+    Layer ``l`` is scaled by ``layer_decay ** (depth + 1 - l)`` so the head
+    trains at ``base_lr`` and the patch embedding at the most decayed rate.
+    Bias and 1-D (norm) parameters are excluded from weight decay, the
+    standard ViT fine-tuning recipe. Only trainable parameters are included,
+    so this composes with ``model.freeze_backbone``.
+    """
+    n_top = depth + 1
+    groups: dict[tuple[int, bool], dict[str, Any]] = {}
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+        layer_id = _videomae_layer_id(name, depth)
+        no_decay = param.ndim <= 1 or name.endswith(".bias")
+        key = (layer_id, no_decay)
+        if key not in groups:
+            scale = layer_decay ** (n_top - layer_id)
+            groups[key] = {
+                "params": [],
+                "lr": base_lr * scale,
+                "weight_decay": 0.0 if no_decay else weight_decay,
+                "warmup_lr_max": base_lr * scale,
+                "name": f"llrd_l{layer_id}{'_nd' if no_decay else ''}",
+            }
+        groups[key]["params"].append(param)
+    if not groups:
+        raise RuntimeError(
+            "LLRD produced 0 trainable groups; check model.freeze_backbone "
+            "or that the model is video_mae_vit."
+        )
+    return [groups[k] for k in sorted(groups)]
+
+
+class RepeatedAugSampler(torch.utils.data.Sampler[int]):
+    """DeiT-style repeated augmentation: each clip appears ``repeats`` times.
+
+    The dataset transform is stochastic per ``__getitem__``, so consecutive
+    repeats of the same index yield differently-augmented views. The epoch
+    length is kept at ``len(dataset)`` (so wall-clock per epoch is unchanged;
+    the number of *unique* clips per epoch is ``len(dataset) // repeats``),
+    matching the VideoMAE FT recipe where ``batch_size`` is halved to keep the
+    effective view-batch constant. ``repeats=1`` is a plain shuffled pass.
+    """
+
+    def __init__(self, num_samples: int, repeats: int = 1, shuffle: bool = True) -> None:
+        if num_samples <= 0:
+            raise ValueError(f"num_samples must be > 0, got {num_samples}.")
+        if repeats < 1:
+            raise ValueError(f"repeats must be >= 1, got {repeats}.")
+        self.num_samples = int(num_samples)
+        self.repeats = int(repeats)
+        self.shuffle = bool(shuffle)
+
+    def __len__(self) -> int:
+        return self.num_samples
+
+    def __iter__(self):
+        if self.shuffle:
+            order = torch.randperm(self.num_samples).tolist()
+        else:
+            order = list(range(self.num_samples))
+        out: list[int] = []
+        for idx in order:
+            out.extend([idx] * self.repeats)
+            if len(out) >= self.num_samples:
+                break
+        return iter(out[: self.num_samples])
 
 
 def _free_cuda_memory(reason: str = "") -> None:
@@ -383,11 +485,28 @@ def run(cfg: DictConfig) -> Path | None:
         )
 
     pin_memory = device.type == "cuda"
+    repeated_aug = max(1, int(cfg.training.get("repeated_aug", 1)))
+    train_sampler: torch.utils.data.Sampler[int] | WeightedRandomSampler | None = sampler
+    if repeated_aug > 1:
+        if sampler is not None:
+            print(
+                "[data] repeated_aug ignored when class_balance_sampler is active "
+                f"(policy={cb_sampler_policy!r})."
+            )
+        else:
+            train_sampler = RepeatedAugSampler(
+                len(train_samples), repeats=repeated_aug, shuffle=True
+            )
+            print(
+                f"[data] repeated_aug={repeated_aug}: each clip drawn up to "
+                f"{repeated_aug}x per epoch with independent augmentations."
+            )
+
     train_loader = DataLoader(
         train_dataset,
         batch_size=int(cfg.training.batch_size),
-        shuffle=(sampler is None),
-        sampler=sampler,
+        shuffle=(train_sampler is None),
+        sampler=train_sampler,
         num_workers=int(cfg.training.num_workers),
         pin_memory=pin_memory,
     )
@@ -400,6 +519,13 @@ def run(cfg: DictConfig) -> Path | None:
     )
 
     model = build_model(cfg).to(device)
+
+    if bool(cfg.model.get("freeze_backbone", False)):
+        if isinstance(model, VideoMAEViT):
+            model.freeze_backbone_for_classifier_tune()
+            print("[model] freeze_backbone=true: encoder + attentive pool frozen; classifier only.")
+        else:
+            print("[model] freeze_backbone ignored (only supported for video_mae_vit).")
 
     # Optional: warm-start the trunk from a self-supervised checkpoint produced
     # by ``pretrain_ssl.py``. Track-A safe: the SSL trunk was trained from
@@ -430,6 +556,30 @@ def run(cfg: DictConfig) -> Path | None:
                 # VideoMAE checkpoints store keys with ``encoder.`` prefix
                 # already present (saved by pretrain_videomae.py). Load
                 # directly without the ResNet-specific key renaming.
+                if bool(cfg.model.get("interpolate_pos_embed", False)):
+                    pe_key = "encoder.pos_embed"
+                    if pe_key in trunk_state:
+                        pe = trunk_state[pe_key]
+                        src_frames = int(
+                            cfg.model.get("interpolate_src_num_frames", num_frames)
+                        )
+                        src_size = int(cfg.model.get("interpolate_src_image_size", 224))
+                        dst_size = int(cfg.dataset.image_size)
+                        if pe.shape[1] != model.encoder.num_tokens:
+                            trunk_state[pe_key] = interpolate_pos_embed(
+                                pe,
+                                src_num_frames=src_frames,
+                                src_img_size=src_size,
+                                dst_num_frames=num_frames,
+                                dst_img_size=dst_size,
+                                tube_t=int(cfg.model.get("tube_t", 2)),
+                                patch_size=int(cfg.model.get("patch_size", 16)),
+                            )
+                            print(
+                                f"[init_from] interpolated pos_embed "
+                                f"{pe.shape[1]} -> {trunk_state[pe_key].shape[1]} tokens "
+                                f"({src_size}->{dst_size}, T={src_frames}->{num_frames})."
+                            )
                 encoder_keys = {k for k in trunk_state if k.startswith("encoder.")}
                 missing, unexpected = model.load_state_dict(trunk_state, strict=False)
                 encoder_missing = [k for k in missing if k.startswith("encoder.")]
@@ -520,7 +670,32 @@ def run(cfg: DictConfig) -> Path | None:
             "using a single LR group."
         )
 
-    if use_dual_stream_groups:
+    layer_decay_raw = cfg.training.get("layer_decay")
+    model_name_for_llrd = str(cfg.model.get("name", "")) if hasattr(cfg, "model") else ""
+    use_llrd = (
+        layer_decay_raw is not None
+        and model_name_for_llrd == "video_mae_vit"
+        and not use_dual_stream_groups
+        and not use_lora_group
+    )
+
+    if use_llrd:
+        variant = str(cfg.model.get("variant", "vit_b"))
+        if variant not in _VIT_VARIANTS:
+            raise SystemExit(f"Unknown ViT variant {variant!r} for LLRD.")
+        depth = int(_VIT_VARIANTS[variant]["depth"])
+        param_groups = _build_llrd_param_groups(
+            model,
+            base_lr=head_lr,
+            weight_decay=weight_decay,
+            layer_decay=float(layer_decay_raw),
+            depth=depth,
+        )
+        print(
+            f"[optim] LLRD: layer_decay={float(layer_decay_raw):g}, depth={depth}, "
+            f"{len(param_groups)} param groups."
+        )
+    elif use_dual_stream_groups:
         rgb_params, motion_params, rest_params = _split_dual_stream_backbone_params(model)
         if motion_lr_raw is not None:
             eff_motion_lr = float(motion_lr_raw)
@@ -621,9 +796,23 @@ def run(cfg: DictConfig) -> Path | None:
         optimizer = torch.optim.Adam(param_groups)
 
     use_cosine = bool(cfg.training.get("scheduler_cosine", False))
+    scheduler_name = str(cfg.training.get("scheduler", "cosine" if use_cosine else "none")).lower()
     warmup_epochs = int(cfg.training.get("warmup_epochs", 0))
-    cosine_scheduler = None
-    if use_cosine:
+    cosine_scheduler: torch.optim.lr_scheduler.LRScheduler | None = None
+    sgdr_T0 = int(cfg.training.get("sgdr_T0", 30))
+    sgdr_save_snapshots = bool(cfg.training.get("sgdr_save_snapshots", False))
+    if scheduler_name == "sgdr":
+        cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optimizer,
+            T_0=max(1, sgdr_T0),
+            T_mult=1,
+            eta_min=float(cfg.training.get("min_lr", 0.0)),
+        )
+        print(
+            f"[sched] SGDR CosineAnnealingWarmRestarts T_0={sgdr_T0}, "
+            f"eta_min={float(cfg.training.get('min_lr', 0.0)):g}"
+        )
+    elif use_cosine or scheduler_name == "cosine":
         cosine_tmax = max(1, int(cfg.training.epochs) - warmup_epochs)
         cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer,
@@ -635,17 +824,35 @@ def run(cfg: DictConfig) -> Path | None:
     videomix_alpha = float(cfg.training.get("videomix_alpha", 0.0))
     videomix_prob = float(cfg.training.get("videomix_prob", 1.0))
     videomix_mode = str(cfg.training.get("videomix_mode", "cube_cutmix"))
+    videomix_mixup_alpha = cfg.training.get("videomix_mixup_alpha")
+    videomix_cutmix_alpha = cfg.training.get("videomix_cutmix_alpha")
+    eff_videomix_mixup_alpha = (
+        float(videomix_mixup_alpha) if videomix_mixup_alpha is not None else None
+    )
+    eff_videomix_cutmix_alpha = (
+        float(videomix_cutmix_alpha) if videomix_cutmix_alpha is not None else None
+    )
+    videomix_switch_prob = float(cfg.training.get("videomix_switch_prob", 0.5))
+    grad_accum_steps = max(1, int(cfg.training.get("grad_accum_steps", 1)))
     log_interval_steps = int(cfg.training.get("log_interval_steps", 0))
     early_stopping_enabled = bool(cfg.training.get("early_stopping_enabled", False))
     early_stopping_patience = int(cfg.training.get("early_stopping_patience", 10))
     early_stopping_min_delta = float(cfg.training.get("early_stopping_min_delta", 0.0))
 
     amp_enabled = bool(cfg.training.get("amp", False)) and device.type == "cuda"
+    amp_dtype_str = str(cfg.training.get("amp_dtype", "float16")).lower()
+    amp_dtype = (
+        torch.bfloat16
+        if amp_dtype_str in ("bf16", "bfloat16")
+        else torch.float16
+    )
     scaler: torch.amp.GradScaler | None = (
         torch.amp.GradScaler("cuda", enabled=True) if amp_enabled else None
     )
     if amp_enabled:
-        print("[amp] mixed-precision (fp16 + GradScaler) enabled.")
+        print(f"[amp] mixed-precision ({amp_dtype} + GradScaler) enabled.")
+    if grad_accum_steps > 1:
+        print(f"[train] grad_accum_steps={grad_accum_steps} (effective batch scales up).")
 
     # EMA (Exponential Moving Average) of model weights, à la PyTorch's
     # ``AveragedModel(use_buffers=True)``. When enabled, every optimizer step
@@ -799,7 +1006,11 @@ def run(cfg: DictConfig) -> Path | None:
 
     try:
         for epoch in range(start_epoch, int(cfg.training.epochs)):
-            if warmup_epochs > 0 and epoch < warmup_epochs:
+            if (
+                scheduler_name != "sgdr"
+                and warmup_epochs > 0
+                and epoch < warmup_epochs
+            ):
                 warm_scale = float(epoch + 1) / float(warmup_epochs)
                 for group in optimizer.param_groups:
                     max_lr = float(group.get("warmup_lr_max", group["lr"]))
@@ -815,8 +1026,13 @@ def run(cfg: DictConfig) -> Path | None:
                 videomix_alpha=videomix_alpha,
                 videomix_prob=videomix_prob,
                 videomix_mode=videomix_mode,
+                videomix_mixup_alpha=eff_videomix_mixup_alpha,
+                videomix_cutmix_alpha=eff_videomix_cutmix_alpha,
+                videomix_switch_prob=videomix_switch_prob,
                 log_interval_steps=log_interval_steps,
+                grad_accum_steps=grad_accum_steps,
                 scaler=scaler,
+                amp_dtype=amp_dtype,
                 ema_model=ema_model,
                 class_weights=class_weights,
             )
@@ -838,12 +1054,22 @@ def run(cfg: DictConfig) -> Path | None:
                 continue
 
             val_stats: EpochStats = evaluate_epoch(
-                model, val_loader, loss_fn, device, amp_enabled=amp_enabled
+                model,
+                val_loader,
+                loss_fn,
+                device,
+                amp_enabled=amp_enabled,
+                amp_dtype=amp_dtype,
             )
             ema_stats: EpochStats | None = None
             if ema_model is not None and eval_ema:
                 ema_stats = evaluate_epoch(
-                    ema_model, val_loader, loss_fn, device, amp_enabled=amp_enabled
+                    ema_model,
+                    val_loader,
+                    loss_fn,
+                    device,
+                    amp_enabled=amp_enabled,
+                    amp_dtype=amp_dtype,
                 )
             et = int(cfg.training.epochs)
             pfx = _epoch_progress_stamp(epoch + 1, et)
@@ -918,8 +1144,32 @@ def run(cfg: DictConfig) -> Path | None:
                             f"{early_stopping_patience} consecutive epochs."
                         )
                         break
-            if cosine_scheduler is not None and epoch >= warmup_epochs:
+            if cosine_scheduler is not None and (
+                scheduler_name == "sgdr" or epoch >= warmup_epochs
+            ):
                 cosine_scheduler.step()
+
+            if (
+                sgdr_save_snapshots
+                and scheduler_name == "sgdr"
+                and (epoch + 1) % max(1, sgdr_T0) == 0
+            ):
+                snap_idx = (epoch + 1) // max(1, sgdr_T0)
+                snap_path = checkpoint_path.with_name(
+                    f"{checkpoint_path.stem}_snap{snap_idx}{checkpoint_path.suffix}"
+                )
+                snap_extra: dict[str, Any] = {
+                    "val_top1": ckpt_stats.top1,
+                    "val_top5": ckpt_stats.top5,
+                    "val_loss": ckpt_stats.loss,
+                    "epoch": epoch + 1,
+                    "trained_class_indices": trained_class_indices,
+                    "checkpoint_kind": "sgdr_snapshot",
+                    "sgdr_cycle": snap_idx,
+                }
+                save_checkpoint(snap_path, model, cfg, extra=snap_extra)
+                print(f"  [sgdr] saved cycle-{snap_idx} snapshot -> {snap_path}")
+
             _save_last_checkpoint(epoch_done=epoch + 1, latest_val_top1=ckpt_stats.top1)
     except torch.cuda.OutOfMemoryError as exc:
         print(f"[cuda] OOM during training: {exc}. Releasing memory and aborting this job.")

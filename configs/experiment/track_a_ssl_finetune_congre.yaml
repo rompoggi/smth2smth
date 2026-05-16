@@ -1,0 +1,32 @@
+# @package _global_
+# E3 congre — champion FT at T=8 (50 ep). Pair with track_a_ssl_pretrain_congre.
+defaults:
+  - override /model: video_mae_vit
+  - override /augment: champion_ft
+  - override /train: champion_videomae
+
+model:
+  variant: vit_s
+  num_classes: ${num_classes}
+  drop_path_rate: 0.2
+  dropout: 0.5
+  head: attn
+  head_num_heads: 4
+  gradient_checkpointing: true
+  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/congre_encoder.pt
+
+dataset:
+  num_frames: 8
+  use_official_val: true
+  include_val_in_train: false
+
+seed: 42
+
+training:
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/congre_ft.pt
+  epochs: 50
+  batch_size: 4
+  grad_accum_steps: 2
+  tta: true
+  tta_flip: true
+  tta_scales: [0.857, 1.0, 1.143]

@@ -1,0 +1,50 @@
+# @package _global_
+# E4 tsm_sgdr — R50+TSM from scratch, SGDR 3×30 ep + snapshot ensemble.
+defaults:
+  - override /model: avanced_resnet50_tsm
+  - override /augment: randaugment_t
+
+model:
+  pretrained: false
+  init_from: null
+  drop_path_rate: 0.1
+  dropout: 0.5
+  head: attn
+  head_num_heads: 4
+
+augment:
+  random_horizontal_flip: true
+  random_crop: true
+  crop_padding: 32
+
+dataset:
+  num_frames: 4
+  use_official_val: true
+  include_val_in_train: false
+
+seed: 42
+
+training:
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/tsm_sgdr_ft.pt
+  batch_size: 16
+  epochs: 90
+  optimizer: adamw
+  lr: 0.0001
+  weight_decay: 0.05
+  scheduler: sgdr
+  sgdr_T0: 30
+  sgdr_save_snapshots: true
+  min_lr: 0.000001
+  label_smoothing: 0.1
+  videomix_mode: frame_mixup
+  videomix_alpha: 5.0
+  videomix_prob: 0.5
+  amp: true
+  amp_dtype: float16
+  ema_enabled: true
+  ema_decay: 0.999
+  num_workers: 4
+  log_interval_steps: 100
+  tta: true
+  tta_flip: true
+  tta_scales: [0.875, 1.0, 1.125]

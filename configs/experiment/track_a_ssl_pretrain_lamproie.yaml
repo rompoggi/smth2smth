@@ -1,0 +1,35 @@
+# @package _global_
+# E7 lamproie — MAE pretrain with cosine mask schedule 0.90→0.75 (150 ep).
+defaults:
+  - override /model: video_mae_vit
+  - override /pretrain: videomae
+
+model:
+  variant: vit_s
+  tube_t: 2
+  patch_size: 16
+  mlp_ratio: 4.0
+
+augment:
+  random_crop: true
+  crop_padding: 32
+  random_horizontal_flip: false
+
+seed: 42
+
+pretrain:
+  epochs: 150
+  warmup_epochs: 5
+  batch_size: 16
+  lr: 0.00015
+  mask_ratio: 0.75
+  mask_ratio_schedule: true
+  mask_ratio_start: 0.90
+  mask_ratio_end: 0.75
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/lamproie_encoder.pt
+
+training:
+  num_workers: 4
+  device: cuda
+  amp: true
+  batch_size: 16

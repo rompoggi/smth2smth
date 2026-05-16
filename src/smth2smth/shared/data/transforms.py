@@ -96,7 +96,9 @@ def build_transforms(
     use_random_crop = bool(_augment_get(augment, "random_crop", False))
     crop_padding = int(_augment_get(augment, "crop_padding", 0))
     use_hflip = bool(_augment_get(augment, "random_horizontal_flip", True))
+    hflip_prob = float(_augment_get(augment, "random_horizontal_flip_prob", 0.5))
     use_color_jitter = bool(_augment_get(augment, "color_jitter", False))
+    color_jitter_prob = float(_augment_get(augment, "color_jitter_prob", 1.0))
 
     resize_size = (
         image_size + crop_padding if (use_random_crop and crop_padding > 0) else image_size
@@ -125,7 +127,9 @@ def build_transforms(
         is_training=is_training,
         use_random_crop=use_random_crop,
         use_hflip=use_hflip,
+        hflip_prob=hflip_prob,
         use_color_jitter=use_color_jitter,
+        color_jitter_prob=color_jitter_prob,
         color_jitter=color_jitter,
         sync_across_frames=sync_across_frames,
         randaugment=randaugment,
@@ -168,7 +172,9 @@ class _FrameOrClipTransform:
         is_training: bool,
         use_random_crop: bool,
         use_hflip: bool,
+        hflip_prob: float,
         use_color_jitter: bool,
+        color_jitter_prob: float,
         color_jitter: ColorJitter,
         sync_across_frames: bool,
         randaugment: RandAugment | None = None,
@@ -186,7 +192,9 @@ class _FrameOrClipTransform:
         self.is_training = is_training
         self.use_random_crop = use_random_crop
         self.use_hflip = use_hflip
+        self.hflip_prob = float(hflip_prob)
         self.use_color_jitter = use_color_jitter
+        self.color_jitter_prob = float(color_jitter_prob)
         self.color_jitter = color_jitter
         self.sync_across_frames = sync_across_frames
         self.randaugment = randaugment
@@ -254,8 +262,13 @@ class _FrameOrClipTransform:
                 left = (self.resize_size - self.image_size) // 2
                 params["crop_ijhw"] = (top, left, self.image_size, self.image_size)
         if self.is_training and self.use_hflip:
-            params["flip"] = bool(torch.rand(1).item() < 0.5)
-        if self.is_training and self.use_color_jitter:
+            params["flip"] = bool(torch.rand(1).item() < self.hflip_prob)
+        if (
+            self.is_training
+            and self.use_color_jitter
+            and self.color_jitter_prob > 0.0
+            and random.random() < self.color_jitter_prob
+        ):
             params["jitter_fn"] = self.color_jitter.get_params(
                 self.color_jitter.brightness,
                 self.color_jitter.contrast,

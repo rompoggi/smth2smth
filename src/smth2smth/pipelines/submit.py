@@ -143,6 +143,21 @@ def run(cfg: DictConfig) -> Path:
         [float(s) for s in tta_scales_cfg] if tta_scales_cfg else [1.0]
     )
 
+    patch_size: int | None = None
+    model_name = str(saved_cfg.model.get("name", "")) if hasattr(saved_cfg, "model") else ""
+    if model_name == "video_mae_vit":
+        patch_size = int(saved_cfg.model.get("patch_size", 16))
+        base_side = int(saved_cfg.dataset.get("image_size", cfg.dataset.image_size))
+        for scale in tta_scales:
+            side = _round_spatial_to_patch_multiple(
+                max(patch_size, int(round(base_side * float(scale)))), patch_size
+            )
+            if side % patch_size != 0:
+                raise SystemExit(
+                    f"TTA scale {scale} yields side {side}, not divisible by patch_size={patch_size}."
+                )
+            print(f"[tta] ViT scale {scale:g} -> {side}x{side} (patch_size={patch_size})")
+
     # Logit adjustment for long-tailed inference (Menon et al. 2021).
     # ``tta_logit_adjust > 0`` subtracts ``tau * log(p_c)`` from each logit,
     # where ``p_c`` is the empirical class frequency in the training folder.
@@ -173,6 +188,7 @@ def run(cfg: DictConfig) -> Path:
         tta_scales=tta_scales,
         logit_adjust=logit_adjust,
         amp_infer=amp_infer,
+        patch_size=patch_size,
     )
     if len(predictions) != len(video_names):
         raise RuntimeError(f"Prediction count {len(predictions)} != video count {len(video_names)}")
@@ -289,16 +305,34 @@ def _logits_for_batch(
     return logits
 
 
-def _rescale_video(video_batch: torch.Tensor, scale: float) -> torch.Tensor:
+def _round_spatial_to_patch_multiple(size: int, patch_size: int) -> int:
+    """Round ``size`` to the nearest multiple of ``patch_size`` (minimum ``patch_size``)."""
+    if patch_size <= 0:
+        raise ValueError(f"patch_size must be positive, got {patch_size}.")
+    return max(patch_size, int(round(size / patch_size)) * patch_size)
+
+
+def _rescale_video(
+    video_batch: torch.Tensor,
+    scale: float,
+    *,
+    patch_size: int | None = None,
+) -> torch.Tensor:
     """Bilinear rescale a ``(B, T, C, H, W)`` clip in the spatial dims.
 
-    ``scale == 1.0`` is a no-op (returns the input unchanged).
+    ``scale == 1.0`` is a no-op (returns the input unchanged). When
+    ``patch_size`` is set (ViT / VideoMAE), spatial sides are rounded to the
+    nearest multiple of ``patch_size`` so :class:`PatchEmbed3D` does not crash.
     """
     if abs(scale - 1.0) < 1e-6:
         return video_batch
     b, t, c, h, w = video_batch.shape
-    new_h = max(8, int(round(h * scale)))
-    new_w = max(8, int(round(w * scale)))
+    min_side = patch_size if patch_size is not None else 8
+    new_h = max(min_side, int(round(h * scale)))
+    new_w = max(min_side, int(round(w * scale)))
+    if patch_size is not None:
+        new_h = _round_spatial_to_patch_multiple(new_h, patch_size)
+        new_w = _round_spatial_to_patch_multiple(new_w, patch_size)
     flat = video_batch.reshape(b * t, c, h, w)
     flat = F.interpolate(
         flat, size=(new_h, new_w), mode="bilinear", align_corners=False
@@ -319,6 +353,7 @@ def _predict(
     tta_scales: list[float] | None = None,
     logit_adjust: torch.Tensor | None = None,
     amp_infer: bool = False,
+    patch_size: int | None = None,
 ) -> list[int]:
     """Argmax inference, optionally with multi-view TTA.
 
@@ -354,7 +389,7 @@ def _predict(
         probs_total: torch.Tensor | None = None
         n_views = 0
         for scale in tta_scales:
-            scaled = _rescale_video(video_batch, scale)
+            scaled = _rescale_video(video_batch, scale, patch_size=patch_size)
             scaled_logits = _logits_for_batch(
                 model,
                 scaled,

@@ -1,0 +1,38 @@
+# @package _global_
+# E3 congre — MAE pretrain T=8 (80 ep, grad checkpoint + accum).
+defaults:
+  - override /model: video_mae_vit
+  - override /pretrain: videomae
+
+model:
+  variant: vit_s
+  tube_t: 2
+  patch_size: 16
+  mlp_ratio: 4.0
+  gradient_checkpointing: true
+
+augment:
+  random_crop: true
+  crop_padding: 32
+  random_horizontal_flip: false
+
+seed: 42
+
+dataset:
+  num_frames: 8
+
+pretrain:
+  epochs: 80
+  warmup_epochs: 5
+  batch_size: 8
+  grad_accum_steps: 2
+  num_frames: 8
+  lr: 0.00015
+  mask_ratio: 0.75
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/congre_encoder.pt
+
+training:
+  num_workers: 4
+  device: cuda
+  amp: true
+  batch_size: 8
