@@ -1318,3 +1318,28 @@ Epoch 38/150 | train loss 2.2722 top1 0.4427 | val loss 2.2947 top1 0.3629 top5 
     step 1200/2813 | avg train loss 2.2456 top1 0.4525 top5 0.7661
     step 1300/2813 | avg train loss 2.2447 top1 0.4528 top5 0.7660
     step 1400/2813 | avg train loss 2.2425 top1 0.4534 top5 0.7667
+    step 1500/2813 | avg train loss 2.2464 top1 0.4519 top5 0.7655
+    step 1600/2813 | avg train loss 2.2453 top1 0.4531 top5 0.7661
+    step 1700/2813 | avg train loss 2.2435 top1 0.4526 top5 0.7665
+    step 1800/2813 | avg train loss 2.2419 top1 0.4532 top5 0.7662
+    step 1900/2813 | avg train loss 2.2437 top1 0.4519 top5 0.7654
+    step 2000/2813 | avg train loss 2.2456 top1 0.4506 top5 0.7654
+    step 2100/2813 | avg train loss 2.2476 top1 0.4496 top5 0.7649
+    step 2200/2813 | avg train loss 2.2472 top1 0.4503 top5 0.7653
+    step 2300/2813 | avg train loss 2.2457 top1 0.4502 top5 0.7655
+    step 2400/2813 | avg train loss 2.2444 top1 0.4496 top5 0.7656
+    step 2500/2813 | avg train loss 2.2448 top1 0.4491 top5 0.7659
+    step 2600/2813 | avg train loss 2.2470 top1 0.4489 top5 0.7659
+    step 2700/2813 | avg train loss 2.2462 top1 0.4491 top5 0.7656
+    step 2800/2813 | avg train loss 2.2487 top1 0.4483 top5 0.7647
+    step 2813/2813 | avg train loss 2.2480 top1 0.4486 top5 0.7650
+Epoch 39/150 | train loss 2.2480 top1 0.4486 | val loss 2.2778 top1 0.3663 top5 0.7026 | ema val top1 0.4007 top5 0.7429
+  Saved new best checkpoint (ema): /Data/thomas.turkieh/smth2smth/checkpoints/track_a/trackA_phase2_randaugT_attn_dropPath0.1_adamw_ema_amp_4frames_officialVal_ep150_20260516_best.pt (val top1=0.4007)
+    step 100/2813 | avg train loss 2.2278 top1 0.4487 top5 0.7619
+    step 200/2813 | avg train loss 2.2503 top1 0.4456 top5 0.7591
+    step 300/2813 | avg train loss 2.2585 top1 0.4419 top5 0.7633
+    step 400/2813 | avg train loss 2.2627 top1 0.4436 top5 0.7611
+    step 500/2813 | avg train loss 2.2517 top1 0.4456 top5 0.7641
+    step 600/2813 | avg train loss 2.2518 top1 0.4465 top5 0.7629
+    step 700/2813 | avg train loss 2.2531 top1 0.4442 top5 0.7612
+    step 800/2813 | avg train loss 2.2502 top1 0.4481 top5 0.7602
