@@ -26,6 +26,9 @@ dataset:
   # The 80/20 internal split (``val_ratio``) is ignored when this is on.
   # Default stays false to preserve historical run reproducibility.
   use_official_val: false
+  # When true with ``use_official_val``, append every clip from ``val_dir`` to the
+  # training set (official val is still used for validation metrics).
+  include_val_in_train: false
   seed: ${seed}
   max_samples: null
   # Balanced per-class subsampling (see ``train._balanced_per_class_subsample``).

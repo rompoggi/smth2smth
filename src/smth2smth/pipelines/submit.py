@@ -71,7 +71,11 @@ def run(cfg: DictConfig) -> Path:
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
 
-    use_imagenet_norm = bool(saved_cfg.model.pretrained)
+    use_imagenet_norm = (
+        bool(saved_cfg.model.get("pretrained", False))
+        if hasattr(saved_cfg.model, "get")
+        else bool(getattr(saved_cfg.model, "pretrained", False))
+    )
     augment_cfg = saved_cfg.get("augment") if hasattr(saved_cfg, "get") else None
     eval_transform = build_transforms(
         image_size=int(cfg.dataset.image_size),

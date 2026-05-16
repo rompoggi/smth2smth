@@ -11,6 +11,7 @@ Tests can call :func:`run` directly with a hand-built ``DictConfig``; only the
 from __future__ import annotations
 
 import gc
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +41,17 @@ from smth2smth.shared.utils import (
 )
 
 CONFIGS_DIR = str(Path(__file__).resolve().parents[3] / "configs")
+
+
+def _epoch_progress_stamp(epoch_one_indexed: int, total_epochs: int) -> str:
+    """Prefix epoch logs with an ISO timestamp on a coarse grid (every 50 epochs)."""
+    if (
+        epoch_one_indexed == 1
+        or epoch_one_indexed == total_epochs
+        or epoch_one_indexed % 50 == 0
+    ):
+        return f"[{datetime.now().isoformat(timespec='seconds')}] "
+    return ""
 
 
 def _resolve_device(device_str: str) -> torch.device:
@@ -242,18 +254,23 @@ def run(cfg: DictConfig) -> Path | None:
         all_samples = all_samples[: int(max_samples)]
 
     use_official_val = bool(cfg.dataset.get("use_official_val", False))
+    include_val_in_train = bool(cfg.dataset.get("include_val_in_train", False))
     if use_official_val:
         # Validate on the official held-out folder. The internal 80/20 split is
         # bypassed: training uses *all* of ``train_dir``, validation uses
-        # *all* of ``val_dir``.
+        # *all* of ``val_dir``. Optionally also train on ``val_dir`` clips.
         val_dir_for_val = Path(cfg.dataset.val_dir).resolve()
         val_samples = collect_video_samples(val_dir_for_val)
         if max_samples is not None:
             val_samples = val_samples[: int(max_samples)]
-        train_samples = all_samples
+        train_samples = list(all_samples)
+        train_sources = f"train_dir={len(all_samples)}"
+        if include_val_in_train:
+            train_samples.extend(val_samples)
+            train_sources += f" + val_dir={len(val_samples)}"
         print(
-            f"[data] use_official_val=true: train={len(train_samples)} "
-            f"(from {train_dir}), val={len(val_samples)} (from {val_dir_for_val})"
+            f"[data] use_official_val=true: train={len(train_samples)} ({train_sources}), "
+            f"val={len(val_samples)} (from {val_dir_for_val})"
         )
     else:
         train_samples, val_samples = split_train_val(
@@ -279,7 +296,7 @@ def run(cfg: DictConfig) -> Path | None:
             f"(deterministic paired-verb duplicates)"
         )
 
-    use_imagenet_norm = bool(cfg.model.pretrained)
+    use_imagenet_norm = bool(cfg.model.get("pretrained", False)) if hasattr(cfg.model, "get") else bool(cfg.model.pretrained)
     augment_cfg = cfg.get("augment") if hasattr(cfg, "get") else None
     train_transform = build_transforms(
         image_size=int(cfg.dataset.image_size),
@@ -408,17 +425,31 @@ def run(cfg: DictConfig) -> Path | None:
                     f"{init_path} does not contain a 'trunk_state_dict' key; "
                     "expected an SSL checkpoint produced by pretrain_ssl.py."
                 )
-            prefixed = _ssl_trunk_to_supervised_keys(trunk_state)
-            missing, unexpected = model.load_state_dict(prefixed, strict=False)
-            # ``missing`` will include classifier / attn_pool keys -- expected.
-            backbone_missing = [k for k in missing if k.startswith("backbone.")]
-            print(
-                f"[init_from] loaded {len(prefixed)} trunk tensors from {init_path}. "
-                f"backbone-missing={len(backbone_missing)}, unexpected={len(unexpected)}"
-            )
-            if backbone_missing:
-                # If the SSL trunk doesn't cover every backbone key, we want to know.
-                print(f"[init_from] backbone keys NOT covered by SSL: {backbone_missing[:8]}...")
+            model_name = str(cfg.model.name)
+            if model_name == "video_mae_vit":
+                # VideoMAE checkpoints store keys with ``encoder.`` prefix
+                # already present (saved by pretrain_videomae.py). Load
+                # directly without the ResNet-specific key renaming.
+                encoder_keys = {k for k in trunk_state if k.startswith("encoder.")}
+                missing, unexpected = model.load_state_dict(trunk_state, strict=False)
+                encoder_missing = [k for k in missing if k.startswith("encoder.")]
+                print(
+                    f"[init_from] loaded {len(encoder_keys)} encoder tensors from {init_path}. "
+                    f"encoder-missing={len(encoder_missing)}, unexpected={len(unexpected)}"
+                )
+                if encoder_missing:
+                    print(f"[init_from] encoder keys NOT covered by SSL: {encoder_missing[:8]}...")
+            else:
+                prefixed = _ssl_trunk_to_supervised_keys(trunk_state)
+                missing, unexpected = model.load_state_dict(prefixed, strict=False)
+                # ``missing`` will include classifier / attn_pool keys -- expected.
+                backbone_missing = [k for k in missing if k.startswith("backbone.")]
+                print(
+                    f"[init_from] loaded {len(prefixed)} trunk tensors from {init_path}. "
+                    f"backbone-missing={len(backbone_missing)}, unexpected={len(unexpected)}"
+                )
+                if backbone_missing:
+                    print(f"[init_from] backbone keys NOT covered by SSL: {backbone_missing[:8]}...")
 
     # Class-balanced cross-entropy weights (opt-in). Composes with
     # label-smoothing and video-mixing: the same tensor is passed both to
@@ -794,8 +825,10 @@ def run(cfg: DictConfig) -> Path | None:
             is_last_epoch = (epoch + 1) == int(cfg.training.epochs)
             should_eval = is_last_epoch or ((epoch + 1) % eval_every_n_epochs == 0)
             if not should_eval:
+                et = int(cfg.training.epochs)
+                pfx = _epoch_progress_stamp(epoch + 1, et)
                 print(
-                    f"Epoch {epoch + 1}/{cfg.training.epochs} | "
+                    f"{pfx}Epoch {epoch + 1}/{et} | "
                     f"train loss {train_stats.loss:.4f} top1 {train_stats.top1:.4f} | "
                     f"val skipped (eval_every_n_epochs={eval_every_n_epochs})"
                 )
@@ -812,9 +845,11 @@ def run(cfg: DictConfig) -> Path | None:
                 ema_stats = evaluate_epoch(
                     ema_model, val_loader, loss_fn, device, amp_enabled=amp_enabled
                 )
+            et = int(cfg.training.epochs)
+            pfx = _epoch_progress_stamp(epoch + 1, et)
             if ema_stats is not None:
                 print(
-                    f"Epoch {epoch + 1}/{cfg.training.epochs} | "
+                    f"{pfx}Epoch {epoch + 1}/{et} | "
                     f"train loss {train_stats.loss:.4f} top1 {train_stats.top1:.4f} | "
                     f"val loss {val_stats.loss:.4f} top1 {val_stats.top1:.4f} "
                     f"top5 {val_stats.top5:.4f} | "
@@ -823,7 +858,7 @@ def run(cfg: DictConfig) -> Path | None:
             else:
                 ema_tag = " | ema eval skipped" if (ema_model is not None and not eval_ema) else ""
                 print(
-                    f"Epoch {epoch + 1}/{cfg.training.epochs} | "
+                    f"{pfx}Epoch {epoch + 1}/{et} | "
                     f"train loss {train_stats.loss:.4f} top1 {train_stats.top1:.4f} | "
                     f"val loss {val_stats.loss:.4f} top1 {val_stats.top1:.4f} "
                     f"top5 {val_stats.top5:.4f}{ema_tag}"

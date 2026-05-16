@@ -1,0 +1,44 @@
+# @package _global_
+# VideoMAE masked-reconstruction pretraining for Track A (from scratch).
+#
+# This run trains a VideoMAE ViT-B encoder *from scratch* on the unlabeled
+# video clips of the provided dataset (train + val + test). No external data
+# or pretrained weights are used -- fully Track-A compliant.
+#
+# Output: encoder-only checkpoint with ``encoder.*`` keys that the supervised
+# trainer loads via ``model.init_from``. See ``track_a_videomae_finetune.yaml``
+# for the supervised fine-tuning config.
+#
+# Run from repo root:
+#   PYTHONPATH=src uv run python -m smth2smth.pipelines.pretrain_videomae \
+#       experiment=track_a_videomae_pretrain
+#
+# For a quick smoke run, add ``pretrain.max_videos=64 pretrain.epochs=2``.
+defaults:
+  - override /model: video_mae_vit
+  - override /pretrain: videomae
+
+model:
+  variant: vit_b             # vit_b (86M) or vit_l (307M)
+  tube_t: 2
+  patch_size: 16
+  mlp_ratio: 4.0
+
+# No flip augmentation (SSv2 is direction-sensitive). Mild spatial aug only.
+augment:
+  random_crop: true
+  crop_padding: 32
+  random_horizontal_flip: false
+
+pretrain:
+  epochs: 100
+  warmup_epochs: 5
+  batch_size: 16
+  lr: 0.00015
+  mask_ratio: 0.75
+
+training:
+  num_workers: 4
+  device: cuda
+  amp: true
+  batch_size: 16

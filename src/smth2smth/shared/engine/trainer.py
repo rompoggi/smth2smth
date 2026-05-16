@@ -7,6 +7,7 @@ call these directly.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 import torch
 import torch.nn as nn
@@ -140,8 +141,9 @@ def train_one_epoch(
             avg_loss = running_loss / max(1, total)
             avg_top1 = running_top1_correct / max(1, total)
             avg_top5 = running_top5_correct / max(1, total)
+            ts = datetime.now().strftime("%H:%M:%S")
             print(
-                f"    step {step_idx}/{total_steps} | "
+                f"    [{ts}] step {step_idx}/{total_steps} | "
                 f"avg train loss {avg_loss:.4f} top1 {avg_top1:.4f} top5 {avg_top5:.4f}"
             )
 

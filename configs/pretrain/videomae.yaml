@@ -1,0 +1,39 @@
+# @package _global_
+# VideoMAE masked-reconstruction pretraining (Tong et al., NeurIPS 2022).
+# Read by ``smth2smth.pipelines.pretrain_videomae.run``; ignored by the
+# supervised trainer and by other SSL pipelines.
+pretrain:
+  # Training schedule. VideoMAE paper uses 800 epochs on Kinetics; for our
+  # smaller SSv2-subset we use 100 epochs as a default. Increase for longer
+  # runs (200-400 recommended after verifying loss convergence).
+  epochs: 100
+  warmup_epochs: 5           # linear LR warmup epochs
+  batch_size: 16             # per-GPU; fits comfortably on a single RTX 3090
+
+  # Optimiser (VideoMAE paper: AdamW, β=(0.9,0.95), wd=0.05)
+  lr: 0.00015                # base LR (1.5e-4 from paper)
+  weight_decay: 0.05
+  min_lr: 0.0                # final LR after cosine decay
+
+  # Masking
+  mask_ratio: 0.75           # 75% tube masking (90% is Kinetics; T=4 needs less)
+  norm_pix: true             # per-cube pixel normalisation for target
+
+  # Encoder drop path during pretraining (keep 0 for stability)
+  drop_path_rate: 0.0
+
+  # Reconstruction target pixel normalisation
+  tube_t: 2
+  patch_size: 16
+
+  # Where to write the encoder-only checkpoint.
+  checkpoint_path: ${hydra:runtime.cwd}/videomae_encoder.pt
+
+  # Optional cap on the number of clips (handy for smoke runs).
+  max_videos: null
+
+  # Clip resolution and number of frames. Mirror the supervised settings.
+  image_size: 224
+  num_frames: 4
+
+  log_interval_steps: 100

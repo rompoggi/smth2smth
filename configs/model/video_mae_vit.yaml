@@ -1,0 +1,13 @@
+# @package _global_
+model:
+  name: video_mae_vit
+  variant: vit_b          # vit_b (12L, 768d, 86M) or vit_l (24L, 1024d, 307M)
+  num_classes: ${num_classes}
+  tube_t: 2               # temporal cube depth (2 frames → 1 token)
+  patch_size: 16          # spatial patch size
+  mlp_ratio: 4.0
+  drop_path_rate: 0.0     # stochastic depth (set to 0.1 at fine-tune time)
+  dropout: 0.0
+  head: mean              # mean (VideoMAE paper) or attn (attentive probe)
+  head_num_heads: 4       # only used when head=attn
+  init_from: null         # path to a VideoMAE SSL encoder checkpoint

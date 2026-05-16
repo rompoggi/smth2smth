@@ -22,6 +22,12 @@ augment:
   color_jitter_saturation: 0.0
   color_jitter_hue: 0.0
   sync_across_frames: true
+  random_grayscale: false
+  random_grayscale_prob: 0.0
+  gaussian_blur: false
+  gaussian_blur_prob: 0.0
+  gaussian_blur_radius_min: 0.1
+  gaussian_blur_radius_max: 2.0
   randaugment:
     enabled: true
     n: 2
