@@ -254,18 +254,23 @@ def run(cfg: DictConfig) -> Path | None:
         all_samples = all_samples[: int(max_samples)]
 
     use_official_val = bool(cfg.dataset.get("use_official_val", False))
+    include_val_in_train = bool(cfg.dataset.get("include_val_in_train", False))
     if use_official_val:
         # Validate on the official held-out folder. The internal 80/20 split is
         # bypassed: training uses *all* of ``train_dir``, validation uses
-        # *all* of ``val_dir``.
+        # *all* of ``val_dir``. Optionally also train on ``val_dir`` clips.
         val_dir_for_val = Path(cfg.dataset.val_dir).resolve()
         val_samples = collect_video_samples(val_dir_for_val)
         if max_samples is not None:
             val_samples = val_samples[: int(max_samples)]
-        train_samples = all_samples
+        train_samples = list(all_samples)
+        train_sources = f"train_dir={len(all_samples)}"
+        if include_val_in_train:
+            train_samples.extend(val_samples)
+            train_sources += f" + val_dir={len(val_samples)}"
         print(
-            f"[data] use_official_val=true: train={len(train_samples)} "
-            f"(from {train_dir}), val={len(val_samples)} (from {val_dir_for_val})"
+            f"[data] use_official_val=true: train={len(train_samples)} ({train_sources}), "
+            f"val={len(val_samples)} (from {val_dir_for_val})"
         )
     else:
         train_samples, val_samples = split_train_val(

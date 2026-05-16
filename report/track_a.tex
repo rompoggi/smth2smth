@@ -1,9 +1,14 @@
 % =====================================================================
-% Track A (Closed-World, from scratch): context, Phase~1--3.
+% Track A (Closed-World, from scratch): context, Phases~1--4, SSL runs.
 %
-% This file is \input{}-ed from report/main.tex.  Keep phase numbering
-% consistent with the rest of the report.
+% \input{}-ed from report/main.tex.  Phase~3 V-JEPA + Phase~4 + appendices
+% were merged from the former monolithic main.tex; legacy DINO Phase~3 uses
+% \texttt{sec:phase3dino:*} labels to avoid clashing with V-JEPA \texttt{sec:phase3:*}.
 % =====================================================================
+
+% Set Track A accent color (red stripe + red headers)
+\renewcommand{\trackcolor}{trackred}
+\renewcommand{\trackname}{Track~A}
 
 \section{Context}
 \label{sec:context}
@@ -75,7 +80,7 @@ The remainder of this document describes the changes that addressed each
 of these issues, in the order they were introduced.
 
 % =====================================================================
-\section{Phase 1: Foundations}
+\section{Training Pipeline Foundations}
 \label{sec:phase1}
 
 Phase~1 comprises five low-risk, high-return changes. All of them were
@@ -272,7 +277,7 @@ case the mask is \code{None} and the legacy unmasked argmax path is used,
 preserving backward compatibility.
 
 % =====================================================================
-\section{Phase 2: Architectural and Training Enhancements}
+\section{Architectural and Training Enhancements}
 \label{sec:phase2}
 
 Phase~2 adds four orthogonal opt-in features that compose cleanly with
@@ -524,9 +529,655 @@ training:
   label_smoothing: 0.1
 \end{lstlisting}
 
-% =====================================================================
-\section{Phase 3: Self-Supervised Pretraining (DINO)}
+\section{Self-Supervised Pretraining (V-JEPA)}
 \label{sec:phase3}
+
+The single highest-impact change available within Track~A is to give the
+trunk something useful to do with the unlabeled clips before the
+supervised loss starts back-propagating. Track~A permits self-supervised
+pretraining on the \emph{provided} unlabeled images (the labels are
+simply not consumed and the trunk starts from random initialisation), so
+we pretrain on the union of the \file{train/}, \file{val/} and
+\file{test/} folders.
+
+\subsection{Why the DINO-on-still-frames prototype was deprecated}
+\label{sec:phase3:dino-deprecated}
+
+Our first SSL attempt was a DINO-v1 \cite{Caron2021DINO} pipeline trained
+on still frames sampled independently from the provided videos (file
+\file{src/smth2smth/shared/data/still\_frames\_dataset.py} and
+\file{src/smth2smth/shared/models/dino\_ssl.py}). In practice it produced
+\emph{inconsistent} downstream gains --- sometimes a small improvement,
+sometimes a clear regression versus the random-init baseline. Two
+structural issues explain why:
+
+\begin{enumerate}[leftmargin=*]
+\item \textbf{DINO is invariance-trained.} The objective is to assign
+   the same prototype to two augmented views of the \emph{same image},
+   which actively pressures the trunk to become invariant to the small
+   per-pixel changes that distinguish adjacent video frames --- exactly
+   the signal an action-anticipation model needs to keep.
+\item \textbf{The TSM modules are never exercised.} DINO operates on
+   isolated frames, so the channel-shift modules wrapped around every
+   bottleneck's \code{conv1} (which carry $\approx$ 12.5\% of the
+   input channels temporally) see no temporal context during
+   pretraining. Roughly one in eight conv1 input channels was therefore
+   left at its Kaiming He initial value when supervised training
+   started.
+\end{enumerate}
+
+The DINO files remain in the repository as a historical record, but the
+recommended SSL pipeline is now the V-JEPA-style one described in the
+rest of this section.
+
+\subsection{V-JEPA-style clip-level pretraining}
+\label{sec:phase3:vjepa-overview}
+
+V-JEPA (Joint-Embedding Predictive Architecture for Video)
+\cite{Bardes2024VJEPA, Assran2025VJEPA2} replaces the
+``invariance to augmented views'' objective by ``predict the masked
+parts of a clip in feature space''. Concretely, the student encodes a
+\emph{masked} clip while the EMA-updated teacher encodes the unmasked
+clip; a small predictor maps the student's representation to the
+teacher's space, and an L1 loss is applied only at the masked positions.
+This is the right inductive bias for our problem: the student is
+forced to use temporal context to fill in masked features, which makes
+the TSM channel-shift modules immediately useful.
+
+We adapt the recipe to our TSM-equipped ResNet-50 trunk with $T=4$
+frames. Because there are only 4 frames per clip, full V-JEPA 3D
+multi-block tube masking in patch-token space is not appropriate; we
+use \emph{frame-level} masking instead, which mirrors the V-JEPA
+objective at the granularity that maps naturally onto our CNN trunk.
+
+\subsection{Clip dataset for SSL}
+\label{sec:phase3:dataset}
+
+A new file \file{src/smth2smth/shared/data/clip\_ssl\_dataset.py}
+exposes two utilities:
+
+\begin{itemize}[leftmargin=2em]
+\item \code{collect\_all\_video\_dirs(roots)} walks the provided
+      directories and returns every video folder it finds. It handles
+      both layouts in use: class-bucketed
+      (\file{train/<class>/<video>/<frame>.jpg}) and flat
+      (\file{test/<video>/<frame>.jpg}). Duplicates across roots are
+      removed.
+\item \code{ClipSSLDataset} yields one \((T, C, H, W)\) clip per video.
+      Frame indices are picked by the same \code{pick\_frame\_indices}
+      helper used by supervised training so the SSL run sees exactly
+      the same temporal distribution as the supervised trainer. The
+      per-frame transform is the project's standard
+      \code{build\_transforms(is\_training=True)}, which includes
+      RandAugment-T spatial augmentations \emph{without} ImageNet
+      normalisation (Track~A forbids pretrained weights).
+\end{itemize}
+
+\paragraph{On the question of V-JEPA's data augmentations.} The V-JEPA
+paper combines random resized crop, horizontal flip, colour jitter,
+gray-scale and Gaussian blur in a specific stack. We \emph{do not}
+reproduce that augmentation stack verbatim: we reuse the project's
+existing RandAugment-T pipeline so that the SSL trunk sees exactly the
+same input distribution as the downstream supervised trainer.
+Reproducing V-JEPA's stack would put a domain shift between pretraining
+and fine-tuning, which is the opposite of what we want. The
+\emph{augmentation} contribution of V-JEPA that we \emph{do} reproduce
+is the masking itself: \(n_{\mathrm{masked}}\) frames per clip are
+replaced by zeros so the student must reconstruct their features from
+the unmasked context through the TSM channels.
+
+\subsection{Model: trunk + predictor + EMA teacher}
+\label{sec:phase3:model}
+
+\file{src/smth2smth/shared/models/vjepa\_ssl.py} contains three pieces.
+
+\paragraph{Trunk.} \code{VJepaTrunk} is the \emph{same}
+TSM-wrapped ResNet-50 as the supervised model's \code{backbone}: it
+calls \code{\_make\_temporal\_shift\_resnet} with \code{n\_segment} =
+\(T\), so every bottleneck block's \code{conv1} is replaced by
+\code{nn.Sequential(TemporalShift, conv1)}. The state-dict layout
+therefore matches \code{AvancedResNet50TSM.backbone.state\_dict()}
+byte-for-byte, which lets the supervised trainer pick up the SSL
+checkpoint with a single \code{load\_state\_dict(..., strict=False)}.
+
+\paragraph{Predictor.} A small per-frame MLP
+(\code{Linear} $\to$ \code{GELU} $\to$ \code{Linear}, hidden dim 2048)
+maps the student's per-frame features into the teacher's space. The
+predictor exists so the encoder is not biased toward an identity
+student-to-teacher mapping on masked positions (Bardes et al., Sec.~3).
+
+\paragraph{Composite.} \code{VJepaModel} composes the trunk and the
+predictor. Two copies are instantiated at training time --- a student
+and a teacher --- with identical architecture; the teacher's weights
+are an EMA of the student's and are never updated by gradient descent.
+
+\subsection{Frame-level masking and the V-JEPA L1 loss}
+\label{sec:phase3:loss}
+
+For each clip we sample \(n_{\mathrm{masked}} \sim
+\mathrm{Uniform}[1, T-1]\) and zero out the corresponding frames. The
+student trunk encodes the masked clip; the teacher trunk encodes the
+unmasked clip with no gradient. The masked-position L1 loss is
+\[
+\mathcal{L} \;=\;
+\frac{1}{|\mathcal{M}| \cdot D}\sum_{(b,t) \in \mathcal{M}}
+\left\| \hat{f}_{b,t} - f^{\mathrm{tch}}_{b,t} \right\|_1,
+\]
+where \(\hat{f}_{b,t} = \mathrm{Predictor}(\mathrm{Student}(\tilde
+x)_{b,t})\) is the predicted feature for clip \(b\) at frame \(t\),
+\(f^{\mathrm{tch}}_{b,t} = \mathrm{Teacher}(x)_{b,t}\) is the teacher's
+target, \(\mathcal{M}\) is the set of masked \((b, t)\) positions and
+\(D=2048\). Masked positions are the only ones that contribute to the
+loss; unmasked frames see no learning signal, which keeps the gradient
+focused on \emph{predicting what is missing}.
+
+\begin{lstlisting}[style=py]
+def vjepa_feature_loss(predicted, teacher, mask):
+    if not mask.any():
+        return predicted.sum() * 0.0  # zero with valid grad_fn
+    diff = (predicted - teacher).abs()        # (B, T, D)
+    sel = mask.to(diff.dtype).unsqueeze(-1)   # (B, T, 1)
+    weighted = diff * sel
+    n_elems = mask.sum().clamp_min(1).to(diff.dtype) * diff.shape[-1]
+    return weighted.sum() / n_elems
+\end{lstlisting}
+
+\subsection{Teacher EMA momentum schedule}
+
+The teacher's parameters are updated by
+\(\theta_t \leftarrow m\,\theta_t + (1-m)\,\theta_s\) after every
+optimizer step, with \(m\) following a cosine schedule from
+\(m_0 = 0.996\) at the start to \(m_1 = 1.0\) at the end of training.
+
+\subsection{Trunk-only checkpoint format}
+
+After every epoch we save a small ($\approx$ 95~MiB) checkpoint that
+contains \emph{only} the trunk parameters, with both the \code{trunk.}
+and the inner \code{backbone.} prefix stripped. The result is a flat
+dictionary keyed exactly like a standard
+\code{torchvision.models.resnet50} state-dict, except that the
+bottleneck \code{conv1} keys already carry the TSM-wrapping index (e.g.
+\code{layer1.0.conv1.1.weight} instead of
+\code{layer1.0.conv1.weight}):
+
+\begin{lstlisting}[style=py]
+trunk_state_dict = {}
+for k, v in student.state_dict().items():
+    if k.startswith("trunk.backbone."):
+        trunk_state_dict[k.removeprefix("trunk.backbone.")] = v
+torch.save({"trunk_state_dict": trunk_state_dict,
+            "epoch": epoch + 1}, out_path)
+\end{lstlisting}
+
+\subsection{The \cfgkey{model.init\_from} hook in \file{train.py}}
+\label{sec:phase3:initfrom}
+
+The supervised trainer received a single new opt-in:
+
+\begin{lstlisting}[style=py]
+init_from = cfg.model.get("init_from") if hasattr(cfg.model, "get") \
+            else None
+if init_from:
+    payload = torch.load(Path(str(init_from)).resolve(),
+                         map_location=device, weights_only=False)
+    trunk_state = payload.get("trunk_state_dict")
+    prefixed = _ssl_trunk_to_supervised_keys(trunk_state)
+    missing, unexpected = model.load_state_dict(prefixed, strict=False)
+\end{lstlisting}
+
+The helper \code{\_ssl\_trunk\_to\_supervised\_keys} handles both
+flavours of SSL checkpoint that the repository can produce:
+
+\begin{itemize}[leftmargin=2em]
+\item Legacy DINO trunks whose keys come from a plain
+   \code{torchvision} ResNet-50 (e.g. \code{layer1.0.conv1.weight}).
+   The helper renames them to the TSM-wrapped form
+   (\code{layer1.0.conv1.1.weight}) and prepends \code{backbone.}.
+\item V-JEPA trunks whose keys are already TSM-wrapped
+   (\code{layer1.0.conv1.1.weight}). The rename regex is a no-op and
+   the helper only prepends \code{backbone.}.
+\end{itemize}
+
+\begin{lstlisting}[style=py]
+block_conv1_re = re.compile(
+    r"^(layer[1-4]\.\d+\.conv1)\.(weight|bias)$")
+out: dict[str, torch.Tensor] = {}
+for k, v in trunk_state.items():
+    match = block_conv1_re.match(k)
+    if match is not None:
+        new_k = f"{match.group(1)}.1.{match.group(2)}"
+    else:
+        new_k = k
+    out[f"backbone.{new_k}"] = v
+return out
+\end{lstlisting}
+
+A V-JEPA trunk loads with \textbf{318 backbone tensors covered, zero
+unexpected keys, and only the classifier (and, when enabled, the
+attention pool) left at their fresh-init values} --- the exact behaviour
+the test suite pins (\file{tests/pipelines/test\_init\_from\_vjepa.py}).
+
+% =====================================================================
+\section{Data Augmentation, Class Balance, and TTA Improvements}
+\label{sec:tracka-phase4}
+
+Phase~4 attacks the failure modes that remain once a good trunk is in
+place. Three of them stem directly from the small, imbalanced nature of
+the provided training set; the fourth is a free accuracy boost at
+inference time. All four are opt-in via the configuration and are
+bundled together in
+\file{configs/experiment/track\_a\_vjepa\_finetune.yaml}.
+
+\subsection{Class imbalance: balanced sampling \emph{and} balanced loss}
+\label{sec:tracka-phase4:classbalance}
+
+\paragraph{Logic.} The training set is heavily skewed: class counts
+range from \(\approx\) 162 to \(\approx\) 3170 samples, a 20\(\times\)
+ratio. A vanilla cross-entropy loss with uniform sampling effectively
+\emph{down-weights} rare classes twice over (they are seen less often,
+\emph{and} each sample contributes equally to the loss), and the
+resulting classifier tends to predict the head classes for most test
+clips. We fix this on two independent axes.
+
+\paragraph{Balanced sampler.} We replace the uniform shuffle of the
+\code{DataLoader} by a \code{WeightedRandomSampler} whose per-sample
+weight is \(w_i = 1 / \sqrt{n_{c(i)}}\), where \(c(i)\) is the class
+of sample \(i\) and \(n_c\) is the class count. The square root is a
+robust compromise between fully-balanced sampling (which heavily
+oversamples the 162-sample classes) and uniform sampling (which
+ignores them). The policy is selected by
+\cfgkey{training.class\_balance\_sampler} \(\in
+\{\text{none, inverse, sqrt\_inverse}\}\).
+
+\paragraph{Balanced loss.} We additionally weight each class in the
+cross-entropy by Cui et al.'s effective-number weights
+\cite{Cui2019CB}: for class \(c\) with \(n_c\) samples,
+\[
+w_c \;\propto\; \frac{1-\beta}{1-\beta^{n_c}}, \qquad \beta \in (0, 1),
+\]
+which interpolates between uniform weighting (\(\beta \to 0\)) and
+inverse-frequency weighting (\(\beta \to 1\)). We use the canonical
+\(\beta = 0.999\). Classes with zero samples (e.g. class~27, see
+Section~\ref{sec:phase1:masking}) receive \(w_c = 0\), so they
+contribute neither to the sampling nor to the loss. The same weight
+vector is also routed through the soft-target cross-entropy used by
+label smoothing and FrameMixUp so the augmentations remain class-balanced.
+
+\begin{lstlisting}[style=py]
+# Per-class effective-number weights (Cui et al. 2019).
+def _class_factors(n_per_class, policy, beta=0.999):
+    if policy == "cb":
+        effective = [(1.0 - beta**max(n, 1)) / (1.0 - beta)
+                     for n in n_per_class]
+        return [1.0 / e if e > 0 else 0.0 for e in effective]
+    # ... 'inverse', 'sqrt_inverse' branches ...
+\end{lstlisting}
+
+The two axes are configured independently
+(\cfgkey{training.class\_balance\_sampler},
+\cfgkey{training.class\_balance\_loss},
+\cfgkey{training.class\_balance\_beta}) so the user can run any
+combination of \(\{\text{sampler off, sampler sqrt}\} \times
+\{\text{loss off, loss CB}\}\) and compare. The new
+\code{class\_balance.py} module is fully unit-tested
+(\file{tests/shared/utils/test\_class\_balance.py}).
+
+\subsection{Motion-aware time-reversal augmentation}
+\label{sec:tracka-phase4:timereversal}
+
+\paragraph{Logic.} For verbs whose semantics are intrinsically
+direction-sensitive, the time-reversed clip belongs to a \emph{paired}
+class --- the reverse of opening is closing, the reverse of pushing
+left-to-right is pushing right-to-left, etc. Time-reversal is therefore
+a label-preserving augmentation \emph{only} when we also remap the
+label to the paired class. Without the remap, a reversed clip injects
+flat-out wrong supervision.
+
+\paragraph{Implementation.} A new module
+\file{src/smth2smth/shared/data/time\_reversal.py} hosts a small
+hand-curated table of reversible class pairs:
+\begin{quote}
+\(\text{Opening} \leftrightarrow \text{Closing}\),
+\(\text{Moving up} \leftrightarrow \text{Moving down}\),
+\(\text{Pushing left-to-right} \leftrightarrow
+\text{Pushing right-to-left}\),
+\(\text{Tilting toward camera} \leftrightarrow
+\text{Tilting away from camera}\),
+plus a symmetric set (e.g. \emph{Holding something}) where the reverse
+is the same class.
+\end{quote}
+\code{build\_time\_reversal\_table} matches the pairs against the
+actual class folder names on disk and returns two tensors:
+\code{perm[c]} = the class index of the time-reversed clip
+(\code{perm[c] = -1} if \(c\) is not reversible), and
+\code{allow\_mask[c] = True} iff class \(c\) is reversible. Both are
+threaded into \code{VideoFrameDataset} via three new keyword
+arguments:
+
+\begin{lstlisting}[style=py]
+class VideoFrameDataset(Dataset):
+    def __init__(self, ..., *,
+                 time_reversal_prob: float = 0.0,
+                 time_reversal_perm: torch.Tensor | None = None,
+                 time_reversal_allow_mask: torch.Tensor | None = None):
+        ...
+    def __getitem__(self, index):
+        ...
+        if self._should_reverse(label):
+            indices = list(reversed(indices))
+            label = int(self.time_reversal_perm[int(label)].item())
+        ...
+\end{lstlisting}
+
+The augmentation is gated by \cfgkey{dataset.time\_reversal\_prob}
+(default \(0.0\)). When set to e.g. \(0.3\), about 30\% of clips drawn
+from reversible classes are reversed and re-labelled at every epoch,
+which roughly doubles the effective training set for the affected
+classes without any synthetic data.
+
+\subsection{Multi-scale TTA and logit adjustment}
+\label{sec:tracka-phase4:tta}
+
+The Phase~2 TTA (Section~\ref{sec:phase2:tta}) already averages
+horizontal-flip predictions with an auto-derived left/right class
+permutation. Phase~4 extends inference with two further tricks.
+
+\paragraph{Multi-scale TTA.} At inference time we resample the input
+clip to several spatial scales (e.g. \(\{0.875, 1.0, 1.125\} \times
+H \times W\)) using bilinear interpolation, run the model on each
+scale (optionally with a horizontal flip), softmax each set of
+logits, and average all softmaxes. This is a standard test-time
+ensembling trick for CNN classifiers; it is gated by
+\cfgkey{training.tta\_scales} (a list, default \([1.0]\)).
+
+\begin{lstlisting}[style=py]
+def _rescale_video(video_batch, scale):
+    if abs(scale - 1.0) < 1e-6:
+        return video_batch
+    b, t, c, h, w = video_batch.shape
+    new_h, new_w = int(round(h * scale)), int(round(w * scale))
+    return F.interpolate(video_batch.reshape(b * t, c, h, w),
+                         size=(new_h, new_w),
+                         mode="bilinear",
+                         align_corners=False).view(b, t, c, new_h, new_w)
+\end{lstlisting}
+
+\paragraph{Logit adjustment.} Even with a class-balanced sampler and
+loss, the predictor at test time still inherits a small bias toward
+head classes whenever the training data and the test data have
+different (but unknown) class distributions. Menon et al.
+\cite{Menon2021LA} show that subtracting \(\tau \cdot \log \pi_c\) from
+class \(c\)'s logit at \emph{inference time}, where \(\pi_c\) is the
+training-set prior and \(\tau \in [0, 1]\) is a small constant, is the
+Bayes-optimal post-hoc correction under the standard balanced-test
+assumption. We compute \(\pi_c\) directly from the training-folder
+counts and subtract \(\tau \log \pi_c\) from the logits right after the
+forward pass, before either the softmax or the multi-scale averaging:
+
+\begin{lstlisting}[style=py]
+def _build_logit_adjustment(train_dir, num_classes, tau, device):
+    counts = class_counts(...)
+    total = float(sum(counts))
+    pi = torch.tensor([c / total if c > 0 else 1e-12 for c in counts],
+                      device=device)
+    return tau * torch.log(pi)        # subtracted from logits
+
+# inside _logits_for_batch:
+logits = model(video_batch)
+if logit_adjust is not None:
+    logits = logits - logit_adjust
+\end{lstlisting}
+
+The strength \(\tau\) is configured via
+\cfgkey{training.tta\_logit\_adjust} (default \(0.0\) = off; we use
+\(\tau = 1.0\) in the bundled experiment).
+
+\subsection{The bundled experiment configuration}
+
+The four Phase-4 features compose cleanly with everything in Phases~1
+through~3. A new experiment file
+\file{configs/experiment/track\_a\_vjepa\_finetune.yaml} bundles them on
+top of a V-JEPA warm-start:
+
+\begin{lstlisting}[style=yaml]
+defaults:
+  - override /model: avanced_resnet50_tsm
+  - override /augment: randaugment_t
+
+model:
+  drop_path_rate: 0.1
+  head: attn
+  head_num_heads: 4
+  init_from: null      # set on the command line
+
+dataset:
+  num_frames: 4
+  use_official_val: true
+  time_reversal_prob: 0.3
+
+training:
+  optimizer: adamw
+  weight_decay: 0.05
+  amp: true
+  ema_enabled: true
+  ema_decay: 0.999
+  tta: true
+  tta_flip: true
+  tta_scales: [0.875, 1.0, 1.125]
+  tta_logit_adjust: 1.0
+  class_balance_sampler: sqrt_inverse
+  class_balance_loss: cb
+  class_balance_beta: 0.999
+  early_stopping_enabled: true
+  early_stopping_patience: 20
+\end{lstlisting}
+
+% =====================================================================
+\section{Configuration and reproducibility}
+\label{sec:configs}
+
+\subsection{New configuration knobs}
+
+The following table summarises every new switch introduced by Phases~1
+through~4. All defaults preserve the legacy behaviour.
+
+\begin{center}\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Key} & \textbf{Default} & \textbf{Effect when on} \\
+\midrule
+\multicolumn{3}{l}{\emph{Phases 1--2}} \\
+\cfgkey{dataset.use\_official\_val}  & \code{false} & validate on \file{data/val/} \\
+\cfgkey{training.amp}                & \code{false} & FP16 autocast + GradScaler \\
+\cfgkey{training.ema\_enabled}       & \code{false} & EMA of model weights \\
+\cfgkey{training.ema\_decay}         & \code{0.999} & EMA momentum \\
+\cfgkey{training.tta}                & \code{false} & enable TTA at submit time \\
+\cfgkey{training.tta\_flip}          & \code{true}  & flip view (only used when \code{tta}) \\
+\cfgkey{training.tta\_temporal\_shift}\!\! & \code{0} & extra temporal start-offsets (TTA) \\
+\cfgkey{model.drop\_path\_rate}      & \code{0.0}   & Stochastic Depth maximum drop prob.\\
+\cfgkey{model.head}                  & \code{mean}  & temporal head (\code{mean}/\code{attn}) \\
+\cfgkey{model.head\_num\_heads}      & \code{4}     & MultiHead attention heads \\
+\cfgkey{model.init\_from}            & \code{null}  & path to SSL trunk to warm-start \\
+\midrule
+\multicolumn{3}{l}{\emph{Phase 3 (V-JEPA SSL)}} \\
+\cfgkey{pretrain.mask\_prob}         & \code{0.5}   & avg.\ frame mask fraction for V-JEPA \\
+\cfgkey{pretrain.min\_mask}          & \code{1}     & min frames masked per clip \\
+\cfgkey{pretrain.max\_mask}          & \code{2}     & max frames masked per clip \\
+\cfgkey{pretrain.predictor\_hidden\_dim}\!\! & \code{2048} & MLP predictor hidden width \\
+\cfgkey{pretrain.teacher\_momentum\_base}\!\! & \code{0.996} & cosine EMA momentum start \\
+\cfgkey{pretrain.teacher\_momentum\_final}\!\! & \code{1.0} & cosine EMA momentum end \\
+\midrule
+\multicolumn{3}{l}{\emph{Phase 4}} \\
+\cfgkey{training.class\_balance\_sampler}\!\! & \code{none} & sample weights: \code{none/inverse/sqrt\_inverse} \\
+\cfgkey{training.class\_balance\_loss}\!\! & \code{none} & class-balanced loss policy (\code{none/cb}) \\
+\cfgkey{training.class\_balance\_beta}\!\! & \code{0.999} & \(\beta\) in the CB effective-number formula \\
+\cfgkey{dataset.time\_reversal\_prob}\!\! & \code{0.0} & prob.\ of time-reversing a reversible-class clip \\
+\cfgkey{training.tta\_scales}\!\!     & \code{[1.0]} & list of spatial scales for multi-scale TTA \\
+\cfgkey{training.tta\_logit\_adjust}\!\! & \code{0.0} & \(\tau\) in Menon et al.\ logit adjustment \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{New experiment configurations}
+
+\begin{description}[leftmargin=1.5em, style=nextline]
+\item[\file{configs/experiment/track\_a\_phase2.yaml}]
+   Bundles every Phase-1 and Phase-2 opt-in: AdamW + WD~0.05, AMP,
+   DropPath~0.1, attention head, EMA~0.999, TTA at submit time, official
+   validation split, cosine schedule with 10-epoch warmup, label
+   smoothing~0.1, RandAugment-T, FrameMixUp.
+
+\item[\file{configs/experiment/track\_a\_phase2\_balanced.yaml}]
+   Phase~2 \emph{plus} all of Phase~4 (class-balanced sampler + CB loss,
+   time-reversal augmentation, multi-scale TTA, logit adjustment) but
+   \emph{without} SSL warm-start. Useful as an ablation baseline.
+
+\item[\file{configs/experiment/track\_a\_vjepa\_pretrain.yaml}]
+   Routes the run through \code{pretrain\_vjepa.py}: 50 epochs of
+   V-JEPA-style clip mask-denoising over the union of train+val+test
+   videos, 1--2 frames masked per clip, AdamW + WD~0.04, AMP on.
+
+\item[\file{configs/experiment/track\_a\_vjepa\_finetune.yaml}]
+   Same as \file{track\_a\_phase2\_balanced.yaml} but expects
+   \cfgkey{model.init\_from} to be set on the command line to the
+   V-JEPA trunk produced by the previous experiment; reduces the
+   number of supervised epochs (warm-started runs converge faster) and
+   halves the learning rate.
+
+\item[\file{configs/experiment/track\_a\_ssl\_pretrain.yaml},
+      \file{...\_ssl\_finetune.yaml}]
+   The legacy DINO-on-still-frames experiments are retained for
+   reference. They are superseded by the V-JEPA variants above and are
+   not recommended for new runs (see
+   Section~\ref{sec:phase3:dino-deprecated}).
+\end{description}
+
+\subsection{Backwards compatibility}
+
+Every legacy entry point continues to work without modification:
+
+\begin{itemize}[leftmargin=2em]
+\item Phase-1 checkpoints (no \code{trained\_class\_indices}, no
+      \code{optimizer\_state\_dict} in \code{extra}) load and resume via
+      the legacy fast-forward fallback.
+\item Pre-Phase-1 checkpoints (no Phase-2 opt-ins enabled) load with
+      identical state-dict keys; this is enforced by a unit test that
+      compares state-dict key sets between defaults and Phase-2
+      opt-ins.
+\item Submission CSVs produced before Phase~1 remain valid; the new
+      mask is only applied if the checkpoint actually carries the
+      trained-class list.
+\end{itemize}
+
+% =====================================================================
+\section{Test coverage}
+\label{sec:tests}
+
+The pre-existing suite contained 120 tests, all of which still pass.
+Forty-one new tests were added across the four phases, bringing the
+total to \textbf{161 passing tests}:
+
+\begin{description}[leftmargin=1.5em, style=nextline]
+\item[\file{tests/shared/models/test\_phase2\_optins.py} (8 tests)]
+   Phase~2: \code{DropPath} eval-time identity and unbiased
+   per-sample training behaviour; \code{DropPath(0)} byte-for-byte
+   equality with the no-op; attention pool shape; state-dict key
+   invariance under \cfgkey{drop\_path\_rate}; \code{attn\_pool.*} key
+   appearance.
+
+\item[\file{tests/pipelines/test\_submit\_tta.py} (5 tests)]
+   Phase~2: auto-derived left/right class permutation; no-TTA path;
+   untrained-mask path; flip-TTA softmax reinforcement of the correct
+   class after remap.
+
+\item[\file{tests/shared/data/test\_still\_frames\_dataset.py} (6 tests)]
+   Phase~3 (DINO, retained): frame-path discovery across both folder
+   layouts; deduplication across roots; multi-view sampling shape.
+
+\item[\file{tests/shared/models/test\_dino\_ssl.py} (4 tests)]
+   Phase~3 (DINO, retained): SSL trunk key superset of the supervised
+   backbone keys; finite back-propagating loss; teacher-EMA midpoint
+   identity.
+
+\item[\file{tests/pipelines/test\_init\_from\_ssl.py} (1 test)]
+   Phase~3 (DINO, retained) end-to-end smoke test for the
+   \cfgkey{model.init\_from} hook.
+
+\item[\file{tests/shared/models/test\_vjepa\_ssl.py} (10 tests)]
+   Phase~3 (V-JEPA): trunk forward shape; remapped V-JEPA trunk keys
+   cover the supervised backbone \emph{exactly} (zero missing, zero
+   unexpected); \code{load\_state\_dict} only misses the classifier;
+   the L1 loss is zero for an empty mask (with a valid \code{grad\_fn})
+   and finite-and-backprop-able otherwise; \code{apply\_frame\_mask}
+   zeroes the correct positions; mask sampler bounds and
+   ``never-all-masked'' guarantee; teacher EMA midpoint.
+
+\item[\file{tests/shared/data/test\_clip\_ssl\_dataset.py} (7 tests)]
+   Phase~3 (V-JEPA): both folder layouts; cross-root deduplication;
+   missing-root skip; sample shape; temporal jitter under hold-out.
+
+\item[\file{tests/pipelines/test\_init\_from\_vjepa.py} (1 test)]
+   Phase~3 (V-JEPA) end-to-end smoke test that explicitly pins the
+   no-double-\code{backbone.}-prefix invariant of the V-JEPA save format.
+
+\item[\file{tests/shared/utils/test\_class\_balance.py},\\
+      \file{tests/shared/data/test\_time\_reversal.py},\\
+      \file{tests/pipelines/test\_submit\_phase4\_tta.py}]
+   Phase~4: per-class weight policies (\code{none}, \code{inverse},
+   \code{sqrt\_inverse}, \code{cb}) and their corner cases (zero-count
+   class set to weight 0); time-reversal table-building and
+   label-remap symmetry (pair-permuted twice = identity); multi-scale
+   TTA shape and logit-adjustment numerics.
+\end{description}
+
+% =====================================================================
+\section{Expected Impact}
+\label{sec:strategy}
+
+\subsection{Per-change order-of-magnitude estimates}
+
+Based on the literature and on the gap currently observed between
+internal validation and the public leaderboard, we expect the following
+contributions to Track~A's public Top-1 score (these are
+order-of-magnitude estimates, not promises):
+
+\begin{center}\small
+\begin{tabular}{lcc}
+\toprule
+\textbf{Change} & \textbf{Internal val} & \textbf{Public Top-1} \\
+\midrule
+Baseline (current best)                        & 0.5666 & 0.3584 \\
++ official val split (Phase~1)                 & lower\,$^*$ & --     \\
++ Kaiming init (Phase~1)                       & +0.5--2 pt & +0.3--1 pt \\
++ AMP (Phase~1)                                & speedup only & speedup only \\
++ optimizer/scheduler state on resume (Phase~1)& 0--1 pt & 0--1 pt \\
++ untrained-class masking (Phase~1)            & negligible & +0.5--1.5 pt \\
++ DropPath (Phase~2)                           & +0.5--1 pt & +0.3--0.8 pt \\
++ Attention head (Phase~2)                     & +0.5--1 pt & +0.3--0.8 pt \\
++ EMA model averaging (Phase~2)                & +0.3--0.8 pt & +0.2--0.6 pt \\
++ TTA flip with class-pair remap (Phase~2)     & +0--0.5 pt & +0.5--1 pt \\
++ AdamW + WD~0.05 (Phase~2)                    & +0.3--1 pt & +0.3--1 pt \\
++ DINO SSL pretraining (deprecated)            & --1 to +1 pt\,$^\dagger$ & --1 to +1 pt\,$^\dagger$ \\
++ V-JEPA SSL pretraining (Phase~3)             & +2--4 pt & +2--4 pt \\
++ Class-balanced sampler + CB loss (Phase~4)   & +1--2 pt & +1--2 pt \\
++ Time-reversal augmentation (Phase~4)         & +0.5--1.5 pt & +0.5--1.5 pt \\
++ Multi-scale TTA (Phase~4)                    & +0.3--0.8 pt & +0.3--0.8 pt \\
++ Logit adjustment (Phase~4)                   & +0.2--0.5 pt & +0.2--0.5 pt \\
+\bottomrule
+\end{tabular}\\
+\smallskip
+{\footnotesize $^*$ The official split is harder than the leaky
+internal split, so reported val will drop --- but the public score will
+move closer to the val score.\\
+$^\dagger$ As observed in practice and explained in
+Section~\ref{sec:phase3:dino-deprecated}: DINO on still frames produces
+inconsistent downstream gains. We retain the row in this table only as
+a baseline against which V-JEPA's stable gains stand out.}
+\end{center}
+
+% =====================================================================
+\section{Legacy DINO Pretraining (Deprecated)}
+\label{sec:phase3dino}
 
 The single highest-impact change available within Track~A is to give the
 trunk something useful to do with the unlabeled frames before the
@@ -547,7 +1198,7 @@ trunk starts from random initialisation. We pretrain on the union of the
 hundreds of steps per epoch at batch size~64.
 
 \subsection{Still-frames dataset}
-\label{sec:phase3:dataset}
+\label{sec:phase3dino:dataset}
 
 A new file \file{src/smth2smth/shared/data/still\_frames\_dataset.py}
 exposes two utilities:
@@ -572,7 +1223,7 @@ The dataset returns a \code{dict} with keys \code{global\_views} and
 batches.
 
 \subsection{The DINO model}
-\label{sec:phase3:model}
+\label{sec:phase3dino:model}
 
 \file{src/smth2smth/shared/models/dino\_ssl.py} contains three pieces.
 
@@ -592,7 +1243,7 @@ Two copies are instantiated at training time --- a \emph{student} and a
 are an EMA of the student's and are never updated by gradient descent.
 
 \subsection{The DINO loss}
-\label{sec:phase3:loss}
+\label{sec:phase3dino:loss}
 
 Let \(\mathcal{V} = \{v_1, \ldots, v_{2+L}\}\) be the set of all views
 of one image (two globals, \(L\) locals). Let \(p_s(v)\) and \(p_t(v)\)
@@ -669,7 +1320,7 @@ head, the teacher copy or the optimizer state once supervised training
 takes over.
 
 \subsection{The \cfgkey{model.init\_from} hook in \file{train.py}}
-\label{sec:phase3:initfrom}
+\label{sec:phase3dino:initfrom}
 
 The supervised trainer received a single new opt-in:
 
@@ -806,7 +1457,7 @@ official-val fix from Phase~1.
 \subsection{Track A symbol glossary (training runs)}
 \label{sec:tracka:glossary}
 
-Mirrors the Track-B convention from \S\ref{sec:phase4:glossary}; symbols
+Mirrors the Track-B convention from \S\ref{sec:trackb:glossary}; symbols
 are reused where they exist in both tracks so a reader does not have to
 juggle two conventions.  Compact assignments below are the ones used in
 the Track-A run logbook (Tab.~\ref{tab:tracka-runlog}).
@@ -904,6 +1555,19 @@ finishes; add new rows for every fresh \texttt{nohup} launch.
   steps still show train loss \(\approx 3.35\) and train top-1 \(\approx
   6.5\)--\(7\)\,\%---\emph{no gain} from replacing mean pool.  Confirms the
   bottleneck is not the temporal readout.
+\item[\textbf{Run A5 SSL / truite (slot 9)} (PRETRAIN DONE; FT NOT RUN)]
+  Phase~1 VideoMAE SSL (\texttt{smth2smth.pipelines.pretrain\_videomae});
+  preset \texttt{track\_a\_ssl\_pretrain\_truite} (ViT-S baseline, no
+  \file{SSL.md} \S7 overrides).  Log: \texttt{logs/ssl\_truite\_pretrain.log}.
+  Launcher: \texttt{.venv/bin/python} with \texttt{PYTHONPATH=src}
+  (\texttt{nohup}; minimal shells often lack \texttt{uv} on \texttt{PATH}).
+  MAE \texttt{E}=100, \texttt{wu}=5, \texttt{bs}=16, \texttt{lr}=1.5e-4,
+  \texttt{mask}=0.75; \(\sim 58\,651\) unlabeled clips; avg loss
+  \(0.851 \to 0.256\) (ep~100); encoder
+  \file{checkpoints/track\_a/ssl/truite\_encoder.pt} (last epoch, rewritten
+  each epoch).  \textbf{Phase~2 not run:} no \texttt{ssl\_truite\_finetune.log},
+  no \texttt{truite\_ft.pt} (pending \texttt{track\_a\_ssl\_finetune\_truite}
+  after encoder).  Distinct from supervised Runs~A2/A4 (\texttt{track\_a\_vit\_*}).
 \item[\textbf{Run rouget} (ViT-B + MP + class boosting; DONE -- FAILED)]
   Preset \texttt{track\_a\_vit\_rouget}: truite stack + deterministic class
   boosting (\texttt{cb}=1).  Representative log (epoch~16): train
@@ -918,6 +1582,81 @@ finishes; add new rows for every fresh \texttt{nohup} launch.
   6.1\,\%\) live / \(\sim 5.9\,\%\) EMA with train top-1 still
   \(\sim 5.7\)--\(5.8\,\%\)---long-tail tricks do not substitute for
   convolutional inductive bias or SSL features.
+\item[\textbf{SSL slot 8 / barbeau} (NOT RUN)]
+  Thomas slot: ViT-B, MAE \texttt{warmup\_epochs}=10
+  (\texttt{track\_a\_ssl\_pretrain\_barbeau} /
+  \texttt{track\_a\_ssl\_finetune\_barbeau}).  Job was not launched.
+\item[\textbf{SSL slot 12 / raie} (DONE)]
+  Romain slot: attentive probe \texttt{head\_num\_heads}=6.
+  \paragraph{Phase 1.} 100/100 MAE after one AMP \texttt{scatter\_} crash
+  (retry); loss \(0.851 \to 0.254\);
+  \file{raie\_encoder.pt}; logs \texttt{ssl\_raie\_pretrain.log} /
+  \texttt{.crash.log}.
+  \paragraph{Phase 2.} 30/30 via \texttt{chain\_raie.sh}; official val only;
+  train top-1 \textbf{44.15\,\%}; best EMA val \textbf{34.80\,\%} (ep~29,
+  \file{raie\_ft.pt}); log \texttt{ssl\_raie\_finetune.log}.
+  Failed post-sweep resume (OOM) excluded.  No submission.
+\item[\textbf{SSL slot 10 / roussette} (DONE)]
+  Romain slot: YAML \texttt{seed}=123 (§7); resolved run used \texttt{seed}=42;
+  pretrain \texttt{bs}=8 vs planned 16 (CLI).
+  \paragraph{Phase 1.} 100/100 MAE; loss \(0.843 \to 0.251\);
+  \file{checkpoints/track\_a/ssl/roussette\_encoder.pt};
+  log \texttt{logs/ssl\_roussette\_pretrain.log}.
+  \paragraph{Phase 2.} 30/30 FT; train top-1 \textbf{41.44\,\%} (ep~30);
+  best EMA val top-1 \textbf{33.61\,\%} (ep~27, saved);
+  final val \textbf{33.62\,\%} live / \textbf{33.31\,\%} EMA;
+  \file{roussette\_ft.pt}; log \texttt{logs/ssl\_roussette\_finetune.log}.
+  No submission yet.
+\item[\textbf{SSL slot 16 / murene} (NOT RUN --- dataset quota)]
+  Romain slot: FT \texttt{lr}=3e-4
+  (\texttt{track\_a\_ssl\_pretrain\_murene} /
+  \texttt{track\_a\_ssl\_finetune\_murene}).  Job never started: dataset
+  download failed (\textbf{user limit exceeded in 24h} on the VM).  No
+  \texttt{ssl\_murene\_*} logs or checkpoints.
+\item[\textbf{SSL slot 15 / piranha} (DONE)]
+  Romain slot: FT \texttt{epochs}=40 (vs 30 default).
+  \paragraph{Phase 1.} 100/100 MAE; final loss \textbf{0.2528};
+  \file{piranha\_encoder.pt}; log \texttt{logs/ssl\_piranha\_pretrain.log}.
+  \paragraph{Phase 2.} 40/40; train top-1 \textbf{49.54\,\%} (ep~40);
+  best EMA val \textbf{35.60\,\%} (ep~32, \file{piranha\_ft.pt});
+  log \texttt{logs/ssl\_piranha\_finetune.log}.  Chained launcher vs
+  two-step \file{SSL.md}; Hydra otherwise matches preset.  No submission.
+\item[\textbf{SSL slot 14 / thon} (NOT RUN --- this host)]
+  Romain slot: MAE \texttt{mask\_ratio}=0.85
+  (\texttt{track\_a\_ssl\_pretrain\_thon} /
+  \texttt{track\_a\_ssl\_finetune\_thon}).  No
+  \texttt{logs/ssl\_thon\_*} or \file{thon\_encoder.pt} /
+  \file{thon\_ft.pt}; presets match \file{SSL.md} but job never
+  launched on this VM (no partial log or \texttt{.pid}).  Config drift N/A.
+\item[\textbf{SSL slot 13 / sole} (NOT RUN --- this host)]
+  Romain slot: attentive probe \texttt{head\_num\_heads}=8
+  (\texttt{track\_a\_ssl\_pretrain\_sole} /
+  \texttt{track\_a\_ssl\_finetune\_sole}).  No
+  \texttt{logs/ssl\_sole\_pretrain.log} or \texttt{ssl\_sole\_finetune.log};
+  no \file{sole\_encoder.pt} / \file{sole\_ft.pt} under
+  \file{checkpoints/track\_a/ssl/} on this machine (launch deferred while
+  GPU was occupied).  Presets on disk match \file{SSL.md}; no config drift
+  logged.  Distinct from supervised \texttt{track\_a\_vit\_*} mean-pool jobs.
+\item[\textbf{SSL slot 11 / rouget} (DONE)]
+  VideoMAE SSL sweep (see \file{SSL.md}): ViT-S, long MAE
+  (\texttt{pretrain.epochs}=200), attentive probe (4 heads).
+  \paragraph{Phase 1.} Pretrain on train+val+test unlabeled clips;
+  encoder \file{checkpoints/track\_a/ssl/rouget\_encoder.pt};
+  log \texttt{logs/ssl\_rouget\_pretrain.log}.
+  \paragraph{Phase 2a (honest val).} \texttt{track\_a\_ssl\_finetune\_rouget},
+  train=\texttt{data/train} only, official \texttt{data/val} for metrics;
+  30 epochs; best EMA val top-1 \textbf{34.96\,\%};
+  log \texttt{logs/ssl\_rouget\_finetune.log}.
+  \paragraph{Phase 2b (invalid val).} Resumed with
+  \texttt{dataset.include\_val\_in\_train=true}; stopped at epoch~44/60;
+  val top-1 rose to \(\sim 60\,\%\) (\emph{leaky}---val labels in training).
+  Log \texttt{logs/ssl\_rouget\_finetune\_trainval.log}.
+  \paragraph{Submit.} \file{submissions/track\_a\_rouget\_ssl.csv} from
+  post--Phase-2b \texttt{rouget\_ft.pt}; flip-only TTA
+  (\texttt{tta\_scales=[1.0]}).  Public Kaggle top-1: \textbf{36.0\,\%}---
+  aligns with Phase~2a val, not the inflated \(\sim 60\,\%\); training on
+  val without a held-out set likely \textbf{overfit} and did not beat the
+  dual-stream best (\textbf{37.69\,\%}, Run~A1b).
 \end{description}
 \end{minipage}
 \end{table}
@@ -939,3 +1678,15 @@ practical path is \textbf{VideoMAE self-supervised pretraining} on
 provided frames (\texttt{track\_a\_videomae\_pretrain}) followed by supervised
 fine-tune (\texttt{track\_a\_videomae\_finetune} with
 \texttt{model.init\_from}), as configured in this repository.
+
+The overnight \textbf{SSL fish-matrix} (slots 8--16, \file{SSL.md}) implements
+this path per codename.  Slot~10 (\textbf{roussette}) completed end-to-end with
+best EMA val \textbf{33.61\,\%} (seed/batch drift vs YAML---see
+\file{experiments.md}).  Run~A5 (\textbf{truite}, slot~9) finished SSL pretrain only;
+slot~12 (\textbf{raie}) best EMA val \textbf{34.80\,\%} (6-head probe);
+slot~15 (\textbf{piranha}) best EMA val \textbf{35.60\,\%} (40 FT epochs);
+slot~11 (\textbf{rouget}) completed end-to-end with honest val \(\sim 35\,\%\),
+public test \(\sim 36\,\%\) (Tab.~\ref{tab:tracka-runlog}).
+A follow-up that trained on \texttt{val} clips as well reported \(\sim 60\,\%\)
+val but \emph{worse} generalisation---see \file{experiments.md} and the rouget
+row above.  Slot~8 (\textbf{barbeau}) was not run.

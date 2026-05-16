@@ -35,6 +35,10 @@ from smth2smth.shared.models.video_mae import (
     VideoMAEPretrainModel,
     videomae_pixel_loss,
 )
+from smth2smth.shared.models.video_mae_resnet import (
+    VideoMAEResNetPretrainModel,
+    videomae_resnet_feature_loss,
+)
 from smth2smth.shared.utils import set_seed
 
 
@@ -113,30 +117,53 @@ def run(cfg: DictConfig) -> Path:
     )
 
     # ── Model ─────────────────────────────────────────────────────────────────
+    model_name = str(cfg.model.get("name", "video_mae_vit"))
+    use_resnet = model_name == "video_mae_resnet"
     variant = str(cfg.model.get("variant", "vit_b"))
-    _variants = {"vit_s": dict(embed_dim=384, depth=12, num_heads=6),
-                 "vit_b": dict(embed_dim=768, depth=12, num_heads=12),
-                 "vit_l": dict(embed_dim=1024, depth=24, num_heads=16)}
-    if variant not in _variants:
-        raise SystemExit(f"Unknown variant {variant!r}; choose from {sorted(_variants)}")
-    arch = _variants[variant]
 
-    model = VideoMAEPretrainModel(
-        num_frames=num_frames,
-        img_size=image_size,
-        tube_t=int(cfg.model.get("tube_t", 2)),
-        patch_size=int(cfg.model.get("patch_size", 16)),
-        embed_dim=arch["embed_dim"],
-        depth=arch["depth"],
-        num_heads=arch["num_heads"],
-        mlp_ratio=float(cfg.model.get("mlp_ratio", 4.0)),
-        drop_path_rate=float(pcfg.get("drop_path_rate", 0.0)),
-        mask_ratio=float(pcfg.get("mask_ratio", 0.90)),
-    ).to(device)
+    if use_resnet:
+        model = VideoMAEResNetPretrainModel(
+            num_frames=num_frames,
+            img_size=image_size,
+            shift_div=int(cfg.model.get("shift_div", 8)),
+            shift_place=str(cfg.model.get("shift_place", "blockres")),
+            mask_ratio=float(pcfg.get("mask_ratio", 0.75)),
+            encoder_depth=int(cfg.model.get("encoder_depth", 2)),
+            encoder_heads=int(cfg.model.get("encoder_heads", 8)),
+        ).to(device)
+        variant = "resnet50_tsm"
+        n_params = sum(p.numel() for p in model.parameters())
+        n_backbone = sum(p.numel() for p in model.backbone.parameters())
+        print(
+            f"[videomae] model: {model_name} ({variant}), "
+            f"total params={n_params:,d}, backbone={n_backbone:,d}"
+        )
+    else:
+        _variants = {
+            "vit_s": dict(embed_dim=384, depth=12, num_heads=6),
+            "vit_b": dict(embed_dim=768, depth=12, num_heads=12),
+            "vit_l": dict(embed_dim=1024, depth=24, num_heads=16),
+        }
+        if variant not in _variants:
+            raise SystemExit(f"Unknown variant {variant!r}; choose from {sorted(_variants)}")
+        arch = _variants[variant]
 
-    n_params = sum(p.numel() for p in model.parameters())
-    n_enc = sum(p.numel() for p in model.encoder.parameters())
-    print(f"[videomae] model: {variant}, total params={n_params:,d}, encoder={n_enc:,d}")
+        model = VideoMAEPretrainModel(
+            num_frames=num_frames,
+            img_size=image_size,
+            tube_t=int(cfg.model.get("tube_t", 2)),
+            patch_size=int(cfg.model.get("patch_size", 16)),
+            embed_dim=arch["embed_dim"],
+            depth=arch["depth"],
+            num_heads=arch["num_heads"],
+            mlp_ratio=float(cfg.model.get("mlp_ratio", 4.0)),
+            drop_path_rate=float(pcfg.get("drop_path_rate", 0.0)),
+            mask_ratio=float(pcfg.get("mask_ratio", 0.75)),
+        ).to(device)
+
+        n_params = sum(p.numel() for p in model.parameters())
+        n_enc = sum(p.numel() for p in model.encoder.parameters())
+        print(f"[videomae] model: {variant}, total params={n_params:,d}, encoder={n_enc:,d}")
 
     # ── Optimiser ─────────────────────────────────────────────────────────────
     # VideoMAE paper: AdamW, β=(0.9, 0.95), wd=0.05, base LR 1.5e-4
@@ -170,6 +197,7 @@ def run(cfg: DictConfig) -> Path:
     tube_t = int(cfg.model.get("tube_t", 2))
     patch_size = int(cfg.model.get("patch_size", 16))
     norm_pix = bool(pcfg.get("norm_pix", True))
+    norm_feat = bool(pcfg.get("norm_feat", True))
 
     global_step = 0
     model.train()
@@ -187,11 +215,19 @@ def run(cfg: DictConfig) -> Path:
                 enabled=amp_enabled,
                 dtype=torch.bfloat16,  # bfloat16 preferred: no inf for fp16 recon loss
             ):
-                pred, _, ids_mask = model(clip)
-                loss = videomae_pixel_loss(
-                    pred, clip, ids_mask,
-                    tube_t=tube_t, patch_size=patch_size, norm_pix=norm_pix,
-                )
+                if use_resnet:
+                    pred, target, _, _ = model(clip)
+                    loss = videomae_resnet_feature_loss(pred, target, norm_feat=norm_feat)
+                else:
+                    pred, _, ids_mask = model(clip)
+                    loss = videomae_pixel_loss(
+                        pred,
+                        clip,
+                        ids_mask,
+                        tube_t=tube_t,
+                        patch_size=patch_size,
+                        norm_pix=norm_pix,
+                    )
 
             optimizer.zero_grad(set_to_none=True)
             if scaler is not None:
@@ -226,17 +262,26 @@ def run(cfg: DictConfig) -> Path:
         else:
             print(f"[videomae] epoch {ep}/{epochs} avg loss {avg_loss:.4f}")
 
-        # Save encoder-only state dict with ``encoder.`` prefix so supervised
-        # trainer can load directly with strict=False.
-        encoder_state: dict[str, torch.Tensor] = {
-            f"encoder.{k}": v
-            for k, v in model.encoder.state_dict().items()
-        }
+        if use_resnet:
+            # Plain ResNet+TSM keys — same layout as DINO/V-JEPA SSL trunks.
+            trunk_state_dict = {
+                k: v for k, v in model.backbone.state_dict().items()
+            }
+        else:
+            # ViT encoder keys prefixed with ``encoder.`` for ``video_mae_vit``.
+            trunk_state_dict = {
+                f"encoder.{k}": v for k, v in model.encoder.state_dict().items()
+            }
         torch.save(
-            {"trunk_state_dict": encoder_state, "epoch": epoch + 1, "variant": variant},
+            {
+                "trunk_state_dict": trunk_state_dict,
+                "epoch": epoch + 1,
+                "variant": variant,
+                "architecture": model_name,
+            },
             out_path,
         )
-        print(f"[videomae] wrote encoder checkpoint -> {out_path} ({len(encoder_state)} tensors)")
+        print(f"[videomae] wrote trunk checkpoint -> {out_path} ({len(trunk_state_dict)} tensors)")
 
     _free_cuda_memory(reason="videomae-pretrain-end")
     return out_path

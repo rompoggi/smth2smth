@@ -1,0 +1,10 @@
+# @package _global_
+# VideoMAE masked feature reconstruction on TSM ResNet-50 (Phase-2 backbone).
+# Used only by ``smth2smth.pipelines.pretrain_videomae`` (not supervised train).
+model:
+  name: video_mae_resnet
+  backbone: resnet50
+  shift_div: 8
+  shift_place: blockres
+  encoder_depth: 2
+  encoder_heads: 8
