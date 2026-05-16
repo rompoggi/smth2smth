@@ -1,5 +1,5 @@
 # @package _global_
-# E1 requin — MAE pretrain (minimal aug, 100 ep). Pair with track_a_ssl_finetune_requin.
+# E6 — MAE pretrain @224 (same as E1). FT @256 in finetune yaml.
 defaults:
   - override /model: video_mae_vit
   - override /pretrain: videomae
@@ -23,7 +23,8 @@ pretrain:
   batch_size: 16
   lr: 0.00015
   mask_ratio: 0.75
-  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/requin_encoder.pt
+  image_size: 224
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/e6_encoder.pt
 
 training:
   num_workers: 4

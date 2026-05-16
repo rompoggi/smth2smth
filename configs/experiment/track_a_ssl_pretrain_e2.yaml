@@ -1,5 +1,5 @@
 # @package _global_
-# E2 murene2 — MAE pretrain with flip/jitter/grayscale (150 ep). No RandAugment-T.
+# E2 — MAE pretrain with flip/jitter/grayscale (150 ep). No RandAugment-T.
 defaults:
   - override /model: video_mae_vit
   - override /pretrain: videomae
@@ -34,7 +34,7 @@ pretrain:
   batch_size: 16
   lr: 0.00015
   mask_ratio: 0.75
-  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/murene2_encoder.pt
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/e2_encoder.pt
 
 training:
   num_workers: 4

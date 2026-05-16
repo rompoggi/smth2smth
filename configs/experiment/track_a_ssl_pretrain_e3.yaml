@@ -1,5 +1,5 @@
 # @package _global_
-# E6 dorade — MAE pretrain @224 (same as E1). FT @256 in finetune yaml.
+# E3 — MAE pretrain T=8 (80 ep, grad checkpoint + accum).
 defaults:
   - override /model: video_mae_vit
   - override /pretrain: videomae
@@ -9,6 +9,7 @@ model:
   tube_t: 2
   patch_size: 16
   mlp_ratio: 4.0
+  gradient_checkpointing: true
 
 augment:
   random_crop: true
@@ -17,17 +18,21 @@ augment:
 
 seed: 42
 
+dataset:
+  num_frames: 8
+
 pretrain:
-  epochs: 100
+  epochs: 80
   warmup_epochs: 5
-  batch_size: 16
+  batch_size: 8
+  grad_accum_steps: 2
+  num_frames: 8
   lr: 0.00015
   mask_ratio: 0.75
-  image_size: 224
-  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/dorade_encoder.pt
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/e3_encoder.pt
 
 training:
   num_workers: 4
   device: cuda
   amp: true
-  batch_size: 16
+  batch_size: 8

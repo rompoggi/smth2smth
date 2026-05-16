@@ -1,5 +1,5 @@
 # @package _global_
-# E1 requin — champion FT stack (60 ep). Run after track_a_ssl_pretrain_requin.
+# E2 — champion FT. Pair with track_a_ssl_pretrain_e2.
 defaults:
   - override /model: video_mae_vit
   - override /augment: champion_ft
@@ -12,7 +12,7 @@ model:
   dropout: 0.5
   head: attn
   head_num_heads: 4
-  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/requin_encoder.pt
+  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/e2_encoder.pt
 
 dataset:
   num_frames: 4
@@ -22,7 +22,7 @@ dataset:
 seed: 42
 
 training:
-  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/requin_ft.pt
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/e2_ft.pt
   tta: true
   tta_flip: true
   tta_scales: [0.857, 1.0, 1.143]

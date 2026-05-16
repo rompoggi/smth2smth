@@ -4,7 +4,7 @@
 **Do not run training from an agent sandbox** — GPUs are on the VMs; only paste/execute these commands **on the target machine** in a real shell.
 
 **Spec:** [`experiment_16052026.md`](experiment_16052026.md)  
-**Configs:** `configs/experiment/track_a_*.yaml` — Hydra preset names in the [quick reference](#quick-reference--hydra-experiment-names) below (still use fish codenames internally, e.g. `track_a_ssl_pretrain_requin` for E1).
+**Configs:** `configs/experiment/track_a_ssl_pretrain_e{N}.yaml`, `track_a_ssl_finetune_e{N}.yaml`, `track_a_e4_tsm_sgdr.yaml` — see [quick reference](#quick-reference--hydra-experiment-names). Checkpoints: `checkpoints/track_a/ssl/e{N}_encoder.pt`, `e{N}_ft.pt` (E4 under `checkpoints/track_a/e4_ft.pt`).
 
 ---
 
@@ -95,8 +95,8 @@ You are on VM **Anchois** for experiment **E1**: VideoMAE ViT-S MAE pretrain (10
 
 **Checkpoints (this VM only):**
 
-- `checkpoints/track_a/ssl/requin_encoder.pt`
-- `checkpoints/track_a/ssl/requin_ft.pt` (+ `requin_ft.last.pt` resume artifact)
+- `checkpoints/track_a/ssl/e1_encoder.pt`
+- `checkpoints/track_a/ssl/e1_ft.pt` (+ `e1_ft.last.pt` resume artifact)
 
 **Logs / PIDs:**
 
@@ -112,13 +112,13 @@ PID="logs/anchois_e1_mae_pretrain_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.pretrain_videomae \
-  experiment=track_a_ssl_pretrain_requin track=a \
+  experiment=track_a_ssl_pretrain_e1 track=a \
   > "$LOG" 2>&1 &
 echo $! > "$PID"
 echo "Started MAE pretrain pid=$(cat "$PID") log=$LOG"
 ```
 
-**Wait for:** log line `wrote trunk checkpoint` / `requin_encoder.pt`; `test -s checkpoints/track_a/ssl/requin_encoder.pt`.
+**Wait for:** log line `wrote trunk checkpoint` / `e1_encoder.pt`; `test -s checkpoints/track_a/ssl/e1_encoder.pt`.
 
 ### Phase 2 — Champion FT (~4.5 h)
 
@@ -129,7 +129,7 @@ PID="logs/anchois_e1_ft_champion_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.train \
-  experiment=track_a_ssl_finetune_requin track=a \
+  experiment=track_a_ssl_finetune_e1 track=a \
   > "$LOG" 2>&1 &
 echo $! > "$PID"
 echo "Started FT pid=$(cat "$PID") log=$LOG"
@@ -145,7 +145,7 @@ echo "Started FT pid=$(cat "$PID") log=$LOG"
 
 You are on VM **Ablette** for **E2**: MAE pretrain **150 epochs** with flip + color jitter + grayscale (no RandAugment at pretrain), then champion FT 60 ep. **Start early** (~13–14 h total). Same FT recipe as E1; only pretrain aug differs. `nohup` only on GPU host.
 
-**Checkpoints:** `murene2_encoder.pt`, `murene2_ft.pt`  
+**Checkpoints:** `e2_encoder.pt`, `e2_ft.pt`  
 **Logs:** `logs/ablette_e2_mae_pretrain_${BATCH_TAG}.log`, `logs/ablette_e2_ft_champion_${BATCH_TAG}.log`
 
 ### Phase 1 — MAE pretrain (~8–9 h)
@@ -157,7 +157,7 @@ PID="logs/ablette_e2_mae_pretrain_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.pretrain_videomae \
-  experiment=track_a_ssl_pretrain_murene2 track=a \
+  experiment=track_a_ssl_pretrain_e2 track=a \
   > "$LOG" 2>&1 &
 echo $! > "$PID"
 ```
@@ -171,7 +171,7 @@ PID="logs/ablette_e2_ft_champion_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.train \
-  experiment=track_a_ssl_finetune_murene2 track=a \
+  experiment=track_a_ssl_finetune_e2 track=a \
   > "$LOG" 2>&1 &
 echo $! > "$PID"
 ```
@@ -184,7 +184,7 @@ echo $! > "$PID"
 
 You are on VM **Sole** for **E3**: MAE + FT at **`num_frames=8`** (pretrain 80 ep, FT 50 ep), gradient checkpointing + `grad_accum_steps=2`. **Start early** (~13 h). Never change T between pretrain, FT, and submit. `nohup` on GPU host only.
 
-**Checkpoints:** `congre_encoder.pt`, `congre_ft.pt`  
+**Checkpoints:** `e3_encoder.pt`, `e3_ft.pt`  
 **Logs:** `logs/sole_e3_mae_pretrain_t8_${BATCH_TAG}.log`, `logs/sole_e3_ft_champion_t8_${BATCH_TAG}.log`
 
 ### Phase 1 — MAE pretrain T=8 (~8 h)
@@ -196,7 +196,7 @@ PID="logs/sole_e3_mae_pretrain_t8_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.pretrain_videomae \
-  experiment=track_a_ssl_pretrain_congre track=a \
+  experiment=track_a_ssl_pretrain_e3 track=a \
   > "$LOG" 2>&1 &
 echo $! > "$PID"
 ```
@@ -210,7 +210,7 @@ PID="logs/sole_e3_ft_champion_t8_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.train \
-  experiment=track_a_ssl_finetune_congre track=a \
+  experiment=track_a_ssl_finetune_e3 track=a \
   > "$LOG" 2>&1 &
 echo $! > "$PID"
 ```
@@ -225,8 +225,8 @@ You are on VM **Truite** for **E4**: **supervised only** — ResNet-50 + TSM fro
 
 **Checkpoints:**
 
-- `checkpoints/track_a/tsm_sgdr_ft.pt` (EMA best)
-- `checkpoints/track_a/tsm_sgdr_ft_snap1.pt`, `_snap2.pt`, `_snap3.pt`
+- `checkpoints/track_a/e4_ft.pt` (EMA best)
+- `checkpoints/track_a/e4_ft_snap1.pt`, `_snap2.pt`, `_snap3.pt`
 
 **Log:** `logs/truite_e4_supervised_sgdr90_${BATCH_TAG}.log`
 
@@ -239,7 +239,7 @@ PID="logs/truite_e4_supervised_sgdr90_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.train \
-  experiment=track_a_tsm_sgdr track=a \
+  experiment=track_a_e4_tsm_sgdr track=a \
   > "$LOG" 2>&1 &
 echo $! > "$PID"
 echo "Started SGDR train pid=$(cat "$PID") log=$LOG"
@@ -253,7 +253,7 @@ echo "Started SGDR train pid=$(cat "$PID") log=$LOG"
 
 ## Machine prompt (paste on thon)
 
-You are on VM **thon** for **E5**: (1) MAE pretrain 100 ep minimal aug → `silure2_encoder.pt`; (2) champion FT **50 ep** instance-balanced → `silure2_ft.pt`; (3) **cRT** 10 ep classifier-only, frozen backbone, `sqrt_inverse` sampler → `silure2_ft_crt.pt`. Launch each phase with `nohup` only after the previous checkpoint exists. GPU host only.
+You are on VM **thon** for **E5**: (1) MAE pretrain 100 ep minimal aug → `e5_encoder.pt`; (2) champion FT **50 ep** instance-balanced → `e5_ft.pt`; (3) **cRT** 10 ep classifier-only, frozen backbone, `sqrt_inverse` sampler → `e5_ft_crt.pt`. Launch each phase with `nohup` only after the previous checkpoint exists. GPU host only.
 
 **Logs:**
 
@@ -270,14 +270,14 @@ PID="logs/thon_e5_mae_pretrain_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.pretrain_videomae \
-  experiment=track_a_ssl_pretrain_silure2 track=a \
+  experiment=track_a_ssl_pretrain_e5 track=a \
   > "$LOG" 2>&1 &
 echo $! > "$PID"
 ```
 
 ### Phase 2a — FT stage 1 representation (~4 h)
 
-**Wait for** `checkpoints/track_a/ssl/silure2_encoder.pt`.
+**Wait for** `checkpoints/track_a/ssl/e5_encoder.pt`.
 
 ```bash
 cd "$REPO_ROOT"
@@ -286,15 +286,15 @@ PID="logs/thon_e5_ft_stage1_rep50_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.train \
-  experiment=track_a_ssl_finetune_silure2 track=a \
+  experiment=track_a_ssl_finetune_e5 track=a \
   > "$LOG" 2>&1 &
 echo $! > "$PID"
 ```
 
 ### Phase 2b — cRT stage 2 classifier (~0.7 h)
 
-**Wait for** `checkpoints/track_a/ssl/silure2_ft.pt` (stage-1 best).  
-Stage 2 **resumes** that file, freezes encoder + attentive pool, writes **`silure2_ft_crt.pt`**.
+**Wait for** `checkpoints/track_a/ssl/e5_ft.pt` (stage-1 best).  
+Stage 2 **resumes** that file, freezes encoder + attentive pool, writes **`e5_ft_crt.pt`**.
 
 ```bash
 cd "$REPO_ROOT"
@@ -303,7 +303,7 @@ PID="logs/thon_e5_ft_stage2_crt10_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.train \
-  experiment=track_a_ssl_finetune_silure2_crt track=a \
+  experiment=track_a_ssl_finetune_e5_crt track=a \
   > "$LOG" 2>&1 &
 echo $! > "$PID"
 ```
@@ -318,7 +318,7 @@ echo $! > "$PID"
 
 You are on VM **Roussette** for **E6**: MAE pretrain @224 (100 ep, same as E1), then FT @**256** with `interpolate_pos_embed=true`, lighter reg (`drop_path=0.1`, `dropout=0.0`), 50 FT epochs. `nohup` on GPU host.
 
-**Checkpoints:** `dorade_encoder.pt`, `dorade_ft.pt`  
+**Checkpoints:** `e6_encoder.pt`, `e6_ft.pt`  
 **Logs:** `logs/roussette_e6_mae_pretrain_224_${BATCH_TAG}.log`, `logs/roussette_e6_ft_champion_256_${BATCH_TAG}.log`
 
 ### Phase 1 — MAE pretrain @224 (~7 h)
@@ -330,7 +330,7 @@ PID="logs/roussette_e6_mae_pretrain_224_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.pretrain_videomae \
-  experiment=track_a_ssl_pretrain_dorade track=a \
+  experiment=track_a_ssl_pretrain_e6 track=a \
   > "$LOG" 2>&1 &
 echo $! > "$PID"
 ```
@@ -344,7 +344,7 @@ PID="logs/roussette_e6_ft_champion_256_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.train \
-  experiment=track_a_ssl_finetune_dorade track=a \
+  experiment=track_a_ssl_finetune_e6 track=a \
   > "$LOG" 2>&1 &
 echo $! > "$PID"
 ```
@@ -359,7 +359,7 @@ echo $! > "$PID"
 
 You are on VM **Raie** for **E7**: MAE pretrain **150 ep** with cosine mask ratio **0.90 → 0.75**, minimal aug, then champion FT 60 ep. **Start early** (~13–14 h). `nohup` on GPU host only.
 
-**Checkpoints:** `lamproie_encoder.pt`, `lamproie_ft.pt`  
+**Checkpoints:** `e7_encoder.pt`, `e7_ft.pt`  
 **Logs:** `logs/raie_e7_mae_pretrain_masksched_${BATCH_TAG}.log`, `logs/raie_e7_ft_champion_${BATCH_TAG}.log`
 
 ### Phase 1 — MAE pretrain with mask schedule (~8–9 h)
@@ -371,7 +371,7 @@ PID="logs/raie_e7_mae_pretrain_masksched_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.pretrain_videomae \
-  experiment=track_a_ssl_pretrain_lamproie track=a \
+  experiment=track_a_ssl_pretrain_e7 track=a \
   > "$LOG" 2>&1 &
 echo $! > "$PID"
 ```
@@ -387,7 +387,7 @@ PID="logs/raie_e7_ft_champion_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.train \
-  experiment=track_a_ssl_finetune_lamproie track=a \
+  experiment=track_a_ssl_finetune_e7 track=a \
   > "$LOG" 2>&1 &
 echo $! > "$PID"
 ```
@@ -408,11 +408,11 @@ nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src bash -c '
   PY="'"$PY"'"
   echo "[chain] $(date -Is) Phase 1 MAE pretrain"
   "$PY" -u -m smth2smth.pipelines.pretrain_videomae \
-    experiment=track_a_ssl_pretrain_requin track=a
-  test -s checkpoints/track_a/ssl/requin_encoder.pt
+    experiment=track_a_ssl_pretrain_e1 track=a
+  test -s checkpoints/track_a/ssl/e1_encoder.pt
   echo "[chain] $(date -Is) Phase 2 champion FT"
   "$PY" -u -m smth2smth.pipelines.train \
-    experiment=track_a_ssl_finetune_requin track=a
+    experiment=track_a_ssl_finetune_e1 track=a
   echo "[chain] $(date -Is) Done."
 ' > "$LOG" 2>&1 &
 echo $! > "$PID"
@@ -426,20 +426,20 @@ Adapt `experiment=` / paths for other machines (E5 needs **three** sequential st
 
 | Phase        | Hydra `experiment=`                      |
 |-------------|-------------------------------------------|
-| E1 pretrain | `track_a_ssl_pretrain_requin`             |
-| E1 FT       | `track_a_ssl_finetune_requin`             |
-| E2 pretrain | `track_a_ssl_pretrain_murene2`            |
-| E2 FT       | `track_a_ssl_finetune_murene2`            |
-| E3 pretrain | `track_a_ssl_pretrain_congre`             |
-| E3 FT       | `track_a_ssl_finetune_congre`             |
-| E4 train    | `track_a_tsm_sgdr`                        |
-| E5 pretrain | `track_a_ssl_pretrain_silure2`            |
-| E5 FT s1    | `track_a_ssl_finetune_silure2`            |
-| E5 FT s2    | `track_a_ssl_finetune_silure2_crt`        |
-| E6 pretrain | `track_a_ssl_pretrain_dorade`             |
-| E6 FT       | `track_a_ssl_finetune_dorade`             |
-| E7 pretrain | `track_a_ssl_pretrain_lamproie`           |
-| E7 FT       | `track_a_ssl_finetune_lamproie`           |
+| E1 pretrain | `track_a_ssl_pretrain_e1`             |
+| E1 FT       | `track_a_ssl_finetune_e1`             |
+| E2 pretrain | `track_a_ssl_pretrain_e2`            |
+| E2 FT       | `track_a_ssl_finetune_e2`            |
+| E3 pretrain | `track_a_ssl_pretrain_e3`             |
+| E3 FT       | `track_a_ssl_finetune_e3`             |
+| E4 train    | `track_a_e4_tsm_sgdr`                        |
+| E5 pretrain | `track_a_ssl_pretrain_e5`            |
+| E5 FT s1    | `track_a_ssl_finetune_e5`            |
+| E5 FT s2    | `track_a_ssl_finetune_e5_crt`        |
+| E6 pretrain | `track_a_ssl_pretrain_e6`             |
+| E6 FT       | `track_a_ssl_finetune_e6`             |
+| E7 pretrain | `track_a_ssl_pretrain_e7`           |
+| E7 FT       | `track_a_ssl_finetune_e7`           |
 
 Always append: **`track=a`**
 

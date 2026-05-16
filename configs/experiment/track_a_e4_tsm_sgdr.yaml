@@ -1,5 +1,5 @@
 # @package _global_
-# E4 tsm_sgdr — R50+TSM from scratch, SGDR 3×30 ep + snapshot ensemble.
+# E4 — R50+TSM from scratch, SGDR 3×30 ep + snapshot ensemble.
 defaults:
   - override /model: avanced_resnet50_tsm
   - override /augment: randaugment_t
@@ -25,7 +25,7 @@ dataset:
 seed: 42
 
 training:
-  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/tsm_sgdr_ft.pt
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/e4_ft.pt
   batch_size: 16
   epochs: 90
   optimizer: adamw

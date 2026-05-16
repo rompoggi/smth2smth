@@ -1,5 +1,5 @@
 # @package _global_
-# E5 silure2 — MAE pretrain (same as E1 requin). Pair with silure2 FT + cRT stage.
+# E5 — MAE pretrain (same as E1). Pair with e5 FT + cRT stage.
 defaults:
   - override /model: video_mae_vit
   - override /pretrain: videomae
@@ -23,7 +23,7 @@ pretrain:
   batch_size: 16
   lr: 0.00015
   mask_ratio: 0.75
-  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/silure2_encoder.pt
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/e5_encoder.pt
 
 training:
   num_workers: 4
