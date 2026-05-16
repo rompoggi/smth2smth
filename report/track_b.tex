@@ -1,14 +1,16 @@
 % =====================================================================
 % Track B (Open-World, pretrained backbones allowed): V-JEPA 2 pipeline.
 %
-% This file is \input{}-ed from report/main.tex so that the agent does
-% not have to load the full main.tex into its context window while
-% iterating on Track B. Keep the Phase numbering in lock-step with the
-% rest of the report.
+% \input{}-ed from report/main.tex.  Section labels use the \texttt{trackb:*}
+% prefix so they do not clash with Track~A \texttt{tracka-phase4:*} labels.
 % =====================================================================
 
-\section{Phase 4: Track B with V-JEPA 2}
-\label{sec:phase4}
+% Set Track B accent color (blue stripe + blue headers)
+\renewcommand{\trackcolor}{trackblue}
+\renewcommand{\trackname}{Track~B}
+
+\section{Track B: Open-World with V-JEPA~2}
+\label{sec:trackb}
 
 Track~B (\emph{Open World}) allows pretrained backbones and external
 data. The highest-impact lever in this regime is therefore the choice of
@@ -82,7 +84,7 @@ only the classifier probe is trained. This:
 \end{itemize}
 
 \subsection{The \code{vjepa2} model}
-\label{sec:phase4:model}
+\label{sec:trackb:model}
 
 A new file \file{src/smth2smth/track\_b/vjepa2.py} defines three pieces.
 
@@ -269,7 +271,7 @@ changes, because the supervised \code{train.py} is generic over
 \code{cfg.model.name}.
 
 \subsection{Hydra symbol glossary (training runs)}
-\label{sec:phase4:glossary}
+\label{sec:trackb:glossary}
 
 Every long training job we care about is summarised in
 Tab.~\ref{tab:trackb-runlog}.  Hyperparameters are written in
@@ -317,7 +319,7 @@ are appended verbatim after a semicolon.}
 \end{table}
 
 \subsection{Track B training run logbook}
-\label{sec:phase4:runlog}
+\label{sec:trackb:runlog}
 
 Statuses: \textbf{RUNNING} (PID alive or log still progressing),
 \textbf{DONE} (trainer printed \texttt{Done.}), \textbf{FAILED} (traceback
@@ -358,31 +360,10 @@ status and metrics when processes finish; add new rows for every fresh
 
 \subsection{Running V-JEPA 2 on Track B}
 
-The dependencies grow by exactly one entry --- \code{transformers}~$\geq
-4.45$, which is the release that ships \code{VJEPA2Model}:
-
-\begin{lstlisting}[style=shell]
-uv add 'transformers>=4.45'
-\end{lstlisting}
-
-After that, training, evaluation and submission all go through the
-existing entrypoints:
-
-\begin{lstlisting}[style=shell]
-% Train (V-JEPA 2 ViT-L / 256 / 16 frames, frozen + attentive probe)
-PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
-    track=b experiment=track_b_vjepa2
-
-% Evaluate on the official val/ split
-PYTHONPATH=src uv run python -m smth2smth.pipelines.evaluate \
-    track=b training.checkpoint_path=checkpoints/track_b/best_model.pt
-
-% Submit with TTA flip + auto class-pair remap
-PYTHONPATH=src uv run python -m smth2smth.pipelines.submit \
-    track=b training.checkpoint_path=checkpoints/track_b/best_model.pt \
-    training.tta=true training.tta_flip=true
-\end{lstlisting}
-
+The sole additional dependency is \code{transformers}~$\geq 4.45$, the
+release that ships \code{VJEPA2Model}; training, evaluation and
+submission all go through the existing \code{smth2smth.pipelines}
+entrypoints with \code{track=b} and the appropriate experiment config.
 The encoder is downloaded from HuggingFace Hub on first use
 ($\approx$\,1.2\,GiB for \code{vitl-fpc64-256}) and cached under
 \code{\$HF\_HOME}; subsequent runs reuse the cache.
@@ -392,8 +373,8 @@ The encoder is downloaded from HuggingFace Hub on first use
 % V-JEPA 2 checkpoint -- run \emph{without any training of our own}.
 % =====================================================================
 
-\subsection{Phase 4.1: zero-shot evaluation with the SSv2 head}
-\label{sec:phase4:zero_shot}
+\subsection{Zero-shot Evaluation with the SSv2 Head}
+\label{sec:trackb:zero_shot}
 
 The SSv2-finetuned checkpoint
 \code{facebook/vjepa2-vitl-fpc16-256-ssv2} ships a full 174-class
@@ -444,8 +425,8 @@ zero-shot baseline.
 % built in Phase 2.
 % =====================================================================
 
-\subsection{Phase 4.2: heavy data augmentation for the V-JEPA 2 probe}
-\label{sec:phase4:heavy_aug}
+\subsection{Data Augmentation for the V-JEPA~2 Probe}
+\label{sec:trackb:heavy_aug}
 
 The default \file{track\_b\_vjepa2.yaml} above only composes the model
 group; the augmentation group falls back to \code{augment=none}
@@ -518,7 +499,7 @@ training:
 With \code{eval\_every\_n\_epochs: 3} and \code{eval\_ema: false} we
 shrink the per-epoch overhead from 12\,min to 4\,min averaged over the
 schedule, which is exactly the optimisation the per-epoch timing run
-(Sec.~\ref{sec:phase4:heavy_aug}) flagged as the dominant cost.
+(Sec.~\ref{sec:trackb:heavy_aug}) flagged as the dominant cost.
 
 \paragraph{The bundled \code{track\_b\_vjepa2\_heavy\_aug} experiment.}
 \texttt{configs/\allowbreak experiment/\allowbreak track\_b\_vjepa2\_heavy\_aug.yaml}
@@ -593,8 +574,8 @@ vs opening, moving-up vs moving-down) lose information at the source.
 Mitigations on this front (frame interpolation, optical flow channel)
 are deferred to a later phase.
 
-\subsection{Phase 4.3: overnight ViT-g 384 heavy-aug run}
-\label{sec:phase4-vitg384}
+\subsection{Overnight ViT-g/14 384 Run}
+\label{sec:trackb-vitg384}
 
 \paragraph{Motivation.}
 The Phase~4.2 ViT-L 256 run topped out at \(53.09\,\%\) val top-1
@@ -713,8 +694,8 @@ flagship Track-B recipe for large backbones; the submission CSV is
 produced via \code{python -m smth2smth.pipelines.submit} pointing at
 \code{checkpoints/track\_b/vitg384\_heavy\_aug.pt}.
 
-\subsection{Phase 4.4: multi-query probe and PEFT LoRA}
-\label{sec:phase4-peft}
+\subsection{Multi-query Probe and PEFT LoRA}
+\label{sec:trackb-peft}
 
 \paragraph{Motivation.}
 The gap between course val (\(\sim\!54\%\) with ViT-g~384) and the

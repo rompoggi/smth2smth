@@ -1,0 +1,57 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{style}
+
+\RequirePackage{xcolor}
+\RequirePackage{eso-pic}
+\RequirePackage{fancyhdr}
+
+% ---------------------------------------------------------------
+% Track accent colors
+% ---------------------------------------------------------------
+\definecolor{trackred}{RGB}{192,0,0}
+\definecolor{trackblue}{RGB}{0,70,180}
+
+% Active track — overridden by each track file via \renewcommand.
+% Evaluated at shipout time so page content and stripe always agree.
+\newcommand{\trackcolor}{black}
+\newcommand{\trackname}{Report}
+
+% ---------------------------------------------------------------
+% Vertical stripe: 1 mm wide at the left page edge, full height
+% ---------------------------------------------------------------
+\AddToShipoutPictureBG{%
+  % Left stripe
+  \AtPageLowerLeft{%
+    \textcolor{\trackcolor}{\rule{1mm}{\paperheight}}%
+  }%
+  % Right stripe (offset = paperwidth - 1mm)
+  \AtPageLowerLeft{%
+    \hspace{\dimexpr\paperwidth-1mm\relax}%
+    \textcolor{\trackcolor}{\rule{1mm}{\paperheight}}%
+  }%
+}
+
+% ---------------------------------------------------------------
+% Headers and footers
+% ---------------------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+% Left header: current section title in track color
+\fancyhead[L]{\textcolor{\trackcolor}{\nouppercase{\leftmark}}}
+% Right header: track name in track color
+\fancyhead[R]{\textcolor{\trackcolor}{\small\trackname}}
+% Centered footer: page number in track color
+\fancyfoot[C]{\textcolor{\trackcolor}{\thepage}}
+% Colored head rule
+\renewcommand{\headrule}{%
+  {\color{\trackcolor}\hrule height \headrulewidth width \headwidth}%
+  \vskip -\headrulewidth%
+}
+\renewcommand{\footrulewidth}{0pt}
+
+% Plain pages (title, TOC): no header, only colored page number
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \fancyfoot[C]{\textcolor{\trackcolor}{\thepage}}%
+  \renewcommand{\headrulewidth}{0pt}%
+}

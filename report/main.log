@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2026.5.7)  16 MAY 2026 00:26
+This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2026.5.7)  16 MAY 2026 15:34
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -408,7 +408,28 @@ File: lstmisc.sty 2020/03/24 1.8d (Carsten Heinz)
 File: listings.cfg 2020/03/24 1.8d listings configuration
 ))
 Package: listings 2020/03/24 1.8d (Carsten Heinz)
-LaTeX Font Info:    Trying to load font information for T1+lmr on input line 91
+ (./style.sty
+Package: style 
+
+(/usr/share/texlive/texmf-dist/tex/latex/eso-pic/eso-pic.sty
+Package: eso-pic 2020/10/14 v3.0a eso-pic (RN)
+\ESO@tempdima=\dimen181
+\ESO@tempdimb=\dimen182
+)
+(/usr/share/texlive/texmf-dist/tex/latex/fancyhdr/fancyhdr.sty
+Package: fancyhdr 2021/01/28 v4.0.1 Extensive control of page headers and foote
+rs
+\f@nch@headwidth=\skip55
+\f@nch@O@elh=\skip56
+\f@nch@O@erh=\skip57
+\f@nch@O@olh=\skip58
+\f@nch@O@orh=\skip59
+\f@nch@O@elf=\skip60
+\f@nch@O@erf=\skip61
+\f@nch@O@olf=\skip62
+\f@nch@O@orf=\skip63
+))
+LaTeX Font Info:    Trying to load font information for T1+lmr on input line 88
 .
 
 (/usr/share/texlive/texmf-dist/tex/latex/lm/t1lmr.fd
@@ -422,32 +443,32 @@ File: l3backend-pdftex.def 2021-03-18 L3 backend support: PDF output (pdfTeX)
 (./main.aux)
 \openout1 = `main.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 91.
-LaTeX Font Info:    ... okay on input line 91.
-LaTeX Info: Redefining \microtypecontext on input line 91.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 88.
+LaTeX Font Info:    ... okay on input line 88.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 88.
+LaTeX Font Info:    ... okay on input line 88.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 88.
+LaTeX Font Info:    ... okay on input line 88.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 88.
+LaTeX Font Info:    ... okay on input line 88.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 88.
+LaTeX Font Info:    ... okay on input line 88.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 88.
+LaTeX Font Info:    ... okay on input line 88.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 88.
+LaTeX Font Info:    ... okay on input line 88.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 88.
+LaTeX Font Info:    ... okay on input line 88.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 88.
+LaTeX Font Info:    ... okay on input line 88.
+LaTeX Info: Redefining \microtypecontext on input line 88.
 Package microtype Info: Generating PDF output.
 Package microtype Info: Character protrusion enabled (level 2).
 Package microtype Info: Using default protrusion set `alltext'.
 Package microtype Info: Automatic font expansion enabled (level 2),
 (microtype)             stretch: 20, shrink: 20, step: 1, non-selected.
 Package microtype Info: Using default expansion set `alltext-nott'.
-LaTeX Info: Redefining \showhyphens on input line 91.
+LaTeX Info: Redefining \showhyphens on input line 88.
 Package microtype Info: No adjustment of tracking.
 Package microtype Info: No adjustment of interword spacing.
 Package microtype Info: No adjustment of character kerning.
@@ -462,17 +483,17 @@ File: mt-cmr.cfg 2013/05/19 v2.2 microtype config. file: Computer Modern Roman
 * paper: a4paper
 * layout: <same size as paper>
 * layoutoffset:(h,v)=(0.0pt,0.0pt)
-* modes: 
-* h-part:(L,W,R)=(68.28644pt, 460.935pt, 68.28644pt)
-* v-part:(T,H,B)=(68.28644pt, 708.47397pt, 68.28644pt)
+* modes: includehead includefoot 
+* h-part:(L,W,R)=(17.07182pt, 563.36423pt, 17.07182pt)
+* v-part:(T,H,B)=(17.07182pt, 810.9032pt, 17.07182pt)
 * \paperwidth=597.50787pt
 * \paperheight=845.04684pt
-* \textwidth=460.935pt
-* \textheight=708.47397pt
-* \oddsidemargin=-3.98355pt
-* \evensidemargin=-3.98355pt
-* \topmargin=-40.98355pt
-* \headheight=12.0pt
+* \textwidth=563.36423pt
+* \textheight=741.9032pt
+* \oddsidemargin=-55.19817pt
+* \evensidemargin=-55.19817pt
+* \topmargin=-55.19817pt
+* \headheight=14.0pt
 * \headsep=25.0pt
 * \topskip=11.0pt
 * \footskip=30.0pt
@@ -492,13 +513,13 @@ File: mt-cmr.cfg 2013/05/19 v2.2 microtype config. file: Computer Modern Roman
 (/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
 \scratchcounter=\count295
-\scratchdimen=\dimen181
+\scratchdimen=\dimen183
 \scratchbox=\box53
 \nofMPsegments=\count296
 \nofMParguments=\count297
 \everyMPshowfont=\toks27
 \MPscratchCnt=\count298
-\MPscratchDim=\dimen182
+\MPscratchDim=\dimen184
 \MPnumerator=\count299
 \makeMPintoPDFobject=\count300
 \everyMPtoPDFconversion=\toks28
@@ -511,7 +532,7 @@ Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
 e
 ))
-Package hyperref Info: Link coloring ON on input line 91.
+Package hyperref Info: Link coloring ON on input line 88.
 
 (/usr/share/texlive/texmf-dist/tex/latex/hyperref/nameref.sty
 Package: nameref 2021-04-02 v2.47 Cross-referencing by name of section
@@ -524,9 +545,9 @@ Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
 )
 \c@section@level=\count301
 )
-LaTeX Info: Redefining \ref on input line 91.
-LaTeX Info: Redefining \pageref on input line 91.
-LaTeX Info: Redefining \nameref on input line 91.
+LaTeX Info: Redefining \ref on input line 88.
+LaTeX Info: Redefining \pageref on input line 88.
+LaTeX Info: Redefining \nameref on input line 88.
 
 (./main.out) (./main.out)
 \@outlinefile=\write3
@@ -534,34 +555,34 @@ LaTeX Info: Redefining \nameref on input line 91.
 
 \c@lstlisting=\count302
 LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 9
-3.
+0.
  (/usr/share/texlive/texmf-dist/tex/latex/lm/ot1lmr.fd
 File: ot1lmr.fd 2009/10/30 v1.6 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OML+lmm on input line 9
-3.
+0.
  (/usr/share/texlive/texmf-dist/tex/latex/lm/omllmm.fd
 File: omllmm.fd 2009/10/30 v1.6 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 
-93.
+90.
 
 (/usr/share/texlive/texmf-dist/tex/latex/lm/omslmsy.fd
 File: omslmsy.fd 2009/10/30 v1.6 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 
-93.
+90.
 
 (/usr/share/texlive/texmf-dist/tex/latex/lm/omxlmex.fd
 File: omxlmex.fd 2009/10/30 v1.6 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <12> on input line 93.
+(Font)              <12> on input line 90.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <8> on input line 93.
+(Font)              <8> on input line 90.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <6> on input line 93.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 93.
+(Font)              <6> on input line 90.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 90.
 
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsa.fd
@@ -570,7 +591,7 @@ File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 (/usr/share/texlive/texmf-dist/tex/latex/microtype/mt-msa.cfg
 File: mt-msa.cfg 2006/02/04 v1.1 microtype config. file: AMS symbols (a) (RS)
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 93.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 90.
 
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
@@ -579,15 +600,14 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 (/usr/share/texlive/texmf-dist/tex/latex/microtype/mt-msb.cfg
 File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
 )
-LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10> on input line 114.
-LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <7> on input line 114.
-LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <5> on input line 114.
-LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 1
-16.
+Overfull \hbox (7.1228pt too wide) in paragraph at lines 92--96
+[]\T1/lmr/m/n/10 (-20) This re-port doc-u-ments the en-gi-neer-ing work on the 
+\T1/lmr/m/it/10 (-20) What-Happens-Next \T1/lmr/m/n/10 (-20) Kag-gle com-pe-ti-
+tion (Something-Something V2
+ []
 
+LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 1
+04.
 (/usr/share/texlive/texmf-dist/tex/latex/lm/t1lmtt.fd
 File: t1lmtt.fd 2009/10/30 v1.6 Font defs for Latin Modern
 )
@@ -604,155 +624,304 @@ LaTeX Font Info:    External font `lmex10' loaded for size
 \tf@toc=\write4
 \openout4 = `main.toc'.
 
- [2]
-Overfull \hbox (1.63573pt too wide) in paragraph at lines 203--208
-[]\T1/lmr/bx/n/10.95 (-20) No motion-aware data aug-men-ta-tion. \T1/lmr/m/n/10
-.95 (-20) The pipeline used RandAugment-T and FrameMixUp
+ [2] (./track_a.tex
+Overfull \hbox (1.09521pt too wide) in paragraph at lines 101--106
+ []\T1/lmr/bx/n/10.95 (-20) Implementation.[] \T1/lmr/m/n/10.95 (-20) A new boo
+lean \T1/lmtt/m/n/10 dataset.use_official_val \T1/lmr/m/n/10.95 (-20) (de-fault
+ \T1/lmtt/m/n/10 false\T1/lmr/m/n/10.95 (-20) ) was added to \T1/lmtt/m/n/10 co
+nfigs/data/default.yaml\T1/lmr/m/n/10.95 (-20) .
  []
 
-[3] (/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty
+(/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty
 File: lstlang1.sty 2020/03/24 1.8d listings language file
-)
+) [3
+
+]
 LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <9> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 239.
- [4]
-Overfull \hbox (10.5048pt too wide) in paragraph at lines 301--310
-\T1/lmr/m/n/10.95 (-20) for-ward and back-ward passes in \T1/lmtt/m/n/10 torch.
-amp.autocast(device_type="cuda", dtype=amp_dtype)\T1/lmr/m/n/10.95 (-20) . When
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 108.
 
+Overfull \hbox (11.8844pt too wide) in paragraph at lines 170--179
+\T1/lmr/m/n/10.95 (-20) ar-gu-ments, \T1/lmtt/m/n/10 scaler \T1/lmr/m/n/10.95 (
+-20) and \T1/lmtt/m/n/10 amp_dtype\T1/lmr/m/n/10.95 (-20) , and wrap their for-
+ward and back-ward passes in \T1/lmtt/m/n/10 torch.amp.autocast(device_type="cu
+da",
  []
 
-[5] [6] [7]
-Overfull \hbox (13.3489pt too wide) in paragraph at lines 536--540
-[]\T1/lmtt/m/n/10 train_one_epoch \T1/lmr/m/n/10.95 (-20) ac-cepts a new \T1/lm
-tt/m/n/10 ema_model \T1/lmr/m/n/10.95 (-20) key-word and calls \T1/lmtt/m/n/10 
-ema_model.update_parameters(model)
+[4]
+Overfull \hbox (52.09406pt too wide) in paragraph at lines 212--221
+ []\T1/lmr/bx/n/10.95 (-20) Implementation.[] \T1/lmr/m/n/10.95 (-20) On ev-ery
+ \T1/lmr/m/it/10.95 (-20) best-checkpoint \T1/lmr/m/n/10.95 (-20) save, the tra
+iner now stores \T1/lmtt/m/n/10 optimizer.state_dict()\T1/lmr/m/n/10.95 (-20) ,
+ \T1/lmtt/m/n/10 cosine_scheduler.state_dict()
  []
 
-
-Overfull \hbox (101.52383pt too wide) in paragraph at lines 554--560
-\T1/lmr/m/n/10.95 (-20) obliv-i-ous to the EMA tog-gle: the saved \T1/lmtt/m/n/
-10 model_state_dict \T1/lmr/m/n/10.95 (-20) is al-ways loaded with \T1/lmtt/m/n
-/10 build_model(...).load_state_dict(...)\T1/lmr/m/n/10.95 (-20) ,
+[5]
+Overfull \hbox (32.1747pt too wide) in paragraph at lines 311--318
+ []\T1/lmr/bx/n/10.95 (-20) Implementation.[] \T1/lmr/m/n/10.95 (-20) A paramet
+er-free \T1/lmtt/m/n/10 DropPath \T1/lmr/m/n/10.95 (-20) mod-ule im-ple-ments t
+he per-sample bernoulli mask. A helper \T1/lmtt/m/n/10 _inject_drop_path
  []
 
-LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 5
-69.
-(/usr/share/texlive/texmf-dist/tex/latex/lm/ts1lmr.fd
+[6] [7]
+LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 4
+38.
+ (/usr/share/texlive/texmf-dist/tex/latex/lm/ts1lmr.fd
 File: ts1lmr.fd 2009/10/30 v1.6 Font defs for Latin Modern
-)
-Overfull \hbox (50.24435pt too wide) in paragraph at lines 596--600
-[]\T1/lmr/m/n/10.95 (-20) (The nu-meric pre-fix is stripped be-fore match-ing s
-o \T1/lmtt/m/n/10 018_.._left_to_right \T1/lmr/m/n/10.95 (-20) pairs with \T1/l
-mtt/m/n/10 019_.._right_to_left
+) [8] [9]
+Overfull \hbox (54.80608pt too wide) in paragraph at lines 634--642
+ []\T1/lmr/bx/n/10.95 (-20) Trunk.[] \T1/lmtt/m/n/10 VJepaTrunk \T1/lmr/m/n/10.
+95 (-20) is the \T1/lmr/m/it/10.95 (-20) same \T1/lmr/m/n/10.95 (-20) TSM-wrapp
+ed ResNet-50 as the su-per-vised model's \T1/lmtt/m/n/10 backbone\T1/lmr/m/n/10
+.95 (-20) : it calls \T1/lmtt/m/n/10 _make_temporal_shift_resnet
  []
 
-[8] [9] [10] [11]
+[10]
 LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <12> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 844.
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 712.
 LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <10> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 844.
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 712.
+ [11]
+Overfull \hbox (111.34105pt too wide) in paragraph at lines 816--824
+[]\T1/lmr/m/n/10.95 (-20) The two axes are con-fig-ured in-de-pen-dently (\T1/l
+mtt/m/n/10 training.class_balance_sampler\T1/lmr/m/n/10.95 (-20) , \T1/lmtt/m/n
+/10 training.class_balance_loss\T1/lmr/m/n/10.95 (-20) , \T1/lmtt/m/n/10 traini
+ng.class_balance_beta\T1/lmr/m/n/10.95 (-20) )
+ []
 
-Overfull \hbox (47.43016pt too wide) in paragraph at lines 864--868
-[]\T1/lmr/m/n/10.95 (-20) Legacy DINO trunks whose keys come from a plain \T1/l
-mtt/m/n/10 torchvision \T1/lmr/m/n/10.95 (-20) ResNet-50 (e.g. \T1/lmtt/m/n/10 
-layer1.0.conv1.weight\T1/lmr/m/n/10.95 (-20) ).
+
+Overfull \hbox (67.41515pt too wide) in paragraph at lines 840--848
+[]$[] \OMS/lmsy/m/n/10.95 $ []$\T1/lmr/m/n/10.95 (-20) , $[] \OMS/lmsy/m/n/10.9
+5 $ []$\T1/lmr/m/n/10.95 (-20) , $[] \OMS/lmsy/m/n/10.95 $ []$\T1/lmr/m/n/10.95
+ (-20) , $[] \OMS/lmsy/m/n/10.95 $
  []
 
 [12]
-Overfull \hbox (3.5103pt too wide) in paragraph at lines 914--923
- []\T1/lmr/bx/n/10.95 (-20) Balanced sam-pler.[] \T1/lmr/m/n/10.95 (-20) We re-
-place the uni-form shuf-fle of the \T1/lmtt/m/n/10 DataLoader \T1/lmr/m/n/10.95
- (-20) by a \T1/lmtt/m/n/10 WeightedRandomSampler
+Overfull \hbox (157.97456pt too wide) in paragraph at lines 937--941
+\T1/lmr/m/n/10.95 (-20) The four Phase-4 fea-tures com-pose cleanly with ev-ery
+-thing in Phases 1 through 3. A new ex-per-i-ment file \T1/lmtt/m/n/10 configs/
+experiment/track_a_vjepa_finetune.yaml
  []
 
-
-Overfull \hbox (64.92984pt too wide) in paragraph at lines 948--956
-[]\T1/lmr/m/n/10.95 (-20) The two axes are con-fig-ured in-de-pen-dently (\T1/l
-mtt/m/n/10 training.class_balance_sampler\T1/lmr/m/n/10.95 (-20) , \T1/lmtt/m/n
-/10 training.class_balance_loss\T1/lmr/m/n/10.95 (-20) ,
- []
-
-
-Overfull \hbox (3.99908pt too wide) in paragraph at lines 948--956
-\T1/lmtt/m/n/10 training.class_balance_beta\T1/lmr/m/n/10.95 (-20) ) so the use
-r can run any com-bi-na-tion of $\OMS/lmsy/m/n/10.95 f[]g ^^B
- []
-
-
-Overfull \hbox (165.20631pt too wide) in paragraph at lines 948--956
-\OMS/lmsy/m/n/10.95 f[]g$ \T1/lmr/m/n/10.95 (-20) and com-pare. The new \T1/lmt
-t/m/n/10 class_balance.py \T1/lmr/m/n/10.95 (-20) mod-ule is fully unit-tested 
-(\T1/lmtt/m/n/10 tests/shared/utils/test_class_balance.py\T1/lmr/m/n/10.95 (-20
-) ). 
- []
-
-
-Overfull \hbox (44.52739pt too wide) in paragraph at lines 972--980
-[]$[] \OMS/lmsy/m/n/10.95 $ []$\T1/lmr/m/n/10.95 (-20) , $[] \OMS/lmsy/m/n/10.9
-5 $ []$\T1/lmr/m/n/10.95 (-20) , $[] \OMS/lmsy/m/n/10.95 $ []$\T1/lmr/m/n/10.95
- (-20) ,
- []
-
-[13] [14] [15]
-LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <10.95> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 1156.
- [16] [17]
+[13]
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <9> on input line 1307.
- [18]
-Overfull \hbox (49.08893pt too wide) in paragraph at lines 1392--1395
-\T1/lmtt/m/n/10 VJepaTrunk \T1/lmr/m/n/10.95 (-20) (TSM-wrapped ResNet-50), \T1
-/lmtt/m/n/10 VJepaPredictor\T1/lmr/m/n/10.95 (-20) , \T1/lmtt/m/n/10 VJepaModel
-\T1/lmr/m/n/10.95 (-20) , \T1/lmtt/m/n/10 make_frame_mask\T1/lmr/m/n/10.95 (-20
-) /\T1/lmtt/m/n/10 apply_frame_mask\T1/lmr/m/n/10.95 (-20) ,
+(Font)              <10> on input line 985.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <7> on input line 985.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <5> on input line 985.
+LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <10.95> not available
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 1024.
+ [14] [15]
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <9> on input line 1169.
+ [16] [17] [18]
+Overfull \hbox (14.06447pt too wide) in paragraph at lines 1432--1443
+ []\T1/lmr/bx/n/10.95 (-20) Long-run pre-set.[] \T1/lmr/m/n/10.95 (-20) The com
+-pan-ion ex-per-i-ment YAML \T1/lmtt/m/n/10 configs/experiment/track_a_dual_str
+eam_long_class_boost.yaml
+ []
+
+[19]
+Overfull \hbox (95.26007pt too wide) in paragraph at lines 1444--1456
+\T1/lmr/m/n/10.95 (-20) gered early stop-ping (pa-tience 3). Best EMA val-i-da-
+tion top-1: $[]$ (\T1/lmtt/m/n/10.95 ckpt\T1/lmr/m/n/10.95 (-20) : \T1/lmtt/m/n
+/10 .../dual_stream_long_class_boost_lr1_20260515_025557.pt\T1/lmr/m/n/10.95 (-
+20) ).
  []
 
 
-Overfull \hbox (6.80006pt too wide) in paragraph at lines 1405--1407
-\T1/lmr/m/n/10.95 (-20) Hand-curated re-versible class-pair ta-ble and \T1/lmtt
-/m/n/10 build_time_reversal_table\T1/lmr/m/n/10.95 (-20) /\T1/lmtt/m/n/10 descr
-ibe_table \T1/lmr/m/n/10.95 (-20) helpers. 
+Overfull \hbox (39.68782pt too wide) in paragraph at lines 1511--1523
+\T1/lmr/m/n/10 (-20) Wrapper: \T1/lmtt/m/n/10 scripts/run_dual_stream_long_with
+_fallback.sh\T1/lmr/m/n/10 (-20) . Log: \T1/lmtt/m/n/10 logs/track_a_dual_strea
+m_long_lr1_20260515_025557.log\T1/lmr/m/n/10 (-20) .
  []
 
-[19] [20] [21] (./main.aux)
+
+Underfull \hbox (badness 10000) in paragraph at lines 1524--1533
+\T1/lmr/m/n/10 (+20) Log: \T1/lmtt/m/n/10 logs/track_a_dual_stream_long_lr1_res
+ume_20260515_104715.log\T1/lmr/m/n/10 (+20) . Re-sume from \T1/lmtt/m/n/10 *.la
+st.pt
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1524--1533
+\T1/lmr/m/n/10 (+20) (epoch 16); over-ride \T1/lmtt/m/n/10 lr\T1/lmr/m/n/10 (+2
+0) =1.2e-4 (+20%), \T1/lmtt/m/n/10 m_r\T1/lmr/m/n/10 (+20) =0.3, \T1/lmtt/m/n/1
+0 resume_apply_cfg_lr\T1/lmr/m/n/10 (+20) =1; same pre-set oth-er-
+ []
+
+
+Underfull \hbox (badness 6396) in paragraph at lines 1524--1533
+\T1/lmr/m/n/10 (+20) wise. Early stop at epoch 39 (pa-tience ex-hausted). Best 
+EMA val top-1: \T1/lmr/bx/n/10 (+20) 39.47%\T1/lmr/m/n/10 (+20) ; same \T1/lmtt
+/m/n/10 ckpt
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1524--1533
+\T1/lmr/m/n/10 (+20) as Run A1. Sub-mit (flip TTA): \T1/lmtt/m/n/10 .../track_a
+_dual_stream_long_lr1_resume_20260515.csv\T1/lmr/m/n/10 (+20) ; log
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1602--1605
+ []\T1/lmr/bx/n/10.95 (+20) Phase 1.[] \T1/lmr/m/n/10 (+20) 100/100 MAE; loss $
+\OT1/lmr/m/n/10 (+20) 0\OML/lmm/m/it/10 :\OT1/lmr/m/n/10 (+20) 843 \OMS/lmsy/m/
+n/10 ! \OT1/lmr/m/n/10 (+20) 0\OML/lmm/m/it/10 :\OT1/lmr/m/n/10 (+20) 251$\T1/l
+mr/m/n/10 (+20) ; \T1/lmtt/m/n/10 checkpoints/track_a/ssl/roussette_encoder.pt\
+T1/lmr/m/n/10 (+20) ; log
+ []
+
+
+Underfull \hbox (badness 4660) in paragraph at lines 1620--1624
+ []\T1/lmr/bx/n/10.95 (+20) Phase 2.[] \T1/lmr/m/n/10 (+20) 40/40; train top-1 
+\T1/lmr/bx/n/10 (+20) 49.54% \T1/lmr/m/n/10 (+20) (ep 40); best EMA val \T1/lmr
+/bx/n/10 (+20) 35.60% \T1/lmr/m/n/10 (+20) (ep 32, \T1/lmtt/m/n/10 piranha_ft.p
+t\T1/lmr/m/n/10 (+20) ); log
+ []
+
+
+Underfull \hbox (badness 3312) in paragraph at lines 1632--1640
+\T1/lmr/m/n/10 (+20) Romain slot: at-ten-tive probe \T1/lmtt/m/n/10 head_num_he
+ads\T1/lmr/m/n/10 (+20) =8 (\T1/lmtt/m/n/10 track_a_ssl_pretrain_sole \T1/lmr/m
+/n/10 (+20) / \T1/lmtt/m/n/10 track_a_ssl_finetune_sole\T1/lmr/m/n/10 (+20) ).
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1632--1640
+\T1/lmr/m/n/10 (+20) No \T1/lmtt/m/n/10 logs/ssl_sole_pretrain.log \T1/lmr/m/n/
+10 (+20) or \T1/lmtt/m/n/10 ssl_sole_finetune.log\T1/lmr/m/n/10 (+20) ; no \T1/
+lmtt/m/n/10 sole_encoder.pt \T1/lmr/m/n/10 (+20) / \T1/lmtt/m/n/10 sole_ft.pt \
+T1/lmr/m/n/10 (+20) un-der
+ []
+
+
+LaTeX Warning: Float too large for page by 538.6977pt on input line 1662.
+
+) [20] [21] (./track_b.tex [22
+
+]
+Overfull \hbox (75.13676pt too wide) in paragraph at lines 135--143
+\T1/lmr/m/n/10.95 (-20) head is in train mode but the back-bone re-mains in eva
+l mode. A sec-ond test (\T1/lmtt/m/n/10 test_frozen_forward_does_not_accumulate
+_backbone_grads\T1/lmr/m/n/10.95 (-20) )
+ []
+
+[23] [24]
+Underfull \hbox (badness 2600) in paragraph at lines 344--350
+\T1/lmr/m/n/10 (+20) Log: \T1/lmtt/m/n/10 logs/track_b_vitg384_continue_2026051
+2_1322.log\T1/lmr/m/n/10 (+20) ; PID: \T1/lmtt/m/n/10 logs/track_b_vitg384_cont
+inue.pid\T1/lmr/m/n/10 (+20) . Pre-set:
+ []
+
+[25]
+Overfull \hbox (120.82715pt too wide) in paragraph at lines 387--393
+\T1/lmr/m/n/10.95 (-20) token-aligned unique-prefix fall-back that re-cov-ers t
+he trun-cated folder \T1/lmtt/m/n/10 015_Pretending_to_pour_something_out_of_so
+mething_but_something_\T1/lmr/m/n/10.95 (-20) )
+ []
+
+
+Overfull \hbox (225.87383pt too wide) in paragraph at lines 397--405
+[]\T1/lmtt/m/n/10 scripts/submit_vjepa2_ssv2_zero_shot.py \T1/lmr/m/n/10.95 (-2
+0) -- same for-ward, but con-sumes \T1/lmtt/m/n/10 data/test/ \T1/lmr/m/n/10.95
+ (-20) and writes \T1/lmtt/m/n/10 submissions/track_b_vjepa2_vitl_fpc16_256_ssv
+2_zero_shot.csv
+ []
+
+
+Overfull \hbox (11.15707pt too wide) in paragraph at lines 441--449
+ []\T1/lmr/bx/n/10.95 (-20) Mirroring Track A.[] \T1/lmr/m/n/10.95 (-20) The Tr
+ack-A side of the project (\T1/lmtt/m/n/10 track_a_randaugment_t.yaml\T1/lmr/m/
+n/10.95 (-20) ) al-ready im-ple-ments Kim et al. 2020's
+ []
+
+[26]
+
+LaTeX Warning: Citation `Yun2019CutMix' on page 27 undefined on input line 480.
+
+
+[27]
+
+LaTeX Warning: Citation `MurLabadia2026VJEPA21' on page 28 undefined on input l
+ine 554.
+
+
+Overfull \hbox (53.73517pt too wide) in paragraph at lines 581--594
+ []\T1/lmr/bx/n/10.95 (-20) Motivation.[] \T1/lmr/m/n/10.95 (-20) The Phase 4.2
+ ViT-L 256 run topped out at $\OT1/lmr/m/n/10.95 (-20) 53\OML/lmm/m/it/10.95 :\
+OT1/lmr/m/n/10.95 (-20) 09 %$ \T1/lmr/m/n/10.95 (-20) val top-1 (check-point \T
+1/lmtt/m/n/10 checkpoints/track_b/vjepa2_heavy_aug.pt\T1/lmr/m/n/10.95 (-20) ,
+ []
+
+
+Overfull \hbox (1.60353pt too wide) in paragraph at lines 613--617
+ []\T1/lmr/bx/n/10.95 (-20) Recipe.[] \T1/lmr/m/n/10.95 (-20) The ex-per-i-ment
+ lives at \T1/lmtt/m/n/10 configs/experiment/track_b_vjepa2_vitg384_heavy_aug.y
+aml \T1/lmr/m/n/10.95 (-20) and over-rides Phase 4.2
+ []
+
+[28] [29]
+Overfull \hbox (3.70288pt too wide) in paragraph at lines 731--733
+ []\T1/lmr/bx/n/10.95 (-20) Dependencies.[] \T1/lmr/m/n/10.95 (-20) The project
+ de-clares \T1/lmtt/m/n/10.95 peft>=0.13 \T1/lmr/m/n/10.95 (-20) in \T1/lmtt/m/
+n/10 pyproject.toml\T1/lmr/m/n/10.95 (-20) . LoRA is in-ac-tive un-less \T1/lmt
+t/m/n/10 model.lora_enabled=true\T1/lmr/m/n/10.95 (-20) . 
+ []
+
+
+Overfull \hbox (46.27515pt too wide) in paragraph at lines 735--741
+\T1/lmr/m/n/10.95 (-20) rate (\T1/lmtt/m/n/10 training.lr: 2e-4\T1/lmr/m/n/10.9
+5 (-20) ) so adapter up-dates re-main sta-ble. Check-points are writ-ten to \T1
+/lmtt/m/n/10 checkpoints/track_b/vitg384_peft_mq.pt
+ []
+
+) [30] [31
+
+] (./main.aux)
+
+LaTeX Warning: There were undefined references.
+
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: 9A36CD1E95DC5E51891AB65028B86D1C;9013.
+(rerunfilecheck)             Checksum: E05A2E859BB30253466111338E8E3DD2;14027.
  ) 
 Here is how much of TeX's memory you used:
- 15029 strings out of 481008
- 218780 string characters out of 5909440
- 970326 words of memory out of 5000000
- 31303 multiletter control sequences out of 15000+600000
- 504421 words of font info for 234 fonts, out of 8000000 for 9000
+ 15764 strings out of 481008
+ 229001 string characters out of 5909440
+ 1003183 words of memory out of 5000000
+ 31685 multiletter control sequences out of 15000+600000
+ 536272 words of font info for 298 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 71i,7n,74p,419b,1990s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 71i,14n,74p,391b,1998s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/share/texlive/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc}{/usr/share/texli
-ve/texmf-dist/fonts/enc/dvips/lm/lm-mathsy.enc}{/usr/share/texlive/texmf-dist/f
-onts/enc/dvips/lm/lm-mathit.enc}{/usr/share/texlive/texmf-dist/fonts/enc/dvips/
-lm/lm-ts1.enc}{/usr/share/texlive/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc}{
-/usr/share/texlive/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc}</usr/share/texlive/
+ve/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc}{/usr/share/texlive/texmf-dist/f
+onts/enc/dvips/lm/lm-rm.enc}{/usr/share/texlive/texmf-dist/fonts/enc/dvips/lm/l
+m-mathsy.enc}{/usr/share/texlive/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc}{/usr
+/share/texlive/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc}</usr/share/texlive/
 texmf-dist/fonts/type1/public/lm/lmbx10.pfb></usr/share/texlive/texmf-dist/font
 s/type1/public/lm/lmbx12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/
-lm/lmbxi10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/lm/lmex10.pfb>
-</usr/share/texlive/texmf-dist/fonts/type1/public/lm/lmmi10.pfb></usr/share/tex
-live/texmf-dist/fonts/type1/public/lm/lmmi6.pfb></usr/share/texlive/texmf-dist/
-fonts/type1/public/lm/lmmi8.pfb></usr/share/texlive/texmf-dist/fonts/type1/publ
-ic/lm/lmr10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/lm/lmr12.pfb>
-</usr/share/texlive/texmf-dist/fonts/type1/public/lm/lmr8.pfb></usr/share/texli
-ve/texmf-dist/fonts/type1/public/lm/lmr9.pfb></usr/share/texlive/texmf-dist/fon
-ts/type1/public/lm/lmri10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public
-/lm/lmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/lm/lmsy6.pfb><
-/usr/share/texlive/texmf-dist/fonts/type1/public/lm/lmsy7.pfb></usr/share/texli
-ve/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></usr/share/texlive/texmf-dist/fo
-nts/type1/public/lm/lmtk10.pfb></usr/share/texlive/texmf-dist/fonts/type1/publi
-c/lm/lmtt10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/lm/lmtt9.pfb>
-</usr/share/texlive/texmf-dist/fonts/type1/public/lm/lmtti10.pfb></usr/share/te
-xlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
-Output written on main.pdf (21 pages, 449260 bytes).
+lm/lmbx9.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/lm/lmbxi10.pfb><
+/usr/share/texlive/texmf-dist/fonts/type1/public/lm/lmex10.pfb></usr/share/texl
+ive/texmf-dist/fonts/type1/public/lm/lmmi10.pfb></usr/share/texlive/texmf-dist/
+fonts/type1/public/lm/lmmi6.pfb></usr/share/texlive/texmf-dist/fonts/type1/publ
+ic/lm/lmmi8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/lm/lmmi9.pfb>
+</usr/share/texlive/texmf-dist/fonts/type1/public/lm/lmr10.pfb></usr/share/texl
+ive/texmf-dist/fonts/type1/public/lm/lmr12.pfb></usr/share/texlive/texmf-dist/f
+onts/type1/public/lm/lmr7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public
+/lm/lmr8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/lm/lmr9.pfb></us
+r/share/texlive/texmf-dist/fonts/type1/public/lm/lmri10.pfb></usr/share/texlive
+/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></usr/share/texlive/texmf-dist/fon
+ts/type1/public/lm/lmsy6.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/
+lm/lmsy7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></u
+sr/share/texlive/texmf-dist/fonts/type1/public/lm/lmtk10.pfb></usr/share/texliv
+e/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></usr/share/texlive/texmf-dist/fo
+nts/type1/public/lm/lmtt9.pfb></usr/share/texlive/texmf-dist/fonts/type1/public
+/lm/lmtti10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symb
+ols/msbm10.pfb>
+Output written on main.pdf (31 pages, 583096 bytes).
 PDF statistics:
- 833 PDF objects out of 1000 (max. 8388607)
- 781 compressed objects within 8 object streams
- 404 named destinations out of 1000 (max. 500000)
- 55609 words of extra memory for PDF output out of 61914 (max. 10000000)
+ 1261 PDF objects out of 1440 (max. 8388607)
+ 1191 compressed objects within 12 object streams
+ 625 named destinations out of 1000 (max. 500000)
+ 75249 words of extra memory for PDF output out of 89155 (max. 10000000)
 
