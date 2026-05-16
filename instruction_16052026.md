@@ -4,21 +4,21 @@
 **Do not run training from an agent sandbox** — GPUs are on the VMs; only paste/execute these commands **on the target machine** in a real shell.
 
 **Spec:** [`experiment_16052026.md`](experiment_16052026.md)  
-**Configs:** `configs/experiment/track_a_*_{requin,murene2,congre,tsm_sgdr,silure2,dorade,lamproie}*.yaml`
+**Configs:** `configs/experiment/track_a_*.yaml` — Hydra preset names in the [quick reference](#quick-reference--hydra-experiment-names) below (still use fish codenames internally, e.g. `track_a_ssl_pretrain_requin` for E1).
 
 ---
 
 ## Machine ↔ experiment assignment
 
-| Machine   | Experiment | Codename   | Pipeline                                      | ~Wall   |
-|-----------|------------|------------|-----------------------------------------------|---------|
-| **Anchois**   | E1         | `requin`   | MAE 100 ep → champion FT 60 ep                | ~11.5 h |
-| **Ablette**   | E2         | `murene2`  | MAE 150 ep (aug) → champion FT 60 ep          | ~13–14 h |
-| **Sole**   | E3         | `congre`   | MAE 80 ep T=8 → champion FT 50 ep T=8         | ~13 h   |
-| **Truite**    | E4         | `tsm_sgdr` | R50+TSM supervised SGDR 90 ep (+ snapshots)   | ≤14 h   |
-| **thon**      | E5         | `silure2`  | MAE 100 ep → FT 50 ep → cRT 10 ep             | ~12 h   |
-| **Roussette** | E6         | `dorade`   | MAE 100 ep @224 → FT 50 ep @256               | ~12 h   |
-| **Raie**      | E7         | `lamproie` | MAE 150 ep (mask schedule) → champion FT 60 ep | ~13–14 h |
+| Machine   | Experiment | Pipeline                                      | ~Wall   |
+|-----------|------------|-----------------------------------------------|---------|
+| **Anchois**   | E1         | MAE 100 ep → champion FT 60 ep                | ~11.5 h |
+| **Ablette**   | E2         | MAE 150 ep (aug) → champion FT 60 ep          | ~13–14 h |
+| **Sole**      | E3         | MAE 80 ep T=8 → champion FT 50 ep T=8         | ~13 h   |
+| **Truite**    | E4         | R50+TSM supervised SGDR 90 ep (+ snapshots)   | ≤14 h   |
+| **thon**      | E5         | MAE 100 ep → FT 50 ep → cRT 10 ep             | ~12 h   |
+| **Roussette** | E6         | MAE 100 ep @224 → FT 50 ep @256               | ~12 h   |
+| **Raie**      | E7         | MAE 150 ep (mask schedule) → champion FT 60 ep | ~13–14 h |
 
 **Hard rules (all machines):**
 
@@ -78,20 +78,20 @@ pgrep -af "smth2smth.pipelines.pretrain_videomae|smth2smth.pipelines.train"
 **Wait until a phase finishes** before starting the next (unless noted otherwise):
 
 ```bash
-# Encoder must exist and be non-empty
-test -s checkpoints/track_a/ssl/CODENAME_encoder.pt && echo "encoder OK"
+# Encoder must exist and be non-empty (path from your machine’s checkpoint list below)
+test -s checkpoints/track_a/ssl/ENCODER.pt && echo "encoder OK"
 
 # FT best checkpoint (stage 1 / single-phase FT)
-test -s checkpoints/track_a/ssl/CODENAME_ft.pt && echo "ft OK"
+test -s checkpoints/track_a/ssl/FT.pt && echo "ft OK"
 ```
 
 ---
 
-# Machine: Anchois — E1 `requin` (SSL champion control)
+# Machine: Anchois — E1 (SSL champion control)
 
 ## Machine prompt (paste on Anchois)
 
-You are on VM **Anchois** for experiment **E1 / requin**: VideoMAE ViT-S MAE pretrain (100 ep, minimal aug) then champion fine-tune (60 ep). This is the **control** for the batch. Do not change hyperparameters overnight. Use honest official val only. Launch jobs with `nohup` on the GPU host (not in a sandbox). After each phase, verify the log shows Hydra YAML then training lines with ISO timestamps.
+You are on VM **Anchois** for experiment **E1**: VideoMAE ViT-S MAE pretrain (100 ep, minimal aug) then champion fine-tune (60 ep). This is the **control** for the batch. Do not change hyperparameters overnight. Use honest official val only. Launch jobs with `nohup` on the GPU host (not in a sandbox). After each phase, verify the log shows Hydra YAML then training lines with ISO timestamps.
 
 **Checkpoints (this VM only):**
 
@@ -100,15 +100,15 @@ You are on VM **Anchois** for experiment **E1 / requin**: VideoMAE ViT-S MAE pre
 
 **Logs / PIDs:**
 
-- `logs/anchois_e1_requin_mae_pretrain_${BATCH_TAG}.log`
-- `logs/anchois_e1_requin_ft_champion_${BATCH_TAG}.log`
+- `logs/anchois_e1_mae_pretrain_${BATCH_TAG}.log`
+- `logs/anchois_e1_ft_champion_${BATCH_TAG}.log`
 
 ### Phase 1 — MAE pretrain (~7 h)
 
 ```bash
 cd "$REPO_ROOT"
-LOG="logs/anchois_e1_requin_mae_pretrain_${BATCH_TAG}.log"
-PID="logs/anchois_e1_requin_mae_pretrain_${BATCH_TAG}.pid"
+LOG="logs/anchois_e1_mae_pretrain_${BATCH_TAG}.log"
+PID="logs/anchois_e1_mae_pretrain_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.pretrain_videomae \
@@ -124,8 +124,8 @@ echo "Started MAE pretrain pid=$(cat "$PID") log=$LOG"
 
 ```bash
 cd "$REPO_ROOT"
-LOG="logs/anchois_e1_requin_ft_champion_${BATCH_TAG}.log"
-PID="logs/anchois_e1_requin_ft_champion_${BATCH_TAG}.pid"
+LOG="logs/anchois_e1_ft_champion_${BATCH_TAG}.log"
+PID="logs/anchois_e1_ft_champion_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.train \
@@ -139,21 +139,21 @@ echo "Started FT pid=$(cat "$PID") log=$LOG"
 
 ---
 
-# Machine: Ablette — E2 `murene2` (augmented MAE pretrain)
+# Machine: Ablette — E2 (augmented MAE pretrain)
 
 ## Machine prompt (paste on Ablette)
 
-You are on VM **Ablette** for **E2 / murene2**: MAE pretrain **150 epochs** with flip + color jitter + grayscale (no RandAugment at pretrain), then champion FT 60 ep. **Start early** (~13–14 h total). Same FT recipe as E1; only pretrain aug differs. `nohup` only on GPU host.
+You are on VM **Ablette** for **E2**: MAE pretrain **150 epochs** with flip + color jitter + grayscale (no RandAugment at pretrain), then champion FT 60 ep. **Start early** (~13–14 h total). Same FT recipe as E1; only pretrain aug differs. `nohup` only on GPU host.
 
 **Checkpoints:** `murene2_encoder.pt`, `murene2_ft.pt`  
-**Logs:** `logs/ablette_e2_murene2_mae_pretrain_${BATCH_TAG}.log`, `logs/ablette_e2_murene2_ft_champion_${BATCH_TAG}.log`
+**Logs:** `logs/ablette_e2_mae_pretrain_${BATCH_TAG}.log`, `logs/ablette_e2_ft_champion_${BATCH_TAG}.log`
 
 ### Phase 1 — MAE pretrain (~8–9 h)
 
 ```bash
 cd "$REPO_ROOT"
-LOG="logs/ablette_e2_murene2_mae_pretrain_${BATCH_TAG}.log"
-PID="logs/ablette_e2_murene2_mae_pretrain_${BATCH_TAG}.pid"
+LOG="logs/ablette_e2_mae_pretrain_${BATCH_TAG}.log"
+PID="logs/ablette_e2_mae_pretrain_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.pretrain_videomae \
@@ -166,8 +166,8 @@ echo $! > "$PID"
 
 ```bash
 cd "$REPO_ROOT"
-LOG="logs/ablette_e2_murene2_ft_champion_${BATCH_TAG}.log"
-PID="logs/ablette_e2_murene2_ft_champion_${BATCH_TAG}.pid"
+LOG="logs/ablette_e2_ft_champion_${BATCH_TAG}.log"
+PID="logs/ablette_e2_ft_champion_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.train \
@@ -178,21 +178,21 @@ echo $! > "$PID"
 
 ---
 
-# Machine: Sole — E3 `congre` (T=8 end-to-end)
+# Machine: Sole — E3 (T=8 end-to-end)
 
 ## Machine prompt (paste on Sole)
 
-You are on VM **Sole** for **E3 / congre**: MAE + FT at **`num_frames=8`** (pretrain 80 ep, FT 50 ep), gradient checkpointing + `grad_accum_steps=2`. **Start early** (~13 h). Never change T between pretrain, FT, and submit. `nohup` on GPU host only.
+You are on VM **Sole** for **E3**: MAE + FT at **`num_frames=8`** (pretrain 80 ep, FT 50 ep), gradient checkpointing + `grad_accum_steps=2`. **Start early** (~13 h). Never change T between pretrain, FT, and submit. `nohup` on GPU host only.
 
 **Checkpoints:** `congre_encoder.pt`, `congre_ft.pt`  
-**Logs:** `logs/sole_e3_congre_mae_pretrain_t8_${BATCH_TAG}.log`, `logs/sole_e3_congre_ft_champion_t8_${BATCH_TAG}.log`
+**Logs:** `logs/sole_e3_mae_pretrain_t8_${BATCH_TAG}.log`, `logs/sole_e3_ft_champion_t8_${BATCH_TAG}.log`
 
 ### Phase 1 — MAE pretrain T=8 (~8 h)
 
 ```bash
 cd "$REPO_ROOT"
-LOG="logs/sole_e3_congre_mae_pretrain_t8_${BATCH_TAG}.log"
-PID="logs/sole_e3_congre_mae_pretrain_t8_${BATCH_TAG}.pid"
+LOG="logs/sole_e3_mae_pretrain_t8_${BATCH_TAG}.log"
+PID="logs/sole_e3_mae_pretrain_t8_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.pretrain_videomae \
@@ -205,8 +205,8 @@ echo $! > "$PID"
 
 ```bash
 cd "$REPO_ROOT"
-LOG="logs/sole_e3_congre_ft_champion_t8_${BATCH_TAG}.log"
-PID="logs/sole_e3_congre_ft_champion_t8_${BATCH_TAG}.pid"
+LOG="logs/sole_e3_ft_champion_t8_${BATCH_TAG}.log"
+PID="logs/sole_e3_ft_champion_t8_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.train \
@@ -217,25 +217,25 @@ echo $! > "$PID"
 
 ---
 
-# Machine: Truite — E4 `tsm_sgdr` (CNN snapshot ensemble)
+# Machine: Truite — E4 (CNN snapshot ensemble)
 
 ## Machine prompt (paste on Truite)
 
-You are on VM **Truite** for **E4 / tsm_sgdr**: **supervised only** — ResNet-50 + TSM from scratch, **90 epochs**, SGDR (`T_0=30`), snapshots at cycles 1–3. No SSL pretrain. Independent of the live 150-ep Phase-2 run elsewhere. If epoch time > ~9 min and total wall > 14 h, stop and relaunch with `training.epochs=72` (3×24) — note in log. `nohup` on GPU host.
+You are on VM **Truite** for **E4**: **supervised only** — ResNet-50 + TSM from scratch, **90 epochs**, SGDR (`T_0=30`), snapshots at cycles 1–3. No SSL pretrain. Independent of the live 150-ep Phase-2 run elsewhere. If epoch time > ~9 min and total wall > 14 h, stop and relaunch with `training.epochs=72` (3×24) — note in log. `nohup` on GPU host.
 
 **Checkpoints:**
 
 - `checkpoints/track_a/tsm_sgdr_ft.pt` (EMA best)
 - `checkpoints/track_a/tsm_sgdr_ft_snap1.pt`, `_snap2.pt`, `_snap3.pt`
 
-**Log:** `logs/truite_e4_tsm_sgdr_supervised_sgdr90_${BATCH_TAG}.log`
+**Log:** `logs/truite_e4_supervised_sgdr90_${BATCH_TAG}.log`
 
 ### Single phase — supervised train (~overnight)
 
 ```bash
 cd "$REPO_ROOT"
-LOG="logs/truite_e4_tsm_sgdr_supervised_sgdr90_${BATCH_TAG}.log"
-PID="logs/truite_e4_tsm_sgdr_supervised_sgdr90_${BATCH_TAG}.pid"
+LOG="logs/truite_e4_supervised_sgdr90_${BATCH_TAG}.log"
+PID="logs/truite_e4_supervised_sgdr90_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.train \
@@ -249,24 +249,24 @@ echo "Started SGDR train pid=$(cat "$PID") log=$LOG"
 
 ---
 
-# Machine: thon — E5 `silure2` (cRT: 3 phases)
+# Machine: thon — E5 (cRT: 3 phases)
 
 ## Machine prompt (paste on thon)
 
-You are on VM **thon** for **E5 / silure2**: (1) MAE pretrain 100 ep minimal aug → `silure2_encoder.pt`; (2) champion FT **50 ep** instance-balanced → `silure2_ft.pt`; (3) **cRT** 10 ep classifier-only, frozen backbone, `sqrt_inverse` sampler → `silure2_ft_crt.pt`. Launch each phase with `nohup` only after the previous checkpoint exists. GPU host only.
+You are on VM **thon** for **E5**: (1) MAE pretrain 100 ep minimal aug → `silure2_encoder.pt`; (2) champion FT **50 ep** instance-balanced → `silure2_ft.pt`; (3) **cRT** 10 ep classifier-only, frozen backbone, `sqrt_inverse` sampler → `silure2_ft_crt.pt`. Launch each phase with `nohup` only after the previous checkpoint exists. GPU host only.
 
 **Logs:**
 
-- `logs/thon_e5_silure2_mae_pretrain_${BATCH_TAG}.log`
-- `logs/thon_e5_silure2_ft_stage1_rep50_${BATCH_TAG}.log`
-- `logs/thon_e5_silure2_ft_stage2_crt10_${BATCH_TAG}.log`
+- `logs/thon_e5_mae_pretrain_${BATCH_TAG}.log`
+- `logs/thon_e5_ft_stage1_rep50_${BATCH_TAG}.log`
+- `logs/thon_e5_ft_stage2_crt10_${BATCH_TAG}.log`
 
 ### Phase 1 — MAE pretrain (~7 h)
 
 ```bash
 cd "$REPO_ROOT"
-LOG="logs/thon_e5_silure2_mae_pretrain_${BATCH_TAG}.log"
-PID="logs/thon_e5_silure2_mae_pretrain_${BATCH_TAG}.pid"
+LOG="logs/thon_e5_mae_pretrain_${BATCH_TAG}.log"
+PID="logs/thon_e5_mae_pretrain_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.pretrain_videomae \
@@ -281,8 +281,8 @@ echo $! > "$PID"
 
 ```bash
 cd "$REPO_ROOT"
-LOG="logs/thon_e5_silure2_ft_stage1_rep50_${BATCH_TAG}.log"
-PID="logs/thon_e5_silure2_ft_stage1_rep50_${BATCH_TAG}.pid"
+LOG="logs/thon_e5_ft_stage1_rep50_${BATCH_TAG}.log"
+PID="logs/thon_e5_ft_stage1_rep50_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.train \
@@ -298,8 +298,8 @@ Stage 2 **resumes** that file, freezes encoder + attentive pool, writes **`silur
 
 ```bash
 cd "$REPO_ROOT"
-LOG="logs/thon_e5_silure2_ft_stage2_crt10_${BATCH_TAG}.log"
-PID="logs/thon_e5_silure2_ft_stage2_crt10_${BATCH_TAG}.pid"
+LOG="logs/thon_e5_ft_stage2_crt10_${BATCH_TAG}.log"
+PID="logs/thon_e5_ft_stage2_crt10_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.train \
@@ -312,21 +312,21 @@ echo $! > "$PID"
 
 ---
 
-# Machine: Roussette — E6 `dorade` (FT @256)
+# Machine: Roussette — E6 (FT @256)
 
 ## Machine prompt (paste on Roussette)
 
-You are on VM **Roussette** for **E6 / dorade**: MAE pretrain @224 (100 ep, same as E1), then FT @**256** with `interpolate_pos_embed=true`, lighter reg (`drop_path=0.1`, `dropout=0.0`), 50 FT epochs. `nohup` on GPU host.
+You are on VM **Roussette** for **E6**: MAE pretrain @224 (100 ep, same as E1), then FT @**256** with `interpolate_pos_embed=true`, lighter reg (`drop_path=0.1`, `dropout=0.0`), 50 FT epochs. `nohup` on GPU host.
 
 **Checkpoints:** `dorade_encoder.pt`, `dorade_ft.pt`  
-**Logs:** `logs/roussette_e6_dorade_mae_pretrain_224_${BATCH_TAG}.log`, `logs/roussette_e6_dorade_ft_champion_256_${BATCH_TAG}.log`
+**Logs:** `logs/roussette_e6_mae_pretrain_224_${BATCH_TAG}.log`, `logs/roussette_e6_ft_champion_256_${BATCH_TAG}.log`
 
 ### Phase 1 — MAE pretrain @224 (~7 h)
 
 ```bash
 cd "$REPO_ROOT"
-LOG="logs/roussette_e6_dorade_mae_pretrain_224_${BATCH_TAG}.log"
-PID="logs/roussette_e6_dorade_mae_pretrain_224_${BATCH_TAG}.pid"
+LOG="logs/roussette_e6_mae_pretrain_224_${BATCH_TAG}.log"
+PID="logs/roussette_e6_mae_pretrain_224_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.pretrain_videomae \
@@ -339,8 +339,8 @@ echo $! > "$PID"
 
 ```bash
 cd "$REPO_ROOT"
-LOG="logs/roussette_e6_dorade_ft_champion_256_${BATCH_TAG}.log"
-PID="logs/roussette_e6_dorade_ft_champion_256_${BATCH_TAG}.pid"
+LOG="logs/roussette_e6_ft_champion_256_${BATCH_TAG}.log"
+PID="logs/roussette_e6_ft_champion_256_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.train \
@@ -353,21 +353,21 @@ echo $! > "$PID"
 
 ---
 
-# Machine: Raie — E7 `lamproie` (cosine mask schedule)
+# Machine: Raie — E7 (cosine mask schedule)
 
 ## Machine prompt (paste on Raie)
 
-You are on VM **Raie** for **E7 / lamproie**: MAE pretrain **150 ep** with cosine mask ratio **0.90 → 0.75**, minimal aug, then champion FT 60 ep. **Start early** (~13–14 h). `nohup` on GPU host only.
+You are on VM **Raie** for **E7**: MAE pretrain **150 ep** with cosine mask ratio **0.90 → 0.75**, minimal aug, then champion FT 60 ep. **Start early** (~13–14 h). `nohup` on GPU host only.
 
 **Checkpoints:** `lamproie_encoder.pt`, `lamproie_ft.pt`  
-**Logs:** `logs/raie_e7_lamproie_mae_pretrain_masksched_${BATCH_TAG}.log`, `logs/raie_e7_lamproie_ft_champion_${BATCH_TAG}.log`
+**Logs:** `logs/raie_e7_mae_pretrain_masksched_${BATCH_TAG}.log`, `logs/raie_e7_ft_champion_${BATCH_TAG}.log`
 
 ### Phase 1 — MAE pretrain with mask schedule (~8–9 h)
 
 ```bash
 cd "$REPO_ROOT"
-LOG="logs/raie_e7_lamproie_mae_pretrain_masksched_${BATCH_TAG}.log"
-PID="logs/raie_e7_lamproie_mae_pretrain_masksched_${BATCH_TAG}.pid"
+LOG="logs/raie_e7_mae_pretrain_masksched_${BATCH_TAG}.log"
+PID="logs/raie_e7_mae_pretrain_masksched_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.pretrain_videomae \
@@ -382,8 +382,8 @@ echo $! > "$PID"
 
 ```bash
 cd "$REPO_ROOT"
-LOG="logs/raie_e7_lamproie_ft_champion_${BATCH_TAG}.log"
-PID="logs/raie_e7_lamproie_ft_champion_${BATCH_TAG}.pid"
+LOG="logs/raie_e7_ft_champion_${BATCH_TAG}.log"
+PID="logs/raie_e7_ft_champion_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
   "$PY" -u -m smth2smth.pipelines.train \
@@ -400,8 +400,8 @@ If you prefer **one** background shell that runs pretrain then FT (still `nohup`
 
 ```bash
 cd "$REPO_ROOT"
-LOG="logs/anchois_e1_requin_chain_${BATCH_TAG}.log"
-PID="logs/anchois_e1_requin_chain_${BATCH_TAG}.pid"
+LOG="logs/anchois_e1_chain_${BATCH_TAG}.log"
+PID="logs/anchois_e1_chain_${BATCH_TAG}.pid"
 
 nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src bash -c '
   set -euo pipefail
