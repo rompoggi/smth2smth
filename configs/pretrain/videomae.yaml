@@ -17,7 +17,8 @@ pretrain:
 
   # Masking
   mask_ratio: 0.75           # 75% tube masking (90% is Kinetics; T=4 needs less)
-  norm_pix: true             # per-cube pixel normalisation for target
+  norm_pix: true             # per-cube pixel normalisation (ViT pixel target)
+  norm_feat: true            # per-cell feature normalisation (ResNet feature target)
 
   # Encoder drop path during pretraining (keep 0 for stability)
   drop_path_rate: 0.0
