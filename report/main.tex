@@ -125,6 +125,7 @@ runs. All pipeline changes default to off unless enabled in Hydra.
 \renewcommand{\trackname}{Report}
 
 \section{Conclusion}
+\label{sec:conclusion}
 
 \textbf{Track~A.} The pipeline foundations work removes silent correctness
 issues that inflated validation scores and establishes a reliable training
@@ -144,6 +145,17 @@ chronological runs.
 
 All changes are opt-in via Hydra; legacy checkpoints and entry points remain
 compatible where tested.
+
+\clearpage
+\appendix
+% Track A accent again for the inventory appendix (audit is Track-A scope).
+\renewcommand{\trackcolor}{trackred}
+\renewcommand{\trackname}{Track~A appendix}
+\input{track_a_inventory}
+\clearpage
+% Reset to neutral for the bibliography.
+\renewcommand{\trackcolor}{black}
+\renewcommand{\trackname}{Report}
 
 \begin{thebibliography}{9}
 

@@ -217,6 +217,42 @@
 \@writefile{toc}{\contentsline {paragraph}{Dependencies.}{30}{section*.69}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Experiment preset.}{30}{section*.70}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Caveats.}{30}{section*.71}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {11}Conclusion}{31}{section.11}\protected@file@percent }
+\newlabel{sec:conclusion}{{11}{31}{Conclusion}{section.11}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Inventory, Verification, and Recommendations}{32}{appendix.A}\protected@file@percent }
+\newlabel{sec:tracka:inventory}{{A}{32}{Inventory, Verification, and Recommendations}{appendix.A}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.1}Executive summary}{32}{subsection.A.1}\protected@file@percent }
+\newlabel{sec:tracka:inventory:summary}{{A.1}{32}{Executive summary}{subsection.A.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.2}Inventory by family}{32}{subsection.A.2}\protected@file@percent }
+\newlabel{sec:tracka:inventory:table}{{A.2}{32}{Inventory by family}{subsection.A.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Config drift.}{32}{section*.72}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces One row per distinct training job (not per epoch). Honest val means \texttt  {\small  dataset.use\_official\_val}\,=\,\texttt  {\small  true} with no \texttt  {\small  dataset.include\_val\_in\_train} override.}}{33}{table.6}\protected@file@percent }
+\newlabel{tab:tracka:inventory}{{6}{33}{One row per distinct training job (not per epoch). Honest val means \cfgkey {dataset.use\_official\_val}\,=\,\code {true} with no \cfgkey {dataset.include\_val\_in\_train} override}{table.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.3}Phase\nobreakspace  {}2 single-stream long-budget rerun --- current best path}{33}{subsection.A.3}\protected@file@percent }
+\newlabel{sec:tracka:inventory:phase2-150ep}{{A.3}{33}{Phase~2 single-stream long-budget rerun --- current best path}{subsection.A.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{What the run is.}{33}{section*.73}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Status.}{33}{section*.74}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Side-by-side with other best candidates.}{33}{table.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Why this recipe wins.}{33}{section*.76}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Knobs that differ across the four strongest Track-A candidates. Honest val from per-run logs. Public-only column from Kaggle submissions where available.}}{34}{table.7}\protected@file@percent }
+\newlabel{tab:tracka:inventory:phase2-150ep:knobs}{{7}{34}{Knobs that differ across the four strongest Track-A candidates. Honest val from per-run logs. Public-only column from Kaggle submissions where available}{table.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{Risks specific to this recipe.}{34}{section*.77}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.4}Per-family code verification}{35}{subsection.A.4}\protected@file@percent }
+\newlabel{sec:tracka:inventory:verification}{{A.4}{35}{Per-family code verification}{subsection.A.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{Dual-stream RGB+frame-diff TSM.}{35}{section*.78}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Supervised \texttt  {video\_mae\_vit} from scratch.}{35}{section*.79}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{VideoMAE SSL pretrain.}{35}{section*.80}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{VideoMAE SSL fine-tune via \texttt  {\small  model.init\_from}.}{35}{section*.81}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Submit pipeline.}{35}{section*.82}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Legacy DINO / V-JEPA.}{35}{section*.83}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Per-family action. Justification ties to competition rules in \texttt  {\small  docs/track\_a\_desc.txt} (closed world, top-1 evaluation) and on-disk honest val.}}{36}{table.8}\protected@file@percent }
+\newlabel{tab:tracka:inventory:recs}{{8}{36}{Per-family action. Justification ties to competition rules in \file {docs/track\_a\_desc.txt} (closed world, top-1 evaluation) and on-disk honest val}{table.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.5}Recommendations}{36}{subsection.A.5}\protected@file@percent }
+\newlabel{sec:tracka:inventory:recs}{{A.5}{36}{Recommendations}{subsection.A.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{Ranked top-3 actionable next runs.}{36}{section*.84}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Ensembling note.}{37}{section*.85}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.6}Open risks and missing logs}{37}{subsection.A.6}\protected@file@percent }
+\newlabel{sec:tracka:inventory:risks}{{A.6}{37}{Open risks and missing logs}{subsection.A.6}{}}
 \bibcite{HeICCV2015}{1}
 \bibcite{Huang2016SD}{2}
 \bibcite{Caron2021DINO}{3}
@@ -227,5 +263,4 @@
 \bibcite{Assran2025VJEPA2}{8}
 \bibcite{Cui2019CB}{9}
 \bibcite{Menon2021LA}{10}
-\@writefile{toc}{\contentsline {section}{\numberline {11}Conclusion}{31}{section.11}\protected@file@percent }
-\gdef \@abspage@last{31}
+\gdef \@abspage@last{38}

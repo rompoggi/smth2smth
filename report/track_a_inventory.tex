@@ -1,0 +1,558 @@
+% =====================================================================
+% Track A — method inventory, verification, and recommendations.
+%
+% Read-only audit over docs/track_a_desc.txt, experiments.md, SSL.md,
+% report/track_a.tex, configs/experiment/, logs/, checkpoints/, and
+% submissions/.  Cross-references the methods write-up in track_a.tex
+% rather than duplicating Phase 1--4 prose.
+%
+% \input{}-ed from report/main.tex after \input{track_a}.
+% =====================================================================
+
+\section{Inventory, Verification, and Recommendations}
+\label{sec:tracka:inventory}
+
+\subsection{Executive summary}
+\label{sec:tracka:inventory:summary}
+
+\begin{itemize}[leftmargin=2em]
+\item \textbf{Best public Track-A submission to date}: a Phase-2
+   single-stream \texttt{avanced\_resnet50\_tsm} run from scratch under
+   \file{configs/experiment/track\_a\_phase2.yaml} with a 150-epoch
+   cosine schedule, attentive head, EMA, and multi-scale flip-TTA at
+   submit reached \(\mathbf{\approx 42\,\%}\) public Top-1 on an earlier
+   run whose checkpoint was lost.  The active rerun
+   \file{logs/trackA\_phase2\_randaugT\_attn\_dropPath0.1\_adamw\_ema\_amp\_4frames\_officialVal\_ep150\_20260516.log}
+   is at epoch~38/150 with EMA val \(0.3936\) and climbing monotonically;
+   see \S\ref{sec:tracka:inventory:phase2-150ep}.  This recipe supersedes
+   the dual-stream Run~A1b (EMA val \(39.47\,\%\), public \(37.69\,\%\))
+   as the leading single-model path.
+\item \textbf{Best on-disk honest val from the VideoMAE SSL sweep}:
+   \emph{piranha} \(\mathbf{35.60\,\%}\) EMA (40 FT epochs, ep~32), then
+   \emph{rouget} \(34.96\,\%\) (Phase~2a honest), \emph{raie}
+   \(34.80\,\%\) (6-head probe), \emph{roussette} \(33.61\,\%\). \textbf{None
+   have been submitted.}  Honest val here means
+   \cfgkey{dataset.use\_official\_val}\,=\,\code{true} \emph{and} the
+   absence of any \cfgkey{dataset.include\_val\_in\_train} override,
+   verified from each finetune log.
+\item \textbf{Only Kaggle SSL data point}: \emph{rouget} \(36.0\,\%\)
+   public from \file{rouget\_ft.pt} \emph{after} Phase~2b
+   (leaky: train+val labels both in training).  Aligns with the Phase~2a
+   honest val of \(34.96\,\%\), not the inflated \(\sim 60\,\%\) Phase~2b
+   internal --- training on validation \emph{did not} beat the dual-stream
+   submission (\S\ref{sec:tracka:runlog}).
+\item \textbf{Supervised \texttt{video\_mae\_vit} from scratch}: every
+   variant (\emph{truite}, \emph{sardine}, \emph{truite AP},
+   \emph{rouget}, \emph{roussette}, \emph{raie}) plateaued at
+   \(\le 6\,\%\) val on \(\sim 45\,\)k labelled clips
+   (\S\ref{sec:tracka:vit-from-scratch-verdict}).  The audit confirms the
+   verdict: no further runs in this family are warranted.
+\item \textbf{Local checkpoint asymmetry}: only
+   \file{checkpoints/track\_a/ssl/rouget\_encoder.pt} and the leaky
+   \file{rouget\_ft.pt} are present on this VM.  The piranha / raie /
+   roussette / truite encoders and FT weights referenced by
+   \file{experiments.md} live on the producing VMs and must be retrieved
+   before any submission.  The Run~A1b checkpoint
+   \file{dual\_stream\_long\_class\_boost\_lr1\_20260515\_025557.pt} is
+   likewise absent from \file{checkpoints/track\_a/}; the current
+   \file{best\_model.pt} (\(\sim 1\,\)GiB, dated 15~May 23:37) is
+   consistent in size with the dual-stream model but its identity must
+   be confirmed prior to any resubmission.
+\item \textbf{Multi-scale TTA caveat for VideoMAE}: \file{submit.py}'s
+   \code{\_rescale\_video} bilinearly resizes spatial dims, but
+   \code{PatchEmbed3D} requires \code{H \% patch\_size == 0}
+   (\file{video\_mae.py} line~65).  For \texttt{patch\_size=16} and
+   \texttt{image\_size=224}, scales like \(0.875\) (\(\to 196\)) or
+   \(1.125\) (\(\to 252\)) yield non-divisible sides and crash the patch
+   embedding.  \emph{Multi-scale TTA is therefore not safe with VideoMAE
+   ViT} unless restricted to scales producing patch-divisible sides
+   (e.g.\ \(192/224 \approx 0.857\), \(256/224 \approx 1.143\)).  Rouget
+   was correctly submitted with \cfgkey{training.tta\_scales}\,=\,\code{[1.0]}.
+\item \textbf{Top recommendation}: mirror the Phase-2 150-epoch
+   single-stream best-EMA checkpoint (file path in
+   \S\ref{sec:tracka:inventory:phase2-150ep}, on Thomas's VM under
+   \file{/Data/thomas.turkieh/.../checkpoints/track\_a/}) to this VM
+   every few epochs so the \(\sim 42\,\%\) recipe survives a host loss
+   this time, let the run finish 150 epochs, and submit with
+   \cfgkey{training.tta\_scales}\,=\,\code{[0.875,\,1.0,\,1.125]} and
+   flip-TTA.  After that, retrieve and submit \emph{piranha} (highest
+   SSL honest val) with flip-TTA only; rerun \emph{rouget} Phase~2a;
+   complete \emph{truite} Phase~2.  Softmax-average the Phase-2
+   single-stream output with \emph{piranha} for the final submission.
+\end{itemize}
+
+\subsection{Inventory by family}
+\label{sec:tracka:inventory:table}
+
+\begin{table}[ht]
+\centering\footnotesize
+\caption{One row per distinct training job (not per epoch).  Honest val
+means \cfgkey{dataset.use\_official\_val}\,=\,\code{true} with no
+\cfgkey{dataset.include\_val\_in\_train} override.}
+\label{tab:tracka:inventory}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}l l l c r l@{}}
+\toprule
+\textbf{ID} & \textbf{Family} & \textbf{Preset (\texttt{experiment=})} &
+\textbf{Status} & \textbf{Honest val (\(\%\))} & \textbf{Public (\(\%\))} \\
+\midrule
+P2-150 (prior) & Single-stream R50+TSM, 150 ep & \texttt{track\_a\_phase2} & DONE (lost ckpt) & --          & \(\mathbf{\approx 42}\) (lost run) \\
+P2-150 (rerun) & Single-stream R50+TSM, 150 ep & \texttt{track\_a\_phase2} & RUNNING ep38/150 & \(\ge\)39.36 (ema, climbing) & pending \\
+A1   & Dual-stream TSM       & \texttt{track\_a\_dual\_stream\_long\_class\_boost} & STOPPED ep16  & 31.79 (ema) & --    \\
+A1b  & Dual-stream TSM (resume) & \texttt{...long\_class\_boost}, \texttt{lr}=1.2e-4 & DONE          & 39.47 (ema) & 37.69 \\
+A2   & ViT-B MP from scratch & \texttt{track\_a\_vit\_truite}                     & FAILED        & 5.41 (ema)  & --    \\
+A3   & ViT-S MP from scratch & \texttt{track\_a\_vit\_sardine}                    & STOPPED ep3   & 6.15 (live) & --    \\
+A4   & ViT-B AP from scratch & \texttt{track\_a\_vit\_truite\_ap}                  & STOPPED       & 6.08 (live) & --    \\
+--   & ViT-B + boosting      & \texttt{track\_a\_vit\_rouget}                     & FAILED (NaN)  & 5.59 (ema)  & --    \\
+--   & ViT-B + balancing     & \texttt{track\_a\_vit\_roussette}                  & EARLY STOP    & 5.23 (ema)  & --    \\
+--   & ViT-B + both          & \texttt{track\_a\_vit\_raie}                       & FAILED        & 6.00 (ema)  & --    \\
+SSL-9  & VideoMAE pretrain (ViT-S)  & \texttt{track\_a\_ssl\_pretrain\_truite}      & PRETRAIN ONLY & --          & --    \\
+SSL-9  & VideoMAE FT (ViT-S, 4-h)   & \texttt{track\_a\_ssl\_finetune\_truite}      & NOT RUN       & --          & --    \\
+SSL-10 & VideoMAE pretrain (ViT-S)  & \texttt{track\_a\_ssl\_pretrain\_roussette}   & DONE          & --          & --    \\
+SSL-10 & VideoMAE FT (ViT-S, 4-h)   & \texttt{track\_a\_ssl\_finetune\_roussette}   & DONE          & 33.61 (ema, ep27) & -- \\
+SSL-11 & VideoMAE long MAE (200 ep) & \texttt{track\_a\_ssl\_pretrain\_rouget}      & DONE          & --          & --    \\
+SSL-11a& VideoMAE FT honest 30 ep   & \texttt{track\_a\_ssl\_finetune\_rouget}      & DONE          & \textbf{34.96} (ema, ep30) & --    \\
+SSL-11b& VideoMAE FT + val in train & \texttt{...\_finetune\_rouget} + CLI override & STOPPED ep44/60 & \(\sim 60\) (leaky) & \textbf{36.0} \\
+SSL-12 & VideoMAE pretrain (ViT-S)  & \texttt{track\_a\_ssl\_pretrain\_raie}        & DONE (retry)  & --          & --    \\
+SSL-12 & VideoMAE FT (ViT-S, 6-h)   & \texttt{track\_a\_ssl\_finetune\_raie}        & DONE          & 34.80 (ema, ep29) & --    \\
+SSL-13 & VideoMAE FT 8-h (planned)  & \texttt{track\_a\_ssl\_finetune\_sole}        & NOT RUN       & --          & --    \\
+SSL-14 & VideoMAE mask 0.85 (plan)  & \texttt{track\_a\_ssl\_pretrain\_thon}        & NOT RUN       & --          & --    \\
+SSL-15 & VideoMAE pretrain (ViT-S)  & \texttt{track\_a\_ssl\_pretrain\_piranha}     & DONE          & --          & --    \\
+SSL-15 & VideoMAE FT 40 ep          & \texttt{track\_a\_ssl\_finetune\_piranha}     & DONE          & \textbf{35.60} (ema, ep32) & --    \\
+SSL-16 & VideoMAE \texttt{lr}=3e-4  & \texttt{track\_a\_ssl\_pretrain\_murene}      & NOT RUN (quota) & --        & --    \\
+DINO   & DINO on still frames       & \texttt{track\_a\_ssl\_pretrain.yaml}         & DEPRECATED    & inconsistent & --   \\
+V-JEPA & V-JEPA clip SSL $\to$ CNN  & \texttt{track\_a\_vjepa\_pretrain/finetune}   & LEGACY        & --          & --    \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\paragraph{Config drift.}  Notable deviations from YAML / \file{SSL.md} that
+remain in the audit trail:
+\begin{itemize}[leftmargin=2em]
+\item \textbf{SSL-10 roussette pretrain}: resolved \texttt{seed}=42 in the log
+   vs.\ YAML 123 (root \texttt{config.yaml} likely overrode the
+   experiment); CLI \texttt{pretrain.batch\_size}=8 vs YAML 16.
+\item \textbf{SSL-11b rouget finetune trainval}: deliberate CLI
+   \cfgkey{dataset.include\_val\_in\_train}\,=\,\code{true} resume from
+   the Phase~2a \texttt{*.last.pt}; this is the source of the
+   \(\sim 60\,\%\) leaky val and overwrites
+   \file{rouget\_ft.pt}, so the Phase~2a honest checkpoint is no longer
+   recoverable without a rerun.
+\item \textbf{SSL-12 raie pretrain}: first attempt crashed with
+   \texttt{scatter\_} dtype mismatch under bf16 AMP (decoder mask token
+   was fp32 while encoder output was bf16); fixed in
+   \file{src/smth2smth/shared/models/video\_mae.py} lines~438--447 by
+   casting \texttt{mask\_token} to \texttt{tokens.dtype} before
+   \texttt{scatter\_}.  Second attempt completed without incident.
+\item \textbf{Chained launchers}: \texttt{chain\_raie.sh},
+   \texttt{ssl\_rouget\_chain.log}, and the piranha pipeline outer log
+   chained pretrain and finetune in a single \texttt{nohup}, vs the
+   two-step recipe in \file{SSL.md} \S4.  Hydra payloads otherwise match
+   the YAMLs.
+\end{itemize}
+
+\subsection{Phase~2 single-stream long-budget rerun --- current best path}
+\label{sec:tracka:inventory:phase2-150ep}
+
+\paragraph{What the run is.}  Preset
+\file{configs/experiment/track\_a\_phase2.yaml} on
+\texttt{avanced\_resnet50\_tsm} (R50 with TSM channel shift inserted in
+every bottleneck's \texttt{conv1}, \texttt{shift\_div=8},
+\texttt{shift\_place=blockres}), trained \emph{from scratch}
+(\cfgkey{model.init\_from}\,=\,\code{null}, no SSL warm-start), 4
+frames, image size 224, official val.  Optimiser AdamW, \texttt{lr}=1e-4,
+\texttt{wd}=0.05, cosine schedule with 10-epoch linear warmup and
+\texttt{min\_lr}=1e-6 over a 150-epoch budget; early-stopping patience
+25.  Attentive head with 4 heads, \texttt{drop\_path\_rate}=0.1,
+\texttt{dropout}=0.5, \texttt{label\_smoothing}=0.1,
+\texttt{videomix\_mode}=\texttt{frame\_mixup} (\(\alpha=5.0\),
+\(p=0.5\)), AMP fp16, EMA decay 0.999 with both live and EMA evaluated
+each epoch.  RandAugment-T (\(n=2\), \(m=9\),
+\texttt{temporal\_plus}) with \texttt{random\_horizontal\_flip}=\code{true}
+and \texttt{random\_crop} padding 32.  At submit time, multi-scale TTA
+\texttt{tta\_scales}=\texttt{[0.875, 1.0, 1.125]}, flip with auto
+left/right pair remap, no logit-adjust.
+
+\paragraph{Status.}  Run still in progress: at epoch~38/150 the log
+shows train loss \(2.27\) (top-1 0.4427), val \(0.3629\) live and
+\textbf{EMA val \(0.3936\)} (top-5 0.7420).  The previous run with this
+recipe scored \(\approx 42\,\%\) public Top-1 on Kaggle but its
+checkpoint was lost; the live rerun targets the same end-point.
+Active checkpoint path (on Thomas's host, \emph{not} mirrored on this
+VM yet):
+
+\begin{quote}\footnotesize\ttfamily\raggedright
+/Data/thomas.turkieh/smth2smth/checkpoints/\\
+track\_a/trackA\_phase2\_randaugT\_attn\_dropPath0.1\_\\
+adamw\_ema\_amp\_4frames\_officialVal\_ep150\_\\
+20260516\_best.pt
+\end{quote}
+
+\paragraph{Side-by-side with other best candidates.}
+
+\begin{table}[ht]
+\centering\footnotesize
+\caption{Knobs that differ across the four strongest Track-A
+candidates.  Honest val from per-run logs.  Public-only column from
+Kaggle submissions where available.}
+\label{tab:tracka:inventory:phase2-150ep:knobs}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}l l l l l@{}}
+\toprule
+\textbf{Knob} & \textbf{Phase~2 R50+TSM 150ep} &
+\textbf{Dual-stream A1b} & \textbf{SSL piranha} &
+\textbf{SSL rouget 2b (leaky)} \\
+\midrule
+Backbone           & R50 + TSM (1-stream)   & R50 RGB + R34 diff + fuse & ViT-S (VideoMAE) & ViT-S (VideoMAE long-MAE) \\
+Frames             & 4                      & 4                       & 4                & 4 \\
+Head               & attn, 4h               & attn, 4h                & attn, 4h         & attn, 4h \\
+Optimiser / LR     & AdamW / 1e-4           & AdamW / 1.2e-4, m\_r=0.3 & AdamW / 2e-4    & AdamW / 2e-4 \\
+Weight decay       & 0.05                   & 0.05                    & 0.05             & 0.05 \\
+Epoch budget       & \textbf{150}           & 80 (early-stop ep39)    & 40 FT (+100 SSL) & 30+14 (2a + leaky 2b) \\
+Warmup / min lr    & 10 / 1e-6              & 6 / 1e-6                & 5 / 1e-6         & 5 / 1e-6 \\
+Patience           & 25                     & 3                       & 15               & 15 \\
+AMP / EMA decay    & fp16 / 0.999           & bf16 / 0.999            & bf16 / 0.9999    & bf16 / 0.9999 \\
+\texttt{drop\_path}/\texttt{dropout} & 0.1 / 0.5 & 0.1 / 0.0          & 0.1 / 0.0        & 0.1 / 0.0 \\
+RandAugment-T      & \(n=2\), \(m=9\)       & \(n=2\), \(m=9\)        & \(n=4\), \(m=7\) & \(n=4\), \(m=7\) \\
+\texttt{horizontal\_flip} & \textbf{true}   & true                    & \textbf{false}   & \textbf{false} \\
+videomix           & \texttt{frame\_mixup}, \(\alpha=5\) & \texttt{frame\_mixup}, \(\alpha=5\) & \texttt{cube\_cutmix}, \(\alpha=1\) & \texttt{cube\_cutmix}, \(\alpha=1\) \\
+\texttt{label\_smoothing} & 0.1             & 0.1                     & 0.1              & 0.1 \\
+\texttt{class\_boosting}  & off             & \textbf{on}             & off              & off \\
+\texttt{class\_balance\_*}& none / none     & none / none             & none / none      & none / none \\
+\texttt{init\_from}       & \textbf{null} (from scratch) & null (silent skip) & piranha\_enc & rouget\_enc \\
+\texttt{tta\_scales}      & \textbf{[0.875, 1.0, 1.125]} & [1.0]      & [1.0] (must)     & [1.0] (must) \\
+\texttt{tta\_flip} + L/R remap & on         & on                      & on               & on \\
+\texttt{tta\_logit\_adjust}    & 0.0        & 0.0                     & 0.0              & 0.0 \\
+\midrule
+Honest val Top-1   & \(\ge\) 0.3936 (ep~38, climbing) & \(\mathbf{0.3947}\) (ep~39) & 0.3560 (ep~32) & \(\sim 0.60\) (leaky) \\
+Public Top-1       & \(\approx 0.42\) (lost run) & \(\mathbf{0.3769}\) & --              & 0.360 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\paragraph{Why this recipe wins.}  Ordered by likely impact.
+
+\begin{enumerate}[leftmargin=*]
+\item \textbf{150-epoch budget with patience 25.}  The dual-stream A1b
+   ran the same data stack (frame\_mixup, RandAugment-T, official val,
+   AMP, EMA) but early-stopped at epoch~39 with patience~3.  Phase~2
+   keeps the cosine running from 1e-4 down to 1e-6 over a full
+   150-epoch window, and the EMA accumulates real gain in the
+   late-cosine phase: the log shows monotonic climbs of about
+   \(+0.6\)\,pp every 3--4 epochs in the 0.30--0.39 band, with no early
+   stall.  Truncated at patience~3 this run would have died near
+   \(\sim 32\,\%\) like A1 did, not \(\sim 42\,\%\).
+\item \textbf{CNN + TSM inductive bias at \(\sim 45\,\)k labelled clips.}
+   Confirmed by \S\ref{sec:tracka:vit-from-scratch-verdict}: ViT-B from
+   random init plateaus at \(\le 6\,\%\) val.  TSM channel-shift in
+   every bottleneck \texttt{conv1} gives temporal context for free with
+   no extra parameters.  SSL VideoMAE-ViT recovers part of this
+   (piranha \(35.6\,\%\) honest val), but at 4 frames and 45\,k clips a
+   long-trained CNN still beats it.
+\item \textbf{Multi-scale TTA \texttt{[0.875, 1.0, 1.125]} is safe for
+   this CNN but not for the SSL ViT.}  As recorded in
+   \S\ref{sec:tracka:inventory:verification}, \texttt{PatchEmbed3D}
+   requires \(H \bmod 16 = 0\); \(0.875 \times 224 = 196\) and \(1.125
+   \times 224 = 252\) are not patch-divisible, so the SSL fish runs
+   must submit with \texttt{[1.0]} only.  A fully-convolutional R50 has
+   no such constraint, and this asymmetry alone is typically worth
+   \(\sim 0.5\)--\(1.5\,\)pp public Top-1.
+\item \textbf{Regularisation stack that actually has time to pay off.}
+   \texttt{drop\_path}=0.1 (linearly scaled) \(+\) \texttt{dropout}=0.5
+   \(+\) \texttt{label\_smoothing}=0.1 \(+\) frame\_mixup \(\alpha\)=5.0
+   \(+\) RandAugment-T \(+\) EMA 0.999 \(+\) AMP all compose
+   coherently.  Dual-stream A1b runs the same stack minus
+   \texttt{dropout} (it is 0 there) but for only 39 epochs.  SSL piranha
+   runs with \texttt{dropout}=0 and 40 FT epochs.  Phase~2 is the only
+   candidate that pays the regularisation tax \emph{and} trains long
+   enough to claim the credit.
+\item \textbf{\texttt{random\_horizontal\_flip}=\code{true} is safe here
+   because of the submit-time pair remap.}  The auto-derived 018\,\(\leftrightarrow\)\,019
+   permutation
+   (\file{src/smth2smth/pipelines/submit.py} lines 213--268) re-aligns
+   the flipped softmax for direction-sensitive classes; for the
+   majority of classes flipping is label-preserving and acts as a free
+   2\(\times\) augmentation.  The SSL ViT runs play conservative
+   (\texttt{horizontal\_flip}=\code{false}) and forgo this win.
+\item \textbf{Simpler long-tail handling.}  No
+   \texttt{class\_balance\_sampler}, no \texttt{class\_balance\_loss},
+   no \texttt{class\_boosting}, no time-reversal, no logit-adjust.
+   Three of the failed supervised ViT runs (rouget / roussette / raie)
+   bolted these on and still plateaued at \(\le 6\,\%\); the dual-stream
+   A1b had \texttt{class\_boosting} on but it is hard to credit it for
+   the 39.47\,\% honest val given the very tight early-stop.
+   \texttt{frame\_mixup} \(+\) \texttt{label\_smoothing} \(+\) cosine
+   over 150 epochs gives a softer-but-stronger version of the same
+   long-tail correction without an explicit class weight.
+\end{enumerate}
+
+\paragraph{Risks specific to this recipe.}
+
+\begin{itemize}[leftmargin=2em]
+\item Checkpoint lives only on Thomas's VM
+   (\file{/Data/thomas.turkieh/.../*\_best.pt}); a single host loss
+   already cost us the \(\sim 42\,\%\) once.  Mirror the
+   \texttt{*\_best.pt} to
+   \file{/Data/romain.poggi/smth2smth/checkpoints/track\_a/archive/}
+   every 10 epochs while the rerun is alive.
+\item The auto pair remap is keyed on class folder names containing
+   \texttt{from\_left\_to\_right} / \texttt{from\_right\_to\_left}.  If
+   the dataset layout drifts, the remap silently becomes identity and
+   \texttt{horizontal\_flip} starts producing wrong labels.  Verify the
+   \texttt{[tta] flip-pair remap: ...} line at submit time lists at
+   least one pair.
+\item \texttt{num\_classes} in the log is 33 (the legacy on-disk class
+   count); the embedded
+   \texttt{trained\_class\_indices} should be checked against the
+   actual 50-class submission head before the final submit.
+\end{itemize}
+
+\subsection{Per-family code verification}
+\label{sec:tracka:inventory:verification}
+
+\paragraph{Dual-stream RGB+frame-diff TSM.}  Code:
+\file{src/smth2smth/shared/models/dual\_stream\_rgb\_diff\_tsm.py};
+per-backbone LR groups in
+\file{src/smth2smth/pipelines/train.py} (lines~489--497 and the optimiser
+construction below).  \textbf{Status: OK, validated end-to-end on
+Kaggle.}  Pitfalls: \cfgkey{model.init\_from} is silently skipped for
+\texttt{dual\_stream\_rgb\_diff\_tsm} (\file{train.py} lines~412--416), so
+attempts to warm-start the dual-stream from any SSL trunk are a no-op
+without warning at submit time.  The exact A1b checkpoint name in the
+log is not on disk locally; verify
+\file{checkpoints/track\_a/best\_model.pt} before resubmission.
+
+\paragraph{Supervised \texttt{video\_mae\_vit} from scratch.}  Code:
+\file{src/smth2smth/shared/models/video\_mae.py} (\texttt{VideoMAEViT},
+\texttt{build\_video\_mae\_vit}); builder routes by
+\texttt{cfg.model.variant} \(\in\{\texttt{vit\_s}, \texttt{vit\_b},
+\texttt{vit\_l}\}\) and \texttt{cfg.model.head}
+\(\in\{\texttt{mean}, \texttt{attn}\}\).  \textbf{Status: code is fine;
+training family is dead at this dataset scale} --- see
+\S\ref{sec:tracka:vit-from-scratch-verdict}.  Six logs in the audit
+plateau at \(\le 6\,\%\) val.
+
+\paragraph{VideoMAE SSL pretrain.}  Code:
+\file{src/smth2smth/pipelines/pretrain\_videomae.py}; tube mask 0.75 by
+default, AdamW \((0.9, 0.95)\) wd 0.05, bf16 AMP, cosine LR with linear
+warmup, encoder-only checkpoint saved every epoch with the
+\code{encoder.*} prefix (rewritten in place).  \textbf{Status: OK after
+the bf16 \texttt{scatter\_} fix.}  Loss schedule across slots
+(\(0.85 \to 0.25\) at 100 ep, \(0.234\) at 200 ep for \emph{rouget}) is
+consistent with the reference implementation; \texttt{wrote encoder
+checkpoint -> ... (149 tensors)} on completion.
+
+\paragraph{VideoMAE SSL fine-tune via \cfgkey{model.init\_from}.}  Code:
+\file{src/smth2smth/pipelines/train.py} lines~428--441 specialises the
+load for \texttt{video\_mae\_vit}: the trunk dict already has
+\code{encoder.*} keys, so it is loaded \texttt{strict=False} \emph{without}
+the ResNet-specific TSM key renaming
+(\texttt{\_ssl\_trunk\_to\_supervised\_keys}).  All four completed FT
+logs (\emph{roussette}, \emph{rouget} 2a, \emph{raie}, \emph{piranha})
+report ``149 encoder tensors, 0 unexpected''.  \textbf{Status: OK.}
+Pitfall: 40 FT epochs (\emph{piranha}) buys
+\(\le 0.5\,\)pp over 30 epochs on a cosine schedule that has already
+annealed; extending the planned \emph{sole}/\emph{thon} FT to 40 ep is
+not predicted to help materially.
+
+\paragraph{Submit pipeline.}  Code:
+\file{src/smth2smth/pipelines/submit.py}.  Three relevant routines:
+\code{\_build\_untrained\_mask} ([line~186]) sets logits at never-trained
+class indices to \(-\infty\); \code{\_build\_flip\_class\_permutation}
+([line~213]) auto-derives the 018/019 left/right pair remap;
+\code{\_rescale\_video} ([line~292]) bilinearly resizes spatial dims for
+multi-scale TTA.  \textbf{Status: OK with one VideoMAE-specific
+restriction.}  Pitfalls:
+\begin{enumerate}[leftmargin=*]
+\item \textbf{Multi-scale TTA + VideoMAE}: each scaled clip must have
+   \(H, W\) divisible by \cfgkey{model.patch\_size}=16.  At
+   \texttt{image\_size}=224 the default
+   \(\{0.875, 1.0, 1.125\}\) produces \(\{196, 224, 252\}\); 196 and 252
+   are not patch-divisible and would crash \texttt{PatchEmbed3D}.  Submit
+   VideoMAE ViT runs with \cfgkey{training.tta\_scales}=\texttt{[1.0]}
+   (already done for \emph{rouget}).
+\item \textbf{Untrained-class mask}: derived from
+   \texttt{trained\_class\_indices} embedded in the checkpoint.  When
+   the head width or class folder set is updated, regenerate the mask by
+   retraining or by clearing the stale list, otherwise valid logits get
+   silently zeroed.
+\item \textbf{\texttt{model.pretrained} flag}: \texttt{submit.py} reads
+   \texttt{saved\_cfg.model.pretrained} to decide on ImageNet normalisation;
+   VideoMAE runs save \texttt{pretrained: false} (no normalisation), so
+   no action needed for the current submissions.
+\end{enumerate}
+
+\paragraph{Legacy DINO / V-JEPA.}  Code retained for the report
+(\S\ref{sec:phase3:dino-deprecated}, \S\ref{sec:phase3});
+\code{\_ssl\_trunk\_to\_supervised\_keys} continues to handle both
+flavours.  \textbf{Status: deprecated for new runs.}  The DINO ablation
+inconsistency and the V-JEPA $\to$ CNN path are both superseded by
+dual-stream + VideoMAE.
+
+\subsection{Recommendations}
+\label{sec:tracka:inventory:recs}
+
+\begin{table}[ht]
+\centering\footnotesize
+\caption{Per-family action.  Justification ties to competition rules in
+\file{docs/track\_a\_desc.txt} (closed world, top-1 evaluation) and
+on-disk honest val.}
+\label{tab:tracka:inventory:recs}
+\begin{tabular}{@{}p{0.18\linewidth} p{0.18\linewidth} p{0.55\linewidth}@{}}
+\toprule
+\textbf{Family} & \textbf{Verdict} & \textbf{Justification} \\
+\midrule
+Phase~2 R50+TSM 150 ep      & \textbf{KEEP --- primary path} &
+   Prior run reached \(\approx 42\,\%\) public Top-1; rerun in progress
+   under \file{logs/trackA\_phase2\_...\_ep150\_20260516.log}, ep~38/150
+   at EMA val 0.3936 and climbing.  Mirror the \texttt{*\_best.pt}
+   regularly. \\
+Dual-stream TSM (A1/A1b)    & \textbf{KEEP}     &
+   Verified 37.69\,\% public; second-best single-model submission.
+   Useful for ensembling with Phase~2 (independent error modes:
+   single-stream vs.\ RGB+motion). \\
+Supervised ViT from scratch & \textbf{DISCARD}  &
+   6 distinct logs converge at \(\le 6\,\%\) val (chance scaled).
+   Verdict already in \S\ref{sec:tracka:vit-from-scratch-verdict}. \\
+SSL-15 piranha              & \textbf{KEEP}     &
+   Highest honest val (35.60\,\%); 40-FT-epoch budget paid.  Action:
+   retrieve weights and submit. \\
+SSL-11 rouget (2a)          & \textbf{TWEAK}    &
+   34.96\,\% honest val proved the recipe; current
+   \file{rouget\_ft.pt} is the leaky Phase~2b copy.  Rerun Phase~2a
+   from \file{rouget\_encoder.pt} (on disk). \\
+SSL-12 raie                 & \textbf{KEEP}     &
+   34.80\,\% honest val with 6-head probe; submit when checkpoint is
+   retrievable. \\
+SSL-10 roussette            & \textbf{KEEP/TWEAK} &
+   33.61\,\% honest val with seed/bs drift.  Acceptable if cheap;
+   prefer piranha / raie / rouget if budget is tight. \\
+SSL-9 truite                & \textbf{TWEAK}    &
+   Pretrain on disk; FT never launched.  Cheap completion via
+   \texttt{experiment=track\_a\_ssl\_finetune\_truite}. \\
+SSL-13/14/16 (sole, thon, murene) & \textbf{DEFER} &
+   Each is a fresh \(\sim 10\,\)h pretrain+FT cycle; with 35.60\,\%
+   already in hand, only run if ablating \texttt{mask\_ratio} (thon) or
+   probe width (sole) is the explicit goal. \\
+SSL-8 barbeau               & \textbf{DEFER}    & Thomas' slot; not run. \\
+Legacy DINO                 & \textbf{DISCARD} for new runs &
+   \S\ref{sec:phase3:dino-deprecated}; retained as a report baseline. \\
+Legacy V-JEPA               & \textbf{DEFER}    &
+   Superseded by dual-stream + VideoMAE; revisit only if both plateau. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Ranked top-3 actionable next runs.}
+
+\begin{enumerate}[leftmargin=*]
+\item \textbf{Protect the Phase~2 150-epoch checkpoint and submit it.}
+   Mirror \file{trackA\_phase2\_...\_ep150\_20260516\_best.pt} from
+   \file{/Data/thomas.turkieh/.../checkpoints/track\_a/} (full path in
+   \S\ref{sec:tracka:inventory:phase2-150ep}) to
+   \file{checkpoints/track\_a/archive/} every \(\sim 10\) epochs while
+   the rerun is alive.  When the run
+   finishes (or its EMA val plateaus near 0.42):
+\begin{lstlisting}[style=shell]
+PYTHONPATH=src uv run python -m smth2smth.pipelines.submit \
+    experiment=track_a_phase2 \
+    training.checkpoint_path=<path-to-mirrored-best.pt> \
+    training.tta=true training.tta_flip=true \
+    training.tta_scales=[0.875,1.0,1.125] \
+    dataset.submission_output=submissions/track_a_phase2_150ep.csv
+\end{lstlisting}
+   Expected public Top-1: \(\sim 42\,\%\) (target of the prior lost
+   run).
+\item \textbf{Recover and submit piranha} (independent ViT path,
+   ensemble candidate).  After copying \file{piranha\_encoder.pt} and
+   \file{piranha\_ft.pt} into \file{checkpoints/track\_a/ssl/}:
+\begin{lstlisting}[style=shell]
+PYTHONPATH=src uv run python -m smth2smth.pipelines.submit \
+    experiment=track_a_ssl_finetune_piranha \
+    training.checkpoint_path=checkpoints/track_a/ssl/piranha_ft.pt \
+    training.tta=true training.tta_flip=true training.tta_scales=[1.0] \
+    training.tta_logit_adjust=1.0 \
+    dataset.submission_output=submissions/track_a_piranha_ssl.csv
+\end{lstlisting}
+   Expected public Top-1: 36--38\,\% (rouget's
+   \(34.96\,\% \to 36.0\,\%\) honest-to-public correspondence applied to
+   piranha's higher honest val).
+\item \textbf{Rerun rouget Phase~2a cleanly} and resubmit.  The on-disk
+   \file{rouget\_ft.pt} is the leaky Phase~2b weights; the honest checkpoint
+   was overwritten.  Use the existing encoder:
+\begin{lstlisting}[style=shell]
+PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
+    experiment=track_a_ssl_finetune_rouget \
+    model.init_from=checkpoints/track_a/ssl/rouget_encoder.pt
+# Then submit with tta_scales=[1.0], tta_flip=true.
+\end{lstlisting}
+   Cost: \(\sim 3\,\)h.  Re-grounds rouget at 34.96\,\% honest;
+   archive the existing leaky \file{rouget\_ft.pt} first.
+\item \textbf{Finish truite Phase~2} (encoder already on disk):
+\begin{lstlisting}[style=shell]
+PYTHONPATH=src uv run python -m smth2smth.pipelines.train \
+    experiment=track_a_ssl_finetune_truite
+# model.init_from defaults to truite_encoder.pt in the YAML.
+\end{lstlisting}
+   Cost: \(\sim 2.5\,\)h FT.  Expected: \(\sim 34\,\%\) honest val based
+   on sibling runs.  Gives a fourth comparable VideoMAE SSL data point
+   for ensembling.
+\end{enumerate}
+
+\paragraph{Ensembling note.}  After items~1--3, softmax-averaging the
+Phase~2 single-stream R50+TSM (item~1) with piranha (item~2, ViT-S) at
+submit time is the most leverage available without a new training run,
+because the two trunks have independent error modes (CNN-temporal-shift
+vs.\ transformer-tube-attention).  Apply flip-TTA + left/right remap
+per model before averaging.  Dual-stream A1b can be folded in as a
+third member if its checkpoint identity is confirmed.
+
+\subsection{Open risks and missing logs}
+\label{sec:tracka:inventory:risks}
+
+\begin{itemize}[leftmargin=2em]
+\item \textbf{Phase~2 150-ep rerun checkpoint is on a foreign VM.}
+   The live target is
+   \file{trackA\_phase2\_...\_ep150\_20260516\_best.pt} under
+   \file{/Data/thomas.turkieh/.../checkpoints/track\_a/}; full path in
+   \S\ref{sec:tracka:inventory:phase2-150ep}.  This is the single point
+   of failure for reproducing the \(\sim 42\,\%\) result.  Mirror to
+   \file{checkpoints/track\_a/archive/} on a schedule; do not rely on
+   the producing host surviving alone.
+\item \textbf{Missing local SSL checkpoints.}  Only
+   \file{rouget\_encoder.pt} and the leaky \file{rouget\_ft.pt} are present
+   under \file{checkpoints/track\_a/ssl/}.  All references to
+   \file{piranha\_*.pt}, \file{raie\_*.pt}, \file{roussette\_*.pt} and
+   \file{truite\_encoder.pt} in \file{experiments.md} and the run log
+   (\S\ref{sec:tracka:runlog}) point at files that live on the producing
+   VMs and must be transferred before submission.
+\item \textbf{Dual-stream A1b checkpoint identity.}  The submit log
+   names \file{dual\_stream\_long\_class\_boost\_lr1\_20260515\_025557.pt},
+   which is not present locally.  \file{checkpoints/track\_a/best\_model.pt}
+   (\(\sim 1\,\)GiB, 15~May 23:37) is consistent in size with the
+   dual-stream model but its identity must be confirmed (e.g.\ via the
+   embedded \texttt{checkpoint\_kind}, \texttt{val\_top1} in
+   \texttt{extra}) before any new submission relies on it.
+\item \textbf{Stale \texttt{trained\_class\_indices}.}  Some early
+   checkpoints recorded 33 trained classes (the old folder layout).
+   If a VideoMAE submission is generated from such a checkpoint while
+   the head is 50-wide, the un-trained mask silently zeroes valid
+   logits.  Sanity-check
+   \texttt{len(checkpoint["extra"]["trained\_class\_indices"])} matches
+   \cfgkey{num\_classes} before each submit.
+\item \textbf{Phase~2b rouget is the only Kaggle SSL signal so far.}
+   The \(36.0\,\%\) public score was produced by the leaky checkpoint;
+   we lack a direct public number for any cleanly-trained SSL FT.
+   Recommendation~\#1 (piranha) and \#2 (rouget Phase~2a) close this
+   gap.
+\item \textbf{\file{submissions/track\_a.csv} provenance unclear.}  Dated
+   16~May 14:04, same byte count as
+   \file{submissions/track\_a\_rouget\_ssl.csv}; likely a duplicate but
+   should be verified before referring to it on the leaderboard.
+\item \textbf{Thomas slots 1--8} (\file{SSL.md}) have no logs on this
+   VM, so the audit can only confirm ``not run here''.  If those
+   checkpoints exist on Thomas' machines, fold them into the inventory
+   before the next sweep decision.
+\end{itemize}

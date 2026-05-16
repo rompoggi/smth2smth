@@ -130,3 +130,24 @@
 \contentsline {paragraph}{Experiment preset.}{30}{section*.70}%
 \contentsline {paragraph}{Caveats.}{30}{section*.71}%
 \contentsline {section}{\numberline {11}Conclusion}{31}{section.11}%
+\contentsline {section}{\numberline {A}Inventory, Verification, and Recommendations}{32}{appendix.A}%
+\contentsline {subsection}{\numberline {A.1}Executive summary}{32}{subsection.A.1}%
+\contentsline {subsection}{\numberline {A.2}Inventory by family}{32}{subsection.A.2}%
+\contentsline {paragraph}{Config drift.}{32}{section*.72}%
+\contentsline {subsection}{\numberline {A.3}Phase\nobreakspace {}2 single-stream long-budget rerun --- current best path}{33}{subsection.A.3}%
+\contentsline {paragraph}{What the run is.}{33}{section*.73}%
+\contentsline {paragraph}{Status.}{33}{section*.74}%
+\contentsline {paragraph}{Side-by-side with other best candidates.}{33}{table.7}%
+\contentsline {paragraph}{Why this recipe wins.}{33}{section*.76}%
+\contentsline {paragraph}{Risks specific to this recipe.}{34}{section*.77}%
+\contentsline {subsection}{\numberline {A.4}Per-family code verification}{35}{subsection.A.4}%
+\contentsline {paragraph}{Dual-stream RGB+frame-diff TSM.}{35}{section*.78}%
+\contentsline {paragraph}{Supervised \texttt {video\_mae\_vit} from scratch.}{35}{section*.79}%
+\contentsline {paragraph}{VideoMAE SSL pretrain.}{35}{section*.80}%
+\contentsline {paragraph}{VideoMAE SSL fine-tune via \texttt {\small model.init\_from}.}{35}{section*.81}%
+\contentsline {paragraph}{Submit pipeline.}{35}{section*.82}%
+\contentsline {paragraph}{Legacy DINO / V-JEPA.}{35}{section*.83}%
+\contentsline {subsection}{\numberline {A.5}Recommendations}{36}{subsection.A.5}%
+\contentsline {paragraph}{Ranked top-3 actionable next runs.}{36}{section*.84}%
+\contentsline {paragraph}{Ensembling note.}{37}{section*.85}%
+\contentsline {subsection}{\numberline {A.6}Open risks and missing logs}{37}{subsection.A.6}%
