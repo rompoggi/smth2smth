@@ -435,12 +435,17 @@ class VideoMAEDecoder(nn.Module):
 
         tokens = self.proj(visible_tokens)  # (B, n_visible, d)
 
-        # Build full-length sequence: scatter visible tokens + mask tokens
-        full = self.mask_token.expand(B, N, -1).clone()
+        # Under autocast, `tokens` may be fp16/bf16 while parameters stay fp32; align dtypes
+        # (and device) for scatter_ / addition.
+        full = (
+            self.mask_token.to(device=tokens.device, dtype=tokens.dtype)
+            .expand(B, N, -1)
+            .clone()
+        )
         idx_v = ids_keep.unsqueeze(-1).expand(-1, -1, tokens.shape[-1])
         full.scatter_(1, idx_v, tokens)
 
-        full = full + self.decoder_pos_embed
+        full = full + self.decoder_pos_embed.to(dtype=full.dtype)
 
         for block in self.blocks:
             full = block(full)
