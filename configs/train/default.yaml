@@ -104,6 +104,17 @@ training:
   # When null, derived from ``checkpoint_path`` by inserting ``.last``
   # before the extension (e.g. ``best.pt`` -> ``best.last.pt``).
   last_checkpoint_path: null
+  # Long-run continuation (resume after ``extra.epoch`` > 0):
+  # ``resume_reset_scheduler`` — drop saved cosine state and build a new
+  # ``T_max = epochs - start_epoch - continuation_warmup_epochs`` schedule.
+  # ``continuation_warmup_epochs`` — linear LR ramp on epochs
+  # ``[start_epoch, start_epoch + continuation_warmup_epochs)``.
+  # ``continuation_rewarm_lr`` — scale each group's ``warmup_lr_max`` by
+  # ``continuation_peak_lr_ratio`` before the continuation warmup (keeps LLRD).
+  resume_reset_scheduler: false
+  continuation_warmup_epochs: 0
+  continuation_rewarm_lr: false
+  continuation_peak_lr_ratio: 0.4
   # Test-Time Augmentation. Used by ``submit.py`` only (no effect on train).
   # ``tta: false``                 -> single deterministic forward pass.
   # ``tta_flip: true``             -> also evaluate horizontally-flipped clips

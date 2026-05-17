@@ -18,10 +18,14 @@ defaults:
 model:
   variant: vit_b
   num_classes: ${num_classes}
+  # sole_encoder.pt was trained with tube_t=1 (4 frames -> 4 temporal tokens,
+  # pos_embed length 4*14*14=784). Must match here or load_state_dict fails.
+  tube_t: 1
   drop_path_rate: 0.1
-  dropout: 0.5
+  dropout: 0.0
   head: attn
   head_num_heads: 4
+  gradient_checkpointing: true
   residual_variant: mhc
   hc_n: 4
   hc_sk_iters: 3
@@ -37,12 +41,18 @@ seed: 42
 
 training:
   checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/hc/mhc_n4_sk3_s${seed}_ft.pt
+  epochs: 60
+  warmup_epochs: 5
+  # HC widens the residual stream 4x => activations ~4x larger. On a 3090 the
+  # safe per-iter batch is 4 (vs 16 for the baseline). grad_accum_steps=16 keeps
+  # the effective batch at 64 to match the baseline arm.
+  batch_size: 4
+  grad_accum_steps: 16
+  ema_decay: 0.999
   tta: true
   tta_flip: true
   tta_scales: [0.857, 1.0, 1.143]
-  batch_size: 4
-  grad_accum_steps: 2
   stability_log_path: ${hydra:runtime.cwd}/logs/hc/mhc_n4_sk3_s${seed}_stability.csv
-  stability_log_every: 1
+  stability_log_every: 10
   stability_log_per_block: true
   stability_log_hc_drift: true

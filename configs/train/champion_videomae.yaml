@@ -27,3 +27,4 @@ training:
   early_stopping_min_delta: 0.001
   num_workers: 4
   log_interval_steps: 100
+  device: cuda

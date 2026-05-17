@@ -13,10 +13,14 @@ defaults:
 model:
   variant: vit_b
   num_classes: ${num_classes}
+  # sole_encoder.pt was trained with tube_t=1 (4 frames -> 4 temporal tokens,
+  # pos_embed length 4*14*14=784). Must match here or load_state_dict fails.
+  tube_t: 1
   drop_path_rate: 0.1
-  dropout: 0.5
+  dropout: 0.0
   head: attn
   head_num_heads: 4
+  gradient_checkpointing: true
   residual_variant: prenorm
   init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/sole_encoder.pt
 
@@ -29,12 +33,17 @@ seed: 42
 
 training:
   checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/hc/baseline_s${seed}_ft.pt
+  epochs: 60
+  warmup_epochs: 5
+  batch_size: 16
+  grad_accum_steps: 4
+  ema_decay: 0.999
   tta: true
   tta_flip: true
   tta_scales: [0.857, 1.0, 1.143]
   # Per-step stability logging: pre-clip grad norms (global + per-block) and HC
   # drift metrics (no-op for prenorm). CSV grows ~1 row per optimizer step.
   stability_log_path: ${hydra:runtime.cwd}/logs/hc/baseline_s${seed}_stability.csv
-  stability_log_every: 1
+  stability_log_every: 10
   stability_log_per_block: true
   stability_log_hc_drift: true

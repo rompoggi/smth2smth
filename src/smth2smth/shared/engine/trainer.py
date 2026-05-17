@@ -281,10 +281,14 @@ def apply_video_mixing(
     """
     if videos.dim() != 5:
         raise ValueError(f"videos must be 5-D (B,T,C,H,W), got {tuple(videos.shape)}")
-    if alpha <= 0:
-        raise ValueError(f"alpha must be positive for video mixing, got {alpha}")
     if mode not in VIDEOMIX_MODES:
         raise ValueError(f"mode must be one of {sorted(VIDEOMIX_MODES)}, got {mode!r}")
+    # The mixup_cutmix_switch mode resolves ``alpha`` from per-submode
+    # ``mixup_alpha`` / ``cutmix_alpha`` further down; the outer ``alpha`` is
+    # legitimately unused in that path so we skip the early check for it (and
+    # the switch branch has its own post-resolution alpha check).
+    if mode != "mixup_cutmix_switch" and alpha <= 0:
+        raise ValueError(f"alpha must be positive for video mixing, got {alpha}")
 
     # SSv2 fine-tune recipe: per-batch coin flip between MixUp and (cube)CutMix
     # with independent Beta parameters (VideoMAE FINETUNE.md: mixup 0.8,
