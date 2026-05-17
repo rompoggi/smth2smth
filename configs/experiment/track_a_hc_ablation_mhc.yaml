@@ -1,0 +1,48 @@
+# @package _global_
+# HC/mHC ablation — arm (c): Manifold-Constrained Hyper-Connections, n=4, K=3.
+#
+# Replaces SHC's unconstrained mixing matrix M with the Sinkhorn-Knopp
+# projection of a raw learnable M_raw onto the Birkhoff polytope (doubly
+# stochastic matrices have spectral radius <=1 ⇒ no forward-signal blowup with
+# depth). K=3 SK iterations at n=4 converges to <1e-3 deviation from doubly-
+# stochastic; SK exp/normalize is in fp32 even under AMP bf16 (NaN risk).
+#
+# Run order rule (from experiments/mHC_HC.md §7): launch this arm only after
+# arm (b) shc's mean is within 0.3 pt of arm (a) baseline. If HC clearly
+# hurts at this scale, mHC is even less likely to help — abort.
+defaults:
+  - override /model: video_mae_vit
+  - override /augment: champion_ft
+  - override /train: champion_videomae
+
+model:
+  variant: vit_b
+  num_classes: ${num_classes}
+  drop_path_rate: 0.1
+  dropout: 0.5
+  head: attn
+  head_num_heads: 4
+  residual_variant: mhc
+  hc_n: 4
+  hc_sk_iters: 3
+  hc_sk_tau: 1.0
+  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/sole_encoder.pt
+
+dataset:
+  num_frames: 4
+  use_official_val: true
+  include_val_in_train: false
+
+seed: 42
+
+training:
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/hc/mhc_n4_sk3_s${seed}_ft.pt
+  tta: true
+  tta_flip: true
+  tta_scales: [0.857, 1.0, 1.143]
+  batch_size: 4
+  grad_accum_steps: 2
+  stability_log_path: ${hydra:runtime.cwd}/logs/hc/mhc_n4_sk3_s${seed}_stability.csv
+  stability_log_every: 1
+  stability_log_per_block: true
+  stability_log_hc_drift: true

@@ -199,6 +199,26 @@ def _split_dual_stream_backbone_params(
     return rgb_params, motion_params, rest_params
 
 
+def _is_hc_scalar(name: str) -> bool:
+    """Detect Hyper-Connection routing parameters in a VideoMAEViT param name.
+
+    HC scalars (``M`` / ``M_raw`` / ``alpha_pre`` / ``beta`` per sublayer plus
+    a top-level ``alpha_out``) are excluded from weight decay and from
+    layer-wise LR decay — treated like LayerNorm gains, per the HC paper's
+    recipe and the experiment doc's hard rules. The detection is purely
+    name-based so the LLRD builder can stay model-agnostic.
+    """
+    if name == "encoder.alpha_out":
+        return True
+    if not name.startswith("encoder.blocks."):
+        return False
+    suffix = name.split(".", 3)[3] if name.count(".") >= 3 else ""
+    if not suffix.startswith(("attn_router.", "mlp_router.")):
+        return False
+    leaf = suffix.split(".", 1)[1]
+    return leaf in {"M", "M_raw", "alpha_pre", "beta"}
+
+
 def _videomae_layer_id(name: str, depth: int) -> int:
     """Map a ``VideoMAEViT`` parameter name to a depth index for LLRD.
 
@@ -206,7 +226,13 @@ def _videomae_layer_id(name: str, depth: int) -> int:
     encoder block ``i`` is layer ``i + 1``; the final encoder LayerNorm, the
     attentive-pool head, and the classifier are the top layer ``depth + 1``
     (full base LR). Mirrors the BEiT / MAE ``get_num_layer`` convention.
+
+    HC scalars (``encoder.alpha_out`` and per-block ``attn_router`` /
+    ``mlp_router`` parameters) are routed to the top layer so they train at
+    the full base LR — see :func:`_is_hc_scalar`.
     """
+    if _is_hc_scalar(name):
+        return depth + 1
     if name.startswith("encoder.patch_embed") or name == "encoder.pos_embed":
         return 0
     if name.startswith("encoder.blocks."):
@@ -240,7 +266,14 @@ def _build_llrd_param_groups(
         if not param.requires_grad:
             continue
         layer_id = _videomae_layer_id(name, depth)
-        no_decay = param.ndim <= 1 or name.endswith(".bias")
+        # HC matrices are 2-D (n, n) so ``ndim<=1`` would not catch them, but
+        # the doc treats them like LN gains — force ``no_decay`` for any
+        # HC routing scalar.
+        no_decay = (
+            param.ndim <= 1
+            or name.endswith(".bias")
+            or _is_hc_scalar(name)
+        )
         key = (layer_id, no_decay)
         if key not in groups:
             scale = layer_decay ** (n_top - layer_id)
@@ -1004,6 +1037,25 @@ def run(cfg: DictConfig) -> Path | None:
         )
         print(f"  LR after resume: {', '.join(lr_parts)} ({sched_hint}).")
 
+    # Per-step stability logger for the HC/mHC ablation: grad norms (global +
+    # per-block), HC mixing-matrix drift, mHC SK doubly-stochastic deviation.
+    # Off by default; enabled by setting ``training.stability_log_path``.
+    stability_log_path = cfg.training.get("stability_log_path")
+    stability_logger = None
+    if stability_log_path:
+        from smth2smth.shared.engine.stability import StabilityLogger
+        stability_logger = StabilityLogger(
+            Path(str(stability_log_path)).resolve(),
+            model=model,
+            log_every=int(cfg.training.get("stability_log_every", 1)),
+            include_per_block=bool(cfg.training.get("stability_log_per_block", True)),
+            include_hc_drift=bool(cfg.training.get("stability_log_hc_drift", True)),
+        )
+        print(
+            f"[stability] per-step logging -> {stability_log_path} "
+            f"(every {int(cfg.training.get('stability_log_every', 1))} step(s))"
+        )
+
     try:
         for epoch in range(start_epoch, int(cfg.training.epochs)):
             if (
@@ -1015,6 +1067,8 @@ def run(cfg: DictConfig) -> Path | None:
                 for group in optimizer.param_groups:
                     max_lr = float(group.get("warmup_lr_max", group["lr"]))
                     group["lr"] = max_lr * warm_scale
+            if stability_logger is not None:
+                stability_logger.set_epoch(epoch)
             train_stats: EpochStats = train_one_epoch(
                 model,
                 train_loader,
@@ -1035,6 +1089,7 @@ def run(cfg: DictConfig) -> Path | None:
                 amp_dtype=amp_dtype,
                 ema_model=ema_model,
                 class_weights=class_weights,
+                stability_logger=stability_logger,
             )
             eval_every_n_epochs = max(1, int(cfg.training.get("eval_every_n_epochs", 1)))
             eval_ema = bool(cfg.training.get("eval_ema", True))
@@ -1177,6 +1232,8 @@ def run(cfg: DictConfig) -> Path | None:
         _free_cuda_memory(reason="post-OOM")
         raise
     finally:
+        if stability_logger is not None:
+            stability_logger.close()
         _free_cuda_memory(reason="run-end")
 
     if best_path is None:

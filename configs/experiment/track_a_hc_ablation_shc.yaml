@@ -1,0 +1,48 @@
+# @package _global_
+# HC/mHC ablation — arm (b): Static Hyper-Connections, n=4.
+#
+# Same FT recipe as the baseline arm; only the residual structure changes.
+# Identity-equivalent init (M=I, alpha_pre=beta=alpha_out=e_0) makes step 0
+# byte-equal to Pre-Norm — HC is a zero-risk capacity injection. Adds ~580
+# scalars on top of the 87M-param ViT-B backbone (<1% overhead).
+#
+# Run order rule (from experiments/mHC_HC.md §7): launch this arm only after
+# the baseline arm produces a mean. If HC clearly hurts (<−0.3 pt), abort and
+# do NOT launch arm (c) mhc.
+defaults:
+  - override /model: video_mae_vit
+  - override /augment: champion_ft
+  - override /train: champion_videomae
+
+model:
+  variant: vit_b
+  num_classes: ${num_classes}
+  drop_path_rate: 0.1
+  dropout: 0.5
+  head: attn
+  head_num_heads: 4
+  residual_variant: shc
+  hc_n: 4
+  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/sole_encoder.pt
+
+dataset:
+  num_frames: 4
+  use_official_val: true
+  include_val_in_train: false
+
+seed: 42
+
+training:
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/hc/shc_n4_s${seed}_ft.pt
+  tta: true
+  tta_flip: true
+  tta_scales: [0.857, 1.0, 1.143]
+  # HC widens the residual stream 4x ⇒ activations ~4x larger. On a 3090 the
+  # safe per-iter batch is half of the baseline; restore the view-effective
+  # batch with grad_accum_steps=2.
+  batch_size: 4
+  grad_accum_steps: 2
+  stability_log_path: ${hydra:runtime.cwd}/logs/hc/shc_n4_s${seed}_stability.csv
+  stability_log_every: 1
+  stability_log_per_block: true
+  stability_log_hc_drift: true

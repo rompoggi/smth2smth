@@ -6,6 +6,7 @@ call these directly.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -46,6 +47,7 @@ def train_one_epoch(
     amp_dtype: torch.dtype = torch.float16,
     ema_model: torch.optim.swa_utils.AveragedModel | None = None,
     class_weights: torch.Tensor | None = None,
+    stability_logger: Callable[..., None] | None = None,
 ) -> EpochStats:
     """Run one training epoch and return aggregated metrics.
 
@@ -137,6 +139,18 @@ def train_one_epoch(
 
         is_accum_step = (step_idx % accum_steps == 0) or (step_idx == total_steps)
         if is_accum_step:
+            # Optional per-step stability logging. Called *before* the
+            # optimizer step so gradients are still resident; unscales the
+            # GradScaler in-place under fp16 AMP. Pre-clip (no clipping in
+            # this recipe), so the logged norms reflect the raw optimization
+            # signal.
+            if stability_logger is not None:
+                stability_logger(
+                    model=model,
+                    optimizer=optimizer,
+                    scaler=scaler if use_amp else None,
+                    loss_value=float(loss.item()),
+                )
             if use_amp:
                 scaler.step(optimizer)
                 scaler.update()

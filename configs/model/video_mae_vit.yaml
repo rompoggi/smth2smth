@@ -19,3 +19,13 @@ model:
   gradient_checkpointing: false
   # cRT stage 2: freeze encoder + attentive pool; train classifier only.
   freeze_backbone: false
+  # Residual structure of the encoder blocks. Default 'prenorm' is the standard
+  # Pre-Norm Transformer (unchanged from prior runs). 'shc' (Static Hyper-
+  # Connections) and 'mhc' (Manifold-Constrained HC) widen the residual stream
+  # to ``hc_n`` parallel hyper-hidden vectors mixed by a learnable matrix per
+  # sublayer; identity-equivalent init keeps step 0 byte-equal to Pre-Norm.
+  # See experiments/mHC_HC.md.
+  residual_variant: prenorm
+  hc_n: 4
+  hc_sk_iters: 3      # Sinkhorn-Knopp iterations (mhc only).
+  hc_sk_tau: 1.0      # Sinkhorn-Knopp temperature (mhc only).

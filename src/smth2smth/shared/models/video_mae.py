@@ -172,6 +172,206 @@ class TransformerBlock(nn.Module):
         return x
 
 
+# ── Hyper-Connections (HC) and Manifold-Constrained HC (mHC) ───────────────────
+#
+# Implements Zhu et al. *Hyper-Connections* (ICLR 2025, arXiv:2409.19606) and
+# Xie et al. *Manifold-Constrained Hyper-Connections* (2025, arXiv:2512.24880),
+# Static variant only (SHC / mHC), no input-dependent dynamic routing.
+#
+# Per-sublayer F (Attn or MLP), HC widens the residual stream into n parallel
+# "hyper-hidden" vectors stacked as H ∈ R^{B × n × T × D} and updates them as:
+#     h_pre = einsum("n,bntd->btd", alpha_pre, H)
+#     y     = F(LayerNorm(h_pre))
+#     H_new = einsum("ij,bjtd->bitd", M, H)
+#           + einsum("n,btd->bntd", beta, y)
+# Identity init (M=I, alpha_pre=beta=e_0) makes step 0 exactly pre-norm.
+#
+# mHC replaces the unconstrained M with the Sinkhorn-Knopp projection of a
+# raw learnable matrix M_raw onto the Birkhoff polytope (doubly stochastic
+# matrices); SK exp/normalize is done in fp32 even under AMP bf16 (NaN risk).
+
+
+def sinkhorn_knopp(
+    m_raw: torch.Tensor, *, k_iters: int = 3, tau: float = 1.0, eps: float = 1e-8
+) -> torch.Tensor:
+    """Project ``m_raw`` to the Birkhoff polytope via Sinkhorn-Knopp.
+
+    The exp/normalize is computed in fp32 for numerical stability under AMP bf16
+    (under bf16 the exponential easily saturates; the doc lists this as a hard
+    rule). Caller is responsible for casting the result back to the activation
+    dtype.
+
+    Args:
+        m_raw: ``(n, n)`` raw learnable mixing matrix.
+        k_iters: Number of SK iterations. The paper uses K=20 at LLM scale;
+            K=3 is sufficient at n=4 (converges to <1e-3 deviation).
+        tau: Temperature scaling before exp. ``tau=1.0`` matches the doc.
+        eps: Numerical floor for row/column sums.
+
+    Returns:
+        ``(n, n)`` doubly-stochastic tensor in fp32.
+    """
+    if k_iters < 0:
+        raise ValueError(f"k_iters must be >= 0, got {k_iters}.")
+    m = (m_raw.float() / float(tau)).exp()
+    for _ in range(k_iters):
+        m = m / (m.sum(dim=1, keepdim=True) + eps)
+        m = m / (m.sum(dim=0, keepdim=True) + eps)
+    return m
+
+
+class HCRouter(nn.Module):
+    """Static Hyper-Connections router for a single sublayer.
+
+    Holds the per-sublayer mixing matrix ``M`` (or its raw form ``M_raw`` in
+    mHC mode, projected through Sinkhorn-Knopp on every forward), the depth-mix
+    read ``alpha_pre``, and the write weights ``beta``.
+
+    Forward signature: given ``H ∈ (B, n, T, D)`` and a callable ``sublayer``
+    that maps ``(B, T, D) → (B, T, D)`` (with its own LayerNorm applied to the
+    pre-mixed vector), returns the updated ``H``.
+
+    Identity-equivalent initialization (HC §3.4):
+        - SHC: ``M = I_n``,    ``alpha_pre = beta = e_0``
+        - mHC: ``M_raw = c·I_n`` with ``c`` large so ``SK(M_raw) ≈ I``,
+                 ``alpha_pre = beta = e_0``.
+
+    HC scalars (M, M_raw, alpha_pre, beta) are excluded from weight-decay and
+    layer-wise LR decay by the training pipeline (treated like LayerNorm gains).
+    """
+
+    def __init__(
+        self,
+        n: int,
+        *,
+        variant: str = "static",
+        sk_iters: int = 3,
+        sk_tau: float = 1.0,
+        diagonal_init: float = 10.0,
+    ) -> None:
+        super().__init__()
+        if n < 1:
+            raise ValueError(f"HC expansion rate n must be >= 1, got {n}.")
+        if variant not in {"static", "mhc"}:
+            raise ValueError(f"HCRouter variant must be 'static' or 'mhc', got {variant!r}.")
+        self.n = int(n)
+        self.variant = variant
+        self.sk_iters = int(sk_iters)
+        self.sk_tau = float(sk_tau)
+
+        # Depth-mix read weights (n,): identity init = e_0 (one-hot at index 0).
+        e0 = torch.zeros(n)
+        e0[0] = 1.0
+        self.alpha_pre = nn.Parameter(e0.clone())
+        self.beta = nn.Parameter(e0.clone())
+
+        if variant == "static":
+            # Unconstrained mixing matrix. Identity init.
+            self.M = nn.Parameter(torch.eye(n))
+        else:
+            # mHC: raw matrix, projected via SK on every forward.  Large diagonal
+            # init makes SK(M_raw) ≈ I at step 0 (with c=10, diag ≈ 0.99982).
+            self.M_raw = nn.Parameter(diagonal_init * torch.eye(n))
+
+    @property
+    def is_mhc(self) -> bool:
+        return self.variant == "mhc"
+
+    def mixing_matrix(self, dtype: torch.dtype) -> torch.Tensor:
+        """Return the effective mixing matrix in ``dtype``.
+
+        For SHC this is just ``M`` (cast). For mHC we compute SK(M_raw) in fp32
+        (per the doc's hard rule about AMP bf16) and cast at the end.
+        """
+        if self.variant == "static":
+            return self.M.to(dtype=dtype)
+        m = sinkhorn_knopp(self.M_raw, k_iters=self.sk_iters, tau=self.sk_tau)
+        return m.to(dtype=dtype)
+
+    def forward(self, H: torch.Tensor, sublayer_fn) -> torch.Tensor:
+        """Update the hyper-state ``H`` through one sublayer.
+
+        Args:
+            H: ``(B, n, T, D)`` hyper-hidden states.
+            sublayer_fn: Callable taking ``(B, T, D)`` and returning ``(B, T, D)``.
+                Typically ``lambda v: drop_path(F(LN(v)))``.
+        Returns:
+            ``(B, n, T, D)`` updated hyper-state.
+        """
+        if H.dim() != 4 or H.shape[1] != self.n:
+            raise ValueError(
+                f"HCRouter expected H of shape (B, {self.n}, T, D), got {tuple(H.shape)}."
+            )
+
+        # Depth-mix: read one vector from H using alpha_pre. (B, T, D).
+        alpha_pre = self.alpha_pre.to(H.dtype)
+        h_pre = torch.einsum("n,bntd->btd", alpha_pre, H)
+
+        # Run the sublayer (Attn or MLP, including its own LN + DropPath).
+        y = sublayer_fn(h_pre)
+
+        # Cross-stream propagation + write-back.
+        m = self.mixing_matrix(H.dtype)
+        beta = self.beta.to(H.dtype)
+        H_mixed = torch.einsum("ij,bjtd->bitd", m, H)
+        H_write = torch.einsum("n,btd->bntd", beta, y)
+        return H_mixed + H_write
+
+
+class HCTransformerBlock(nn.Module):
+    """Pre-norm ViT block wrapped with HC / mHC routing on both sublayers.
+
+    Replaces the plain pre-norm residual ``x = x + Attn(LN(x))`` /
+    ``x = x + MLP(LN(x))`` with the HC update rule (see :class:`HCRouter`).
+
+    The block consumes and returns ``H ∈ (B, n, T, D)``; it is the encoder's
+    job to expand the patch-embedded tokens to ``H`` on entry and collapse
+    ``H`` back to a single token stream on exit.
+
+    Both sublayers are wrapped by their own :class:`HCRouter` so ``M``,
+    ``alpha_pre`` and ``beta`` are not shared across Attn and MLP — this
+    matches the HC paper's "each sublayer F gets its own router" recipe.
+    """
+
+    def __init__(
+        self,
+        dim: int,
+        num_heads: int,
+        mlp_ratio: float = 4.0,
+        drop_path: float = 0.0,
+        *,
+        n: int = 4,
+        variant: str = "static",
+        sk_iters: int = 3,
+        sk_tau: float = 1.0,
+    ) -> None:
+        super().__init__()
+        self.norm1 = nn.LayerNorm(dim)
+        self.attn = nn.MultiheadAttention(dim, num_heads, batch_first=True)
+        self.norm2 = nn.LayerNorm(dim)
+        self.mlp = MLP(dim, mlp_ratio)
+        self.drop_path = DropPath(drop_path)
+        self.attn_router = HCRouter(
+            n, variant=variant, sk_iters=sk_iters, sk_tau=sk_tau,
+        )
+        self.mlp_router = HCRouter(
+            n, variant=variant, sk_iters=sk_iters, sk_tau=sk_tau,
+        )
+
+    def _attn_sublayer(self, v: torch.Tensor) -> torch.Tensor:
+        normed = self.norm1(v)
+        out, _ = self.attn(normed, normed, normed, need_weights=False)
+        return self.drop_path(out)
+
+    def _mlp_sublayer(self, v: torch.Tensor) -> torch.Tensor:
+        return self.drop_path(self.mlp(self.norm2(v)))
+
+    def forward(self, H: torch.Tensor) -> torch.Tensor:
+        H = self.attn_router(H, self._attn_sublayer)
+        H = self.mlp_router(H, self._mlp_sublayer)
+        return H
+
+
 # ── Encoder ────────────────────────────────────────────────────────────────────
 
 
@@ -181,6 +381,17 @@ class VideoMAEEncoder(nn.Module):
     Accepts an optional ``ids_keep`` tensor to operate only on visible tokens
     (used during VideoMAE pretraining). Pass ``None`` for full-sequence mode
     (supervised fine-tuning / inference).
+
+    Set ``residual_variant`` to ``"shc"`` (Static Hyper-Connections) or
+    ``"mhc"`` (Manifold-Constrained HC) to wrap every block's two sublayers
+    with HC routing. ``"prenorm"`` (default) is the unmodified Pre-Norm path.
+    Under SHC/mHC the encoder maintains a hyper-state ``H ∈ (B, n, T, D)``
+    through the block stack and collapses it back via a learnable
+    ``alpha_out`` on exit so the rest of the model is unchanged.
+
+    Identity-equivalent init: at step 0, HC reduces exactly to Pre-Norm
+    (only stream 0 is read/written; ``M = I`` keeps other streams as the
+    initial token embedding).
     """
 
     def __init__(
@@ -195,9 +406,20 @@ class VideoMAEEncoder(nn.Module):
         mlp_ratio: float = 4.0,
         drop_path_rate: float = 0.0,
         gradient_checkpointing: bool = False,
+        residual_variant: str = "prenorm",
+        hc_n: int = 4,
+        hc_sk_iters: int = 3,
+        hc_sk_tau: float = 1.0,
     ) -> None:
         super().__init__()
+        if residual_variant not in {"prenorm", "shc", "mhc"}:
+            raise ValueError(
+                f"residual_variant must be 'prenorm', 'shc' or 'mhc', got "
+                f"{residual_variant!r}."
+            )
         self.embed_dim = embed_dim
+        self.residual_variant = residual_variant
+        self.hc_n = int(hc_n) if residual_variant != "prenorm" else 1
         self.patch_embed = PatchEmbed3D(num_frames, img_size, tube_t, patch_size, embed_dim)
         self.num_tokens = self.patch_embed.num_tokens
         self.gradient_checkpointing = bool(gradient_checkpointing)
@@ -205,10 +427,29 @@ class VideoMAEEncoder(nn.Module):
         self.pos_embed = nn.Parameter(torch.zeros(1, self.num_tokens, embed_dim))
 
         dpr = [drop_path_rate * i / max(1, depth - 1) for i in range(depth)]
-        self.blocks = nn.ModuleList([
-            TransformerBlock(embed_dim, num_heads, mlp_ratio, dpr[i])
-            for i in range(depth)
-        ])
+        if residual_variant == "prenorm":
+            self.blocks = nn.ModuleList([
+                TransformerBlock(embed_dim, num_heads, mlp_ratio, dpr[i])
+                for i in range(depth)
+            ])
+            self.alpha_out: nn.Parameter | None = None
+        else:
+            hc_kwargs = dict(
+                n=self.hc_n,
+                variant="static" if residual_variant == "shc" else "mhc",
+                sk_iters=hc_sk_iters,
+                sk_tau=hc_sk_tau,
+            )
+            self.blocks = nn.ModuleList([
+                HCTransformerBlock(embed_dim, num_heads, mlp_ratio, dpr[i], **hc_kwargs)
+                for i in range(depth)
+            ])
+            # alpha_out: read weights to collapse H back to a single stream.
+            # Identity init = e_0 (one-hot at index 0) ⇒ exit equals stream 0,
+            # which under M=I and alpha_pre/beta=e_0 is exactly the Pre-Norm output.
+            e0 = torch.zeros(self.hc_n)
+            e0[0] = 1.0
+            self.alpha_out = nn.Parameter(e0.clone())
         self.norm = nn.LayerNorm(embed_dim)
         self._init_weights()
 
@@ -243,12 +484,25 @@ class VideoMAEEncoder(nn.Module):
                 ids_keep.unsqueeze(-1).expand(-1, -1, tokens.shape[-1]),
             )
 
+        if self.residual_variant == "prenorm":
+            for block in self.blocks:
+                if self.gradient_checkpointing and self.training:
+                    tokens = checkpoint(block, tokens, use_reentrant=False)
+                else:
+                    tokens = block(tokens)
+            return self.norm(tokens)
+
+        # HC / mHC path: widen the residual stream to (B, n, T, D), propagate
+        # through HC-wrapped blocks, collapse back via alpha_out.
+        H = tokens.unsqueeze(1).expand(-1, self.hc_n, -1, -1).contiguous()
         for block in self.blocks:
             if self.gradient_checkpointing and self.training:
-                tokens = checkpoint(block, tokens, use_reentrant=False)
+                H = checkpoint(block, H, use_reentrant=False)
             else:
-                tokens = block(tokens)
-        return self.norm(tokens)
+                H = block(H)
+        alpha_out = self.alpha_out.to(H.dtype)
+        collapsed = torch.einsum("n,bntd->btd", alpha_out, H)
+        return self.norm(collapsed)
 
 
 # ── Classification heads ───────────────────────────────────────────────────────
@@ -313,6 +567,10 @@ class VideoMAEViT(nn.Module):
         head: str = "mean",
         head_num_heads: int = 4,
         gradient_checkpointing: bool = False,
+        residual_variant: str = "prenorm",
+        hc_n: int = 4,
+        hc_sk_iters: int = 3,
+        hc_sk_tau: float = 1.0,
     ) -> None:
         super().__init__()
         if head not in {"mean", "attn"}:
@@ -328,6 +586,10 @@ class VideoMAEViT(nn.Module):
             mlp_ratio=mlp_ratio,
             drop_path_rate=drop_path_rate,
             gradient_checkpointing=gradient_checkpointing,
+            residual_variant=residual_variant,
+            hc_n=hc_n,
+            hc_sk_iters=hc_sk_iters,
+            hc_sk_tau=hc_sk_tau,
         )
         self.head_kind = head
         self.attn_pool: AttentiveProbeHead | None = (
@@ -646,4 +908,8 @@ def build_video_mae_vit(cfg: DictConfig) -> nn.Module:
         head=str(cfg.model.get("head", "mean")),
         head_num_heads=int(cfg.model.get("head_num_heads", 4)),
         gradient_checkpointing=bool(cfg.model.get("gradient_checkpointing", False)),
+        residual_variant=str(cfg.model.get("residual_variant", "prenorm")),
+        hc_n=int(cfg.model.get("hc_n", 4)),
+        hc_sk_iters=int(cfg.model.get("hc_sk_iters", 3)),
+        hc_sk_tau=float(cfg.model.get("hc_sk_tau", 1.0)),
     )

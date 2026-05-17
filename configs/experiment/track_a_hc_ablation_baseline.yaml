@@ -1,0 +1,40 @@
+# @package _global_
+# HC/mHC ablation — arm (a): Pre-Norm baseline.
+#
+# Fine-tunes the ViT-B sole_encoder.pt (VideoMAE v2 dual-encoder, 200 ep SSL on
+# SSv2 train+test frames) with the champion FT recipe and an unmodified Pre-Norm
+# residual structure. This is the control arm — arms (b) shc and (c) mhc are
+# seed-paired against it. See experiments/mHC_HC.md.
+defaults:
+  - override /model: video_mae_vit
+  - override /augment: champion_ft
+  - override /train: champion_videomae
+
+model:
+  variant: vit_b
+  num_classes: ${num_classes}
+  drop_path_rate: 0.1
+  dropout: 0.5
+  head: attn
+  head_num_heads: 4
+  residual_variant: prenorm
+  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/sole_encoder.pt
+
+dataset:
+  num_frames: 4
+  use_official_val: true
+  include_val_in_train: false
+
+seed: 42
+
+training:
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/hc/baseline_s${seed}_ft.pt
+  tta: true
+  tta_flip: true
+  tta_scales: [0.857, 1.0, 1.143]
+  # Per-step stability logging: pre-clip grad norms (global + per-block) and HC
+  # drift metrics (no-op for prenorm). CSV grows ~1 row per optimizer step.
+  stability_log_path: ${hydra:runtime.cwd}/logs/hc/baseline_s${seed}_stability.csv
+  stability_log_every: 1
+  stability_log_per_block: true
+  stability_log_hc_drift: true
