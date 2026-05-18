@@ -347,13 +347,36 @@ status and metrics when processes finish; add new rows for every fresh
   Params: inherits Run~1 + \texttt{rs}=vitg384\_heavy\_aug.last.pt;
   \texttt{E}=20 (epochs 11--20); \texttt{wu}=0; \texttt{ev}=1; \texttt{cos}=0.
   Best val top-1: \textbf{53.94\,\%}.
-\item[\textbf{Run 3} (RUNNING)]
-  Log: \texttt{logs/track\_b\_vitl\_30e\_warmup\_lora\_20260514\_1536.log};
+\item[\textbf{Run 3} (DONE)]
+  Log: \texttt{logs/track\_b\_vitl\_30e\_warmup\_lora\_20260515\_1119.log};
   PID: \texttt{logs/track\_b\_vitl\_30e\_warmup.pid}.
-  Preset: \texttt{track\_b\_vjepa2\_vitl\_30e\_warmup}.
+  Preset: \texttt{track\_b\_vjepa2\_vitl\_30e\_warmup}; hflip on.
   Params: \texttt{repo}=vitl-fpc64-256; \texttt{T}=16; \texttt{Sz}=256; \texttt{bs}=4;
-  \texttt{E}=30; \texttt{wu}=3; \texttt{ev}=1; \texttt{ema}=0; LoRA \texttt{r}=8, $\alpha$=16.
-  Interim (epoch~1) val top-1: \textbf{60.21\,\%}.
+  \texttt{E}=30; \texttt{wu}=3; \texttt{lr}=5e-4; LoRA \texttt{lr}=1e-4; LoRA \texttt{r}=8,
+  $\alpha$=16; \texttt{rs}=vitl\_30e\_warmup\_lora.last.pt (from prior crash).
+  Stopped epoch~6 mid-train (DataLoader hang); best val top-1: \textbf{66.14\,\%};
+  Kaggle submit: \textbf{63.66\,\%}.
+\item[\textbf{Run 4} (STOPPED)]
+  Log: \texttt{logs/track\_b\_vitl\_30e\_warmup\_lora\_resume\_noflip\_20260515\_1937.log};
+  PID: \texttt{logs/track\_b\_vitl\_30e\_warmup.pid} (SIGTERM at epoch~12; overfitting).
+  Preset: \texttt{track\_b\_vjepa2\_vitl\_30e\_warmup}; \texttt{augment.random\_horizontal\_flip}=false;
+  \texttt{training.num\_workers}=0.
+  Params: same as Run~3; \texttt{rs}=vitl\_30e\_warmup\_lora.last.pt; resume epoch~6$\to$30.
+  Best val top-1: \textbf{68.95\,\%} (epoch~7, \texttt{vitl\_30e\_warmup\_lora.pt});
+  train top-5 $\approx$99\,\% vs.\ val top-1 plateau $\approx$69\,\% by epoch~11.
+  Submit: \texttt{submissions/track\_b\_vitl\_30e\_warmup\_lora\_best\_e7.csv} (TTA flip).
+\item[\textbf{Run 5} (STOPPED)]
+  Log: \texttt{logs/track\_b\_vitl\_fulltrain\_lora\_20260516\_1400.log};
+  PID: \texttt{logs/track\_b\_vitl\_fulltrain.pid} (SIGTERM epoch~9).
+  Preset: \texttt{track\_b\_vjepa2\_vitl\_fulltrain}; \texttt{train\_include\_val}=true.
+  Best \texttt{vitl\_fulltrain\_lora.pt}: epoch~8, val top-1 \textbf{81.42\,\%}
+  (optimistic: val clips in train). Kaggle test top-1: \textbf{68.09\,\%}.
+  Submit: \texttt{submissions/track\_b\_vitl\_fulltrain\_lora.csv}.
+\item[\textbf{Run 6} (STOPPED)]
+  Log: \texttt{logs/track\_b\_vitl\_fulltrain\_lowlr\_20260516\_1740.log};
+  PID: SIGTERM epoch~11. Best \texttt{vitl\_fulltrain\_lora\_lowlr.pt} epoch~10.
+  Checkpt \texttt{vitl\_fulltrain\_lora\_lowlr\_checkpt.pt} epoch~9.
+  Submits (classic flip-TTA): \texttt{val\_plus2.csv}, \texttt{val\_plus3.csv}.
 \end{description}
 \end{minipage}
 \end{table}
