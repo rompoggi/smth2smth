@@ -1,0 +1,30 @@
+E4 trainval FT — paused 2026-05-17 (mid epoch 7/25)
+====================================================
+
+Stopped: SIGTERM to pid 81456 (epoch 6 completed; epoch 7 interrupted ~step 900/3234).
+
+Checkpoints for submit / resume
+-------------------------------
+  Best (submit):  checkpoints/track_a/e4_ft_trainval.pt   (epoch 6, leaky val top-1 48.61% live)
+  Resume:         checkpoints/track_a/e4_ft_trainval.last.pt (same epoch boundary)
+
+1) Submit (uses GPU; run while training is stopped)
+---------------------------------------------------
+  cd /Data/romain.poggi/smth2smth
+  bash scripts/truite_e4_trainval_submit.sh
+
+  Output: submissions/track_a_e4_trainval_ep6_20260516.csv
+  Log:    logs/truite_e4_trainval_submit_20260516.log
+
+  TTA (flip + scales [0.875, 1.0, 1.125]) is read from the checkpoint config.
+
+2) Resume training (after submit)
+---------------------------------
+  cd /Data/romain.poggi/smth2smth
+  bash scripts/truite_e4_trainval_resume.sh
+
+  Continues from epoch 7/25 with optimizer + cosine scheduler restored.
+
+Optional: also submit the 150-ep honest-val best for comparison
+  training.checkpoint_path=checkpoints/track_a/e4_ft.pt
+  dataset.submission_output=submissions/track_a_e4_honest_ep150_20260516.csv

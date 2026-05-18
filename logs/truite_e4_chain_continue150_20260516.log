@@ -1,0 +1,8 @@
+[chain 2026-05-17T03:26:07+02:00] Waiting for phase-1 train pid=23875 (no signals sent).
+[chain 2026-05-17T03:26:07+02:00] Waiting for phase-1 train pid=23875 (no signals sent).
+[chain 2026-05-17T07:24:08+02:00] Phase-1 pid 23875 exited.
+[chain 2026-05-17T07:24:08+02:00] Phase-1 pid 23875 exited.
+[chain 2026-05-17T07:24:08+02:00] Launching phase-2: track_a_e4_tsm_continue150 (epochs 91-150).
+[chain 2026-05-17T07:24:08+02:00] Launching phase-2: track_a_e4_tsm_continue150 (epochs 91-150).
+[chain 2026-05-17T07:24:08+02:00] Started phase-2 pid=99018 log=logs/truite_e4_continue150_20260516.log pidfile=logs/truite_e4_continue150_20260516.pid
+[chain 2026-05-17T07:24:08+02:00] Started phase-2 pid=99018 log=logs/truite_e4_continue150_20260516.log pidfile=logs/truite_e4_continue150_20260516.pid
