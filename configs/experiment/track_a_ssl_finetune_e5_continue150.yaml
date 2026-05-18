@@ -1,0 +1,30 @@
+# @package _global_
+# E5 — continue stage-1 FT from epoch 50 → 150 (100 new epochs).
+#
+# Run ONLY after ``track_a_ssl_finetune_e5`` finishes and wrote
+# ``checkpoints/track_a/ssl/e5_ft.last.pt``.
+#
+# Recommended schedule: phase-2 cosine with a short continuation warmup.
+# Preserves LLRD per-group peaks (via continuation_rewarm_lr), then decays
+# over the remaining ~95 cosine steps (150 - 50 - 5 warmup).
+#
+# Launch: scripts/launch_thon_e5_ft_continue150.sh  (does not stop stage-1)
+
+defaults:
+  - track_a_ssl_finetune_e5
+
+model:
+  init_from: null
+
+training:
+  epochs: 150
+  resume_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/e5_ft.last.pt
+  # Fresh cosine for epochs 51..150 (do not extend the exhausted 50-ep schedule).
+  resume_reset_scheduler: true
+  # Scale each param group's phase-1 peak by 0.4, ramp over 5 epochs, then cosine.
+  continuation_rewarm_lr: true
+  continuation_peak_lr_ratio: 0.4
+  continuation_warmup_epochs: 5
+  resume_apply_cfg_lr: false
+  early_stopping_patience: 35
+  early_stopping_min_delta: 0.001

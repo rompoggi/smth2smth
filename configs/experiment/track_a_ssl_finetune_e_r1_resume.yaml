@@ -1,0 +1,13 @@
+# @package _global_
+# Resume E_R1 champion FT from e_r1_ft.last.pt (OOM-killed chain Phase 2).
+# Run after track_a_ssl_finetune_e_r1 wrote checkpoints under ssl/.
+
+defaults:
+  - track_a_ssl_finetune_e_r1
+
+model:
+  init_from: null
+
+training:
+  resume_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/e_r1_ft.last.pt
+  epochs: 60
