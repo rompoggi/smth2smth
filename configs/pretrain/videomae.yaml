@@ -38,6 +38,8 @@ pretrain:
   num_frames: 4
 
   log_interval_steps: 100
+  # Prefix ISO-8601 timestamps on step/epoch log lines (wall-clock for each log_interval).
+  log_timestamps: true
 
   # SSL data roots: default is train + test only (no val labels). Set true to
   # also include ``dataset.val_dir`` (legacy behaviour).

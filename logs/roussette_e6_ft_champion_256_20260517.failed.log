@@ -1,0 +1,127 @@
+model:
+  name: video_mae_vit
+  variant: vit_s
+  num_classes: ${num_classes}
+  tube_t: 2
+  patch_size: 16
+  mlp_ratio: 4.0
+  drop_path_rate: 0.1
+  dropout: 0.0
+  head: attn
+  head_num_heads: 4
+  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/e6_encoder.pt
+  interpolate_pos_embed: true
+  interpolate_src_image_size: 224
+  interpolate_src_num_frames: ${dataset.num_frames}
+  gradient_checkpointing: false
+  freeze_backbone: false
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: ${hydra:runtime.cwd}/submissions/track_a.csv
+  num_frames: 4
+  val_ratio: 0.2
+  use_official_val: true
+  include_val_in_train: false
+  seed: ${seed}
+  max_samples: null
+  max_samples_per_class: null
+  image_size: 256
+  time_reversal_prob: 0.0
+  temporal_reversal_augment:
+    enabled: false
+    prob: 0.5
+  class_boosting:
+    enabled: false
+training:
+  batch_size: 12
+  epochs: 50
+  optimizer: adamw
+  lr: 0.0005
+  layer_decay: 0.75
+  weight_decay: 0.05
+  scheduler: cosine
+  scheduler_cosine: true
+  warmup_epochs: 6
+  min_lr: 1.0e-06
+  label_smoothing: 0.1
+  videomix_mode: mixup_cutmix_switch
+  videomix_mixup_alpha: 0.8
+  videomix_cutmix_alpha: 1.0
+  videomix_prob: 1.0
+  videomix_switch_prob: 0.5
+  repeated_aug: 2
+  amp: true
+  amp_dtype: bf16
+  ema_enabled: true
+  ema_decay: 0.9999
+  early_stopping_enabled: true
+  early_stopping_patience: 25
+  early_stopping_min_delta: 0.001
+  num_workers: 4
+  log_interval_steps: 100
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/e6_ft.pt
+  tta: true
+  tta_flip: true
+  tta_scales:
+  - 0.875
+  - 1.0
+  - 1.125
+augment:
+  name: champion_ft
+  random_horizontal_flip: true
+  random_horizontal_flip_prob: 0.5
+  random_crop: true
+  crop_padding: 32
+  color_jitter: false
+  sync_across_frames: true
+  randaugment:
+    enabled: true
+    'n': 2
+    m: 9.0
+    mode: temporal_plus
+    magnitude_max: 30.0
+    ops: null
+pretrain:
+  epochs: 100
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 50
+  checkpoint_path: ${hydra:runtime.cwd}/ssl_trunk.pt
+  max_frames: null
+  image_size: 224
+  local_image_size: 96
+  num_local_views: 6
+  out_dim: 4096
+  hidden_dim: 2048
+  bottleneck_dim: 256
+  n_layers: 3
+  teacher_temp: 0.04
+  student_temp: 0.1
+  center_momentum: 0.9
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
+track:
+  name: a
+  description: 'Closed-world track: train from scratch.'
+seed: 42
+num_classes: 33
+
+[cuda] cache emptied (run-start). Free: 23.15 / 23.54 GiB
+Error executing job with overrides: ['experiment=track_a_ssl_finetune_e6', 'track=a']
+Traceback (most recent call last):
+  File "/Data/romain.poggi/smth2smth/src/smth2smth/pipelines/train.py", line 1192, in main
+    run(cfg)
+  File "/Data/romain.poggi/smth2smth/src/smth2smth/pipelines/train.py", line 337, in run
+    device = _resolve_device(str(cfg.training.device))
+                                 ^^^^^^^^^^^^^^^^^^^
+omegaconf.errors.ConfigAttributeError: Key 'device' is not in struct
+    full_key: training.device
+    object_type=dict
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
