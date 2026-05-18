@@ -42,6 +42,11 @@ from smth2smth.shared.models.video_mae_resnet import (
 from smth2smth.shared.utils import set_seed
 
 
+def _now() -> str:
+    """ISO-8601 timestamp to second precision, for inline log prefixes."""
+    return datetime.now().isoformat(timespec="seconds")
+
+
 def _cosine_mask_ratio(epoch: int, total_epochs: int, start: float, end: float) -> float:
     """Cosine schedule from ``start`` (epoch 0) to ``end`` (last epoch)."""
     if total_epochs <= 1:
@@ -177,7 +182,18 @@ def run(cfg: DictConfig) -> Path:
             drop_path_rate=float(pcfg.get("drop_path_rate", 0.0)),
             mask_ratio=float(pcfg.get("mask_ratio", 0.75)),
             gradient_checkpointing=grad_ckpt,
+            dual_masking=bool(pcfg.get("dual_masking", False)),
+            decoder_keep_ratio=float(pcfg.get("decoder_keep_ratio", 0.50)),
+            decoder_cell_h=int(pcfg.get("decoder_cell_h", 2)),
+            decoder_cell_w=int(pcfg.get("decoder_cell_w", 2)),
         ).to(device)
+        if bool(pcfg.get("dual_masking", False)):
+            print(
+                f"[videomae] V2 dual masking: encoder tube ratio="
+                f"{float(pcfg.get('mask_ratio', 0.75)):g}, decoder running-cell keep="
+                f"{float(pcfg.get('decoder_keep_ratio', 0.50)):g} on "
+                f"({int(pcfg.get('decoder_cell_h', 2))}x{int(pcfg.get('decoder_cell_w', 2))}) cells."
+            )
         if grad_ckpt:
             print("[videomae] encoder gradient checkpointing enabled.")
 
@@ -212,6 +228,10 @@ def run(cfg: DictConfig) -> Path:
     # ── Checkpoint path ───────────────────────────────────────────────────────
     out_path = Path(pcfg.get("checkpoint_path", "videomae_encoder.pt")).resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    # Full resume state (encoder + decoder + optimizer + scaler + step) lives next
+    # to the trunk checkpoint as ``<stem>.state.pt`` — auto-loaded if present so a
+    # crash-and-restart resumes the run exactly where it left off.
+    state_path = out_path.with_suffix(".state.pt")
 
     log_every = int(pcfg.get("log_interval_steps", 100))
     tube_t = int(cfg.model.get("tube_t", 2))
@@ -225,15 +245,34 @@ def run(cfg: DictConfig) -> Path:
     if mask_schedule:
         print(f"[videomae] mask_ratio cosine schedule {mask_start:g} -> {mask_end:g}")
 
+    start_epoch = 0
     global_step = 0
+    auto_resume = bool(pcfg.get("auto_resume", True))
+    if auto_resume and not use_resnet and state_path.is_file():
+        print(f"[videomae] {_now()} resuming from state {state_path}")
+        state = torch.load(state_path, map_location=device, weights_only=False)
+        model.load_state_dict(state["model_state_dict"], strict=True)
+        optimizer.load_state_dict(state["optimizer_state_dict"])
+        if scaler is not None and state.get("scaler_state_dict") is not None:
+            scaler.load_state_dict(state["scaler_state_dict"])
+        start_epoch = int(state.get("epoch", 0))
+        global_step = int(state.get("global_step", 0))
+        print(
+            f"[videomae] {_now()} resumed at epoch {start_epoch}/{epochs}, "
+            f"global_step {global_step}"
+        )
+
     model.train()
     optimizer.zero_grad(set_to_none=True)
 
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         if mask_schedule and not use_resnet:
             model.mask_ratio = _cosine_mask_ratio(epoch, epochs, mask_start, mask_end)
             if epoch == 0 or epoch == epochs - 1 or (epoch + 1) % 50 == 0:
-                print(f"[videomae] epoch {epoch + 1}: mask_ratio={model.mask_ratio:.4f}")
+                print(
+                    f"[videomae] {_now()} epoch {epoch + 1}: "
+                    f"mask_ratio={model.mask_ratio:.4f}"
+                )
 
         epoch_loss = 0.0
         n_batches = 0
@@ -251,14 +290,15 @@ def run(cfg: DictConfig) -> Path:
                     pred, target, _, _ = model(clip)
                     loss = videomae_resnet_feature_loss(pred, target, norm_feat=norm_feat)
                 else:
-                    pred, _, ids_mask = model(clip)
+                    pred, _, ids_mask, ids_predict = model(clip)
                     loss = videomae_pixel_loss(
                         pred,
                         clip,
-                        ids_mask,
+                        ids_predict,
                         tube_t=tube_t,
                         patch_size=patch_size,
                         norm_pix=norm_pix,
+                        ids_encoder_mask=(ids_mask if model.dual_masking else None),
                     )
 
             scaled_loss = loss / float(grad_accum_steps)
@@ -290,18 +330,14 @@ def run(cfg: DictConfig) -> Path:
             if log_every > 0 and batch_idx % log_every == 0:
                 current_lr = optimizer.param_groups[0]["lr"]
                 print(
-                    f"[videomae] epoch {epoch + 1}/{epochs} "
+                    f"[videomae] {_now()} epoch {epoch + 1}/{epochs} "
                     f"step {batch_idx}/{len(loader)} "
                     f"loss {loss_val:.4f} lr {current_lr:.2e}"
                 )
 
         avg_loss = epoch_loss / max(1, n_batches)
         ep = epoch + 1
-        ts = datetime.now().isoformat(timespec="seconds")
-        if ep == 1 or ep == epochs or ep % 50 == 0:
-            print(f"[videomae] {ts} epoch {ep}/{epochs} avg loss {avg_loss:.4f}")
-        else:
-            print(f"[videomae] epoch {ep}/{epochs} avg loss {avg_loss:.4f}")
+        print(f"[videomae] {_now()} epoch {ep}/{epochs} avg loss {avg_loss:.4f}")
 
         if use_resnet:
             # Plain ResNet+TSM keys — same layout as DINO/V-JEPA SSL trunks.
@@ -322,7 +358,27 @@ def run(cfg: DictConfig) -> Path:
             },
             out_path,
         )
-        print(f"[videomae] wrote trunk checkpoint -> {out_path} ({len(trunk_state_dict)} tensors)")
+        print(
+            f"[videomae] {_now()} wrote trunk checkpoint -> {out_path} "
+            f"({len(trunk_state_dict)} tensors)"
+        )
+
+        # Full resume state (skip for the ResNet-feature pretrain variant — its
+        # model layout differs and the FT pipelines don't ever resume it).
+        if not use_resnet:
+            torch.save(
+                {
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "scaler_state_dict": scaler.state_dict() if scaler is not None else None,
+                    "epoch": ep,
+                    "global_step": global_step,
+                    "variant": variant,
+                    "architecture": model_name,
+                },
+                state_path,
+            )
+            print(f"[videomae] {_now()} wrote resume state -> {state_path}")
 
     _free_cuda_memory(reason="videomae-pretrain-end")
     return out_path

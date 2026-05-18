@@ -627,6 +627,50 @@ _VIT_VARIANTS: dict[str, dict] = {
 # ── SSL helpers ────────────────────────────────────────────────────────────────
 
 
+def make_running_cell_mask(
+    batch_size: int,
+    n_t: int,
+    n_h: int,
+    n_w: int,
+    keep_ratio: float = 0.50,
+    cell_h: int = 2,
+    cell_w: int = 2,
+    device: torch.device | str = "cpu",
+) -> torch.Tensor:
+    """Sample VideoMAE-V2 running-cell decoder mask.
+
+    The (n_h, n_w) spatial grid is tiled into (cell_h, cell_w) cells; each
+    temporal slice is masked independently. Within every (1, cell_h, cell_w)
+    cell, ``round(cell_h*cell_w*keep_ratio)`` positions are kept at random.
+    Returns global token indices (sorted ascending) of decoder-kept positions.
+
+    See VideoMAE V2 paper Fig. 2 / Sec. 3.2 (arXiv:2303.16727). Keeping a fixed
+    count per cell makes the per-sample decoder length deterministic, which is
+    required for batched processing.
+    """
+    if n_h % cell_h != 0 or n_w % cell_w != 0:
+        raise ValueError(
+            f"running-cell mask requires n_h ({n_h}) divisible by cell_h ({cell_h}) "
+            f"and n_w ({n_w}) divisible by cell_w ({cell_w})."
+        )
+    nh_c = n_h // cell_h
+    nw_c = n_w // cell_w
+    cell_size = cell_h * cell_w
+    keep_per_cell = max(1, int(round(cell_size * keep_ratio)))
+
+    noise = torch.rand(batch_size, n_t, nh_c, nw_c, cell_size, device=device)
+    intra_keep = noise.argsort(dim=-1)[..., :keep_per_cell]  # (B, n_t, nh_c, nw_c, keep_per_cell)
+
+    ih_off = (torch.arange(nh_c, device=device) * cell_h).view(1, 1, nh_c, 1, 1)
+    iw_off = (torch.arange(nw_c, device=device) * cell_w).view(1, 1, 1, nw_c, 1)
+    ih_global = ih_off + intra_keep // cell_w
+    iw_global = iw_off + intra_keep % cell_w
+    t_idx = torch.arange(n_t, device=device).view(1, n_t, 1, 1, 1)
+    ids = t_idx * (n_h * n_w) + ih_global * n_w + iw_global  # (B, n_t, nh_c, nw_c, keep_per_cell)
+    ids = ids.reshape(batch_size, -1).sort(dim=1).values
+    return ids
+
+
 def make_tube_mask(
     batch_size: int,
     n_t: int,
@@ -710,9 +754,16 @@ class VideoMAEDecoder(nn.Module):
     DECODER_HEADS = 6
     DECODER_DEPTH = 4
 
-    def __init__(self, encoder_dim: int, num_tokens: int) -> None:
+    def __init__(
+        self,
+        encoder_dim: int,
+        num_tokens: int,
+        tube_t: int = 2,
+        patch_size: int = 16,
+    ) -> None:
         super().__init__()
         d = self.DECODER_DIM
+        self.num_tokens = num_tokens
         self.proj = nn.Linear(encoder_dim, d)
         self.mask_token = nn.Parameter(torch.zeros(1, 1, d))
         self.decoder_pos_embed = nn.Parameter(torch.zeros(1, num_tokens, d))
@@ -722,7 +773,7 @@ class VideoMAEDecoder(nn.Module):
             for i in range(self.DECODER_DEPTH)
         ])
         self.norm = nn.LayerNorm(d)
-        cube_dim = 3 * 2 * 16 * 16  # 1536; fixed for default tube_t=2, patch_size=16
+        cube_dim = 3 * tube_t * patch_size * patch_size
         self.head = nn.Linear(d, cube_dim)
         self._init_weights()
 
@@ -743,22 +794,33 @@ class VideoMAEDecoder(nn.Module):
         visible_tokens: torch.Tensor,
         ids_keep: torch.Tensor,
         ids_mask: torch.Tensor,
-    ) -> torch.Tensor:
+        ids_decoder_kept: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
-            visible_tokens: (B, n_visible, encoder_dim)
-            ids_keep:       (B, n_visible) token indices
-            ids_mask:       (B, n_masked)  token indices
+            visible_tokens:   (B, n_visible, encoder_dim)
+            ids_keep:         (B, n_visible) encoder-visible token indices
+            ids_mask:         (B, n_masked)  encoder-masked token indices
+            ids_decoder_kept: (B, k) optional running-cell decoder kept positions
+                (VideoMAE-V2 dual masking). If ``None`` the decoder processes
+                all N positions (V1 behavior); predictions are returned at
+                ``ids_mask``. If provided, the decoder operates on the k
+                decoder-kept positions and predictions are returned at those
+                positions — the caller is responsible for slicing/masking the
+                non-encoder-masked subset (the loss does this).
+
         Returns:
-            (B, n_masked, cube_dim) — predictions at masked positions only
+            (pred, ids_predict) where ``pred`` is ``(B, P, cube_dim)`` and
+            ``ids_predict`` are the global token indices for which ``pred``
+            holds predictions: P=n_masked (V1) or P=k (V2).
         """
         B = visible_tokens.shape[0]
-        n_visible = ids_keep.shape[1]
-        n_masked = ids_mask.shape[1]
-        N = n_visible + n_masked
+        N = self.num_tokens
+        d = self.mask_token.shape[-1]
 
         tokens = self.proj(visible_tokens)  # (B, n_visible, d)
 
+        # Build the full canvas: visible_tokens at ids_keep, mask_token elsewhere.
         # Under autocast, `tokens` may be fp16/bf16 while parameters stay fp32; align dtypes
         # (and device) for scatter_ / addition.
         full = (
@@ -766,26 +828,40 @@ class VideoMAEDecoder(nn.Module):
             .expand(B, N, -1)
             .clone()
         )
-        idx_v = ids_keep.unsqueeze(-1).expand(-1, -1, tokens.shape[-1])
+        idx_v = ids_keep.unsqueeze(-1).expand(-1, -1, d)
         full.scatter_(1, idx_v, tokens)
 
         full = full + self.decoder_pos_embed.to(dtype=full.dtype)
+
+        if ids_decoder_kept is not None:
+            # Dual masking: decoder operates only on decoder-kept positions.
+            idx_d = ids_decoder_kept.unsqueeze(-1).expand(-1, -1, d)
+            full = torch.gather(full, 1, idx_d)  # (B, k, d)
+            ids_predict = ids_decoder_kept
+        else:
+            ids_predict = ids_mask
 
         for block in self.blocks:
             full = block(full)
         full = self.norm(full)
 
-        # Gather only the masked positions
-        idx_m = ids_mask.unsqueeze(-1).expand(-1, -1, full.shape[-1])
-        masked_out = torch.gather(full, 1, idx_m)   # (B, n_masked, d)
-        return self.head(masked_out)                 # (B, n_masked, cube_dim)
+        if ids_decoder_kept is None:
+            idx_m = ids_mask.unsqueeze(-1).expand(-1, -1, d)
+            full = torch.gather(full, 1, idx_m)   # (B, n_masked, d)
+
+        return self.head(full), ids_predict
 
 
 # ── SSL pretrain model ─────────────────────────────────────────────────────────
 
 
 class VideoMAEPretrainModel(nn.Module):
-    """Encoder + decoder for VideoMAE masked-reconstruction pretraining."""
+    """Encoder + decoder for VideoMAE masked-reconstruction pretraining.
+
+    Supports VideoMAE-V1 (encoder-only tube masking) and VideoMAE-V2 dual
+    masking (encoder tube mask + decoder running-cell mask). Toggle via
+    ``dual_masking=True`` and ``decoder_keep_ratio`` (V2 default 0.50).
+    """
 
     def __init__(
         self,
@@ -800,12 +876,20 @@ class VideoMAEPretrainModel(nn.Module):
         drop_path_rate: float = 0.0,
         mask_ratio: float = 0.75,
         gradient_checkpointing: bool = False,
+        dual_masking: bool = False,
+        decoder_keep_ratio: float = 0.50,
+        decoder_cell_h: int = 2,
+        decoder_cell_w: int = 2,
     ) -> None:
         super().__init__()
         self.mask_ratio = mask_ratio
+        self.dual_masking = bool(dual_masking)
+        self.decoder_keep_ratio = float(decoder_keep_ratio)
+        self.decoder_cell_h = int(decoder_cell_h)
+        self.decoder_cell_w = int(decoder_cell_w)
         self.encoder = VideoMAEEncoder(
             num_frames=num_frames,
-            img_size=image_size,
+            img_size=img_size,
             tube_t=tube_t,
             patch_size=patch_size,
             embed_dim=embed_dim,
@@ -818,6 +902,8 @@ class VideoMAEPretrainModel(nn.Module):
         self.decoder = VideoMAEDecoder(
             encoder_dim=embed_dim,
             num_tokens=self.encoder.num_tokens,
+            tube_t=tube_t,
+            patch_size=patch_size,
         )
         self.n_t = self.encoder.patch_embed.n_t
         self.n_h = self.encoder.patch_embed.n_h
@@ -828,25 +914,36 @@ class VideoMAEPretrainModel(nn.Module):
         x: torch.Tensor,
         ids_keep: torch.Tensor | None = None,
         ids_mask: torch.Tensor | None = None,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Args:
             x:        (B, T, C, H, W)
             ids_keep: (B, n_visible) — if None, sample a fresh tube mask
             ids_mask: (B, n_masked)  — must be provided together with ids_keep
         Returns:
-            pred:     (B, n_masked, cube_dim)
-            ids_keep: (B, n_visible)
-            ids_mask: (B, n_masked)
+            pred:        (B, P, cube_dim)        — predictions at ids_predict
+            ids_keep:    (B, n_visible)
+            ids_mask:    (B, n_masked)           — encoder-masked positions
+            ids_predict: (B, P)                  — positions ``pred`` covers
+                                                   (V1: == ids_mask; V2: decoder-kept set)
         """
         if ids_keep is None:
             ids_keep, ids_mask = make_tube_mask(
                 x.shape[0], self.n_t, self.n_h, self.n_w,
                 self.mask_ratio, device=x.device,
             )
+        ids_decoder_kept: torch.Tensor | None = None
+        if self.dual_masking:
+            ids_decoder_kept = make_running_cell_mask(
+                x.shape[0], self.n_t, self.n_h, self.n_w,
+                keep_ratio=self.decoder_keep_ratio,
+                cell_h=self.decoder_cell_h,
+                cell_w=self.decoder_cell_w,
+                device=x.device,
+            )
         visible = self.encoder(x, ids_keep=ids_keep)
-        pred = self.decoder(visible, ids_keep, ids_mask)
-        return pred, ids_keep, ids_mask
+        pred, ids_predict = self.decoder(visible, ids_keep, ids_mask, ids_decoder_kept)
+        return pred, ids_keep, ids_mask, ids_predict
 
 
 # ── SSL loss ───────────────────────────────────────────────────────────────────
@@ -855,33 +952,45 @@ class VideoMAEPretrainModel(nn.Module):
 def videomae_pixel_loss(
     pred: torch.Tensor,
     clips: torch.Tensor,
-    ids_mask: torch.Tensor,
+    ids_predict: torch.Tensor,
     tube_t: int = 2,
     patch_size: int = 16,
     norm_pix: bool = True,
+    ids_encoder_mask: torch.Tensor | None = None,
 ) -> torch.Tensor:
-    """MSE reconstruction loss on per-cube normalized pixels (masked positions).
+    """MSE reconstruction loss on per-cube normalized pixels.
 
-    Args:
-        pred:     (B, n_masked, cube_dim)
-        clips:    (B, T, C, H, W)  — original input frames
-        ids_mask: (B, n_masked)
-        norm_pix: if True, normalize each cube to zero-mean unit-variance
-    Returns:
-        scalar loss
+    V1: pass ``ids_predict == ids_mask`` (decoder predicts at encoder-masked
+    positions only); ``ids_encoder_mask`` is None. Loss is the mean MSE over
+    all (B, P) prediction positions.
+
+    V2 dual masking: ``ids_predict`` is the decoder-kept set (B, k) and
+    ``ids_encoder_mask`` is the (B, n_masked) encoder-masked set. Loss is
+    computed only at positions that are BOTH decoder-kept AND encoder-masked
+    (the "invisible-only" objective from V2 Tab. 1).
     """
-    target = patchify(clips, tube_t=tube_t, patch_size=patch_size)  # (B, N, cube_dim)
-
-    # Gather masked cubes
-    idx = ids_mask.unsqueeze(-1).expand(-1, -1, target.shape[-1])
-    target = torch.gather(target, 1, idx)  # (B, n_masked, cube_dim)
+    target_full = patchify(clips, tube_t=tube_t, patch_size=patch_size)  # (B, N, cube_dim)
+    B, N, _ = target_full.shape
+    idx = ids_predict.unsqueeze(-1).expand(-1, -1, target_full.shape[-1])
+    target = torch.gather(target_full, 1, idx)  # (B, P, cube_dim)
 
     if norm_pix:
         mean = target.mean(dim=-1, keepdim=True)
         var = target.var(dim=-1, keepdim=True, unbiased=False)
         target = (target - mean) / (var + 1e-6).sqrt()
 
-    return ((pred - target) ** 2).mean()
+    sq = (pred - target.to(pred.dtype)) ** 2  # (B, P, cube_dim)
+
+    if ids_encoder_mask is None:
+        return sq.mean()
+
+    # V2: per-prediction-position mean over cube_dim, then average only over
+    # positions that are encoder-masked (the "invisible" subset).
+    per_pos = sq.mean(dim=-1)  # (B, P)
+    is_masked = torch.zeros(B, N, dtype=torch.bool, device=target.device)
+    is_masked.scatter_(1, ids_encoder_mask, True)
+    weight = torch.gather(is_masked, 1, ids_predict).to(per_pos.dtype)  # (B, P)
+    return (per_pos * weight).sum() / weight.sum().clamp(min=1.0)
 
 
 # ── Builder ────────────────────────────────────────────────────────────────────

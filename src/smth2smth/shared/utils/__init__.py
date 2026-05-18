@@ -6,7 +6,11 @@ from smth2smth.shared.utils.class_balance import (
     compute_sample_weights,
 )
 from smth2smth.shared.utils.seed import set_seed
-from smth2smth.shared.utils.splits import VideoSample, split_train_val
+from smth2smth.shared.utils.splits import (
+    VideoSample,
+    split_train_val,
+    split_train_val_stratified,
+)
 
 __all__ = [
     "VideoSample",
@@ -15,4 +19,5 @@ __all__ = [
     "compute_sample_weights",
     "set_seed",
     "split_train_val",
+    "split_train_val_stratified",
 ]

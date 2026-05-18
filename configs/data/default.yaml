@@ -29,6 +29,10 @@ dataset:
   # When true with ``use_official_val``, append every clip from ``val_dir`` to the
   # training set (official val is still used for validation metrics).
   include_val_in_train: false
+  # When ``use_official_val`` and in ``(0, 1)``, split ``val_dir`` stratified by
+  # class: ``(1 - ratio)`` joins ``train_dir`` for training, ``ratio`` is the
+  # honest holdout for validation metrics. Ignores ``include_val_in_train``.
+  official_val_holdout_ratio: 0.0
   seed: ${seed}
   max_samples: null
   # Balanced per-class subsampling (see ``train._balanced_per_class_subsample``).

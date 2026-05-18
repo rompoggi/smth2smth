@@ -1,0 +1,27 @@
+# @package _global_
+# E_R1 continuation: train on train + 90% of official val (stratified), evaluate
+# on 10% holdout. 10 epochs, low LR, 2-epoch warmup. Resume from honest FT best.
+
+defaults:
+  - track_a_ssl_finetune_e_r1
+
+model:
+  init_from: null
+
+dataset:
+  use_official_val: true
+  include_val_in_train: false
+  official_val_holdout_ratio: 0.1
+
+training:
+  resume_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/e_r1_ft.pt
+  resume_reset_epoch: true
+  resume_apply_cfg_lr: true
+  batch_size: 24
+  grad_accum_steps: 2
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/e_r1_ft_val90_holdout.pt
+  epochs: 10
+  warmup_epochs: 2
+  lr: 0.00005
+  early_stopping_patience: 4
+  # eff batch = 24 * 2 = 48 (larger per-step than 16x4=64 but fits 3090)

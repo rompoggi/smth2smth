@@ -1628,7 +1628,30 @@ finishes; add new rows for every fresh \texttt{nohup} launch.
   \texttt{logs/ssl\_thon\_*} or \file{thon\_encoder.pt} /
   \file{thon\_ft.pt}; presets match \file{SSL.md} but job never
   launched on this VM (no partial log or \texttt{.pid}).  Config drift N/A.
-\item[\textbf{SSL slot 13 / sole} (NOT RUN --- this host)]
+  Superseded by overnight batch \textbf{E5} below (same VM, new presets).
+\item[\textbf{E5 / thon batch} (OVERNIGHT 20260516)]
+  VM \textbf{thon}; honest val; ViT TTA scales
+  \texttt{[0.857, 1.0, 1.143]} at submit.
+  \paragraph{Phase 1 MAE (DONE).}
+  Preset \texttt{track\_a\_ssl\_pretrain\_e5};
+  log \texttt{logs/thon\_e5\_mae\_pretrain\_20260516.log};
+  pid \texttt{logs/thon\_e5\_mae\_pretrain\_20260516.pid}.
+  \texttt{E}=100; \texttt{wu}=5; \texttt{bs}=16; \texttt{lr}=1.5e-4;
+  \texttt{mask}=0.75; minimal aug.  MAE loss \(0.856 \to 0.258\) (ep~100);
+  encoder \file{checkpoints/track\_a/ssl/e5\_encoder.pt} (85\,MiB).
+  \paragraph{Phase 2a FT repr.\ (DONE).}
+  Preset \texttt{track\_a\_ssl\_finetune\_e5}; \texttt{bs}=8; \texttt{E}=50;
+  \texttt{head}=attn (4 heads).  Log
+  \texttt{logs/thon\_e5\_ft\_stage1\_rep50\_20260516.log} (VM restart ep~24,
+  resumed ep~25--50).  Best EMA val \textbf{37.60\,\%} (ep~45);
+  final ep~50 EMA \textbf{37.32\,\%}; \file{e5\_ft.pt}.
+  \paragraph{Phase 2a cont.\ (RUNNING).}
+  Preset \texttt{track\_a\_ssl\_finetune\_e5\_continue150\_bs16};
+  \texttt{E}=150; \texttt{bs}=16; cont.\ rewarm ratio=0.5, \texttt{wu}=6.
+  Log \texttt{logs/thon\_e5\_ft\_continue150\_bs16\_20260516.log};
+  pid \texttt{logs/thon\_e5\_ft\_continue150\_bs16\_20260516.pid};
+  resume \file{e5\_ft.last.pt} (ep~50).  Phase~2b cRT pending.
+  \item[\textbf{SSL slot 13 / sole} (NOT RUN --- this host)]
   Romain slot: attentive probe \texttt{head\_num\_heads}=8
   (\texttt{track\_a\_ssl\_pretrain\_sole} /
   \texttt{track\_a\_ssl\_finetune\_sole}).  No
@@ -1657,6 +1680,84 @@ finishes; add new rows for every fresh \texttt{nohup} launch.
   aligns with Phase~2a val, not the inflated \(\sim 60\,\%\); training on
   val without a held-out set likely \textbf{overfit} and did not beat the
   dual-stream best (\textbf{37.69\,\%}, Run~A1b).
+\item[\textbf{Run E4 / truite batch 20260516} (RUNNING)]
+  Overnight batch \file{instruction\_16052026.md}: supervised R50+TSM from
+  scratch (no SSL).  Preset \texttt{track\_a\_e4\_tsm\_sgdr};
+  \texttt{expt}=E4; \texttt{T}=4; \texttt{Sz}=224; \texttt{bs}=16;
+  \texttt{E}=90; \texttt{lr}=1e-4; \texttt{wd}=0.05;
+  scheduler SGDR \texttt{T\_0}=30 (snapshots at ep~30/60/90);
+  \texttt{aug}=randaugment\_t; \texttt{ls}=0.1; \texttt{amp}=1;
+  \texttt{ema}=0.999; frame mixup; \texttt{tta} scales
+  \([0.875,1.0,1.125]\) (CNN).  Honest official val only.
+  Log \texttt{logs/truite\_e4\_supervised\_sgdr90\_20260516.log};
+  PID \texttt{logs/truite\_e4\_supervised\_sgdr90\_20260516\_resume.pid}
+  (VM restart 2026-05-17; resumed from \texttt{e4\_ft.last.pt} at ep~32).
+  \texttt{ckpt}=\file{checkpoints/track\_a/e4\_ft.pt} (+ \texttt{e4\_ft\_snap1.pt};
+  cycles 2--3 pending).  Interim best val top-1 \textbf{38.67\,\%} (EMA, ep~50);
+  \texttt{e4\_ft\_snap1.pt} at cycle~1.  \textbf{Phase~2 prepared:}
+  \texttt{track\_a\_e4\_tsm\_continue150} (ep~91--150, \texttt{wu}=10, cosine
+  \texttt{T\_max}=50, \texttt{bs}=16); launch after 90-ep \texttt{Done.}
+  Log \texttt{logs/truite\_e4\_continue150\_20260516.log};
+  chain watcher \texttt{logs/truite\_e4\_chain\_continue150\_20260516.log}
+  (auto-starts phase~2 when 90-ep job exits).
+  \textbf{Phase~3 trainval FT} (STOPPED): \texttt{track\_a\_e4\_tsm\_trainval\_ft};
+  train+val; submit at ep~6 \texttt{track\_a\_e4\_trainval\_ep6\_20260516.csv}:
+  Kaggle public top-1 \textbf{42.92\,\%}.  Training halted at ep~17/25 (leaky val
+  $\gg$ LB).  Log \texttt{logs/truite\_e4\_trainval\_ft\_20260516.log}.
+  Honest-val best remains \texttt{e4\_ft.pt} (43.31\,\% EMA, ep~109).
+\item[\textbf{Batch E6 / roussette} (RUNNING --- P1 restart)]
+  VM \textbf{Roussette}; overnight batch \texttt{20260516}
+  (\file{instruction\_16052026.md}).  First launch cancelled mid-epoch~1;
+  second run reached epoch~67/100 then \textbf{VM restart} (admin): only
+  encoder trunk on disk (\texttt{e6\_encoder.pt}), MAE decoder not recoverable---
+  \textbf{pretrain restarted from scratch} (2026-05-17) with same Hydra preset.
+  Prior logs: \texttt{logs/roussette\_e6\_mae\_pretrain\_224\_20260516.log}
+  (interrupted), chain \texttt{logs/roussette\_e6\_chain\_20260516.log}.
+  \paragraph{Phase 1 (MAE @224, restart).}
+  \texttt{expt}=\texttt{track\_a\_ssl\_pretrain\_e6}; honest val excluded from
+  pretrain; \texttt{T}=4; \texttt{Sz}=224; \texttt{E}=100; \texttt{wu}=5;
+  \texttt{bs}=16; \texttt{lr}=1.5e-4; \texttt{mask}=0.75; \texttt{seed}=42;
+  step logs every 100 batches with ISO timestamps (\texttt{log\_timestamps}).
+  Log \texttt{logs/roussette\_e6\_mae\_pretrain\_224\_20260517.log};
+  PID \texttt{logs/roussette\_e6\_mae\_pretrain\_224\_20260517.pid}.
+  \paragraph{Phase 2 (FT @256, auto after P1).}
+  \texttt{expt}=\texttt{track\_a\_ssl\_finetune\_e6}; \texttt{Sz}=256;
+  \texttt{interpolate\_pos\_embed}=1 (src 224); \texttt{dp}=0.1;
+  \texttt{do}=0.0; \texttt{E}=50; \texttt{bs}=12;
+  \texttt{tta\_scales}=[0.875, 1.0, 1.125] at submit.
+  Watcher \texttt{logs/roussette\_e6\_pt\_then\_ft\_20260517.sh} (PID
+  \texttt{logs/roussette\_e6\_pt\_then\_ft\_20260517.pid}) launches FT when
+  epoch~100 completes.
+  Log \texttt{logs/roussette\_e6\_ft\_champion\_256\_20260517.log}.
+\item[\textbf{Run E\_R1 (Sole, 20260517)} (RUNNING)]
+  E\_R1 VideoMAE-V2 ViT-B (\texttt{tube\_t}=1, dual masking) then champion FT on
+  \textbf{sole.polytechnique.fr} (RTX~3090).
+  \paragraph{Phase 1 (DONE).} \texttt{track\_a\_ssl\_pretrain\_e\_r1};
+  MAE \texttt{E}=200; encoder \file{e\_r1\_encoder.pt};
+  log \texttt{logs/sole\_e\_r1\_chain\_20260517.log} (Phase~1 section).
+  \paragraph{Phase 2a (FAILED).} \texttt{track\_a\_ssl\_finetune\_e\_r1},
+  \texttt{E}=40; stopped at ep~7/40 (OOM \texttt{Killed}, step~2600/2813).
+  Best EMA val top-1 \textbf{33.57\,\%} (ep~6, \file{e\_r1\_ft.pt}).
+  \paragraph{Phase 2b (RUNNING).} Resume \texttt{track\_a\_ssl\_finetune\_e\_r1\_resume}
+  from \file{e\_r1\_ft.last.pt} (epoch~6); \texttt{E}=60.
+  Log \texttt{logs/sole\_e\_r1\_ft\_resume\_20260517.log};
+  PID \texttt{logs/sole\_e\_r1\_ft\_resume\_20260517.pid}.
+\item[\textbf{Run E3 (Sole, batch 20260516)} (RUNNING)]
+  Overnight batch \file{instruction\_16052026.md}: VideoMAE ViT-S at
+  \texttt{T}=8 end-to-end (pretrain then champion FT; honest official val).
+  Host \textbf{sole.polytechnique.fr} (RTX~3090).
+  \paragraph{Phase 1 (DONE).} \texttt{track\_a\_ssl\_pretrain\_e3};
+  MAE \texttt{E}=80, \texttt{wu}=5, \texttt{bs}=8, \texttt{grad\_accum}=2,
+  \texttt{lr}=1.5e-4, \texttt{mask}=0.75, \texttt{T}=8,
+  \texttt{grad\_ckpt}=1; encoder \file{checkpoints/track\_a/ssl/e3\_encoder.pt}
+  (symlink to \file{congre\_encoder.pt}, 88\,MB).
+  \paragraph{Phase 2 (RUNNING).} \texttt{track\_a\_ssl\_finetune\_e3};
+  \texttt{E}=50, \texttt{bs}=4, \texttt{grad\_accum}=2, \texttt{T}=8,
+  attentive probe (4 heads); \texttt{tta\_scales}=[0.857, 1.0, 1.143];
+  \file{e3\_ft.pt}.  Log \texttt{logs/sole\_e3\_ft\_champion\_t8\_20260516.log};
+  PID \texttt{logs/sole\_e3\_ft\_champion\_t8\_20260516.pid}.
+  Relaunch after champion YAML fixes (\texttt{training.device}, \texttt{videomix\_alpha}).
+  Best val metrics: pending.
 \end{description}
 \end{minipage}
 \end{table}

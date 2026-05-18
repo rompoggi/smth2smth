@@ -43,7 +43,9 @@ from smth2smth.shared.utils import (
     compute_sample_weights,
     set_seed,
     split_train_val,
+    split_train_val_stratified,
 )
+from smth2smth.shared.utils.splits import label_counts
 
 CONFIGS_DIR = str(Path(__file__).resolve().parents[3] / "configs")
 
@@ -390,23 +392,64 @@ def run(cfg: DictConfig) -> Path | None:
 
     use_official_val = bool(cfg.dataset.get("use_official_val", False))
     include_val_in_train = bool(cfg.dataset.get("include_val_in_train", False))
+    val_holdout_ratio = float(cfg.dataset.get("official_val_holdout_ratio", 0.0) or 0.0)
     if use_official_val:
         # Validate on the official held-out folder. The internal 80/20 split is
         # bypassed: training uses *all* of ``train_dir``, validation uses
         # *all* of ``val_dir``. Optionally also train on ``val_dir`` clips.
         val_dir_for_val = Path(cfg.dataset.val_dir).resolve()
-        val_samples = collect_video_samples(val_dir_for_val)
+        val_samples_all = collect_video_samples(val_dir_for_val)
         if max_samples is not None:
-            val_samples = val_samples[: int(max_samples)]
+            val_samples_all = val_samples_all[: int(max_samples)]
         train_samples = list(all_samples)
         train_sources = f"train_dir={len(all_samples)}"
-        if include_val_in_train:
+        if val_holdout_ratio > 0.0:
+            if include_val_in_train:
+                print(
+                    "[data] official_val_holdout_ratio>0: ignoring "
+                    "include_val_in_train (holdout split adds val to train)."
+                )
+            val_for_train, val_samples = split_train_val_stratified(
+                val_samples_all,
+                val_ratio=val_holdout_ratio,
+                seed=int(cfg.dataset.seed),
+            )
+            train_samples.extend(val_for_train)
+            train_sources += (
+                f" + val_dir={len(val_for_train)} "
+                f"({1.0 - val_holdout_ratio:.0%} stratified)"
+            )
+            full_counts = label_counts(val_samples_all)
+            hold_counts = label_counts(val_samples)
+            n_classes_full = len(full_counts)
+            n_classes_hold = len(hold_counts)
+            min_hold = min(hold_counts.values()) if hold_counts else 0
+            max_hold = max(hold_counts.values()) if hold_counts else 0
+            print(
+                f"[data] use_official_val=true, official_val_holdout_ratio="
+                f"{val_holdout_ratio:g} (stratified per class): "
+                f"train={len(train_samples)} ({train_sources}), "
+                f"val_holdout={len(val_samples)} / val_total={len(val_samples_all)} "
+                f"(from {val_dir_for_val})"
+            )
+            print(
+                f"[data] holdout classes: {n_classes_hold}/{n_classes_full}; "
+                f"clips per class in holdout min={min_hold} max={max_hold}"
+            )
+        elif include_val_in_train:
+            val_samples = val_samples_all
             train_samples.extend(val_samples)
             train_sources += f" + val_dir={len(val_samples)}"
-        print(
-            f"[data] use_official_val=true: train={len(train_samples)} ({train_sources}), "
-            f"val={len(val_samples)} (from {val_dir_for_val})"
-        )
+            print(
+                f"[data] use_official_val=true: train={len(train_samples)} ({train_sources}), "
+                f"val={len(val_samples)} (from {val_dir_for_val})"
+            )
+        else:
+            val_samples = val_samples_all
+            print(
+                f"[data] use_official_val=true: train={len(train_samples)} ({train_sources}), "
+                f"val={len(val_samples)} (from {val_dir_for_val})"
+            )
     else:
         train_samples, val_samples = split_train_val(
             all_samples,
@@ -951,14 +994,26 @@ def run(cfg: DictConfig) -> Path | None:
         payload = load_checkpoint(resume_path, map_location=device)
         model.load_state_dict(payload["model_state_dict"])
         extra = payload.get("extra") or {}
-        start_epoch = int(extra.get("epoch", 0))
-        if "val_top1" in extra:
-            best_top1 = float(extra["val_top1"])
-        best_path = resume_path
-        print(
-            f"  Resumed at epoch {start_epoch}/{int(cfg.training.epochs)}; "
-            f"best val top1 so far = {best_top1:.4f}"
-        )
+        resume_reset_epoch = bool(cfg.training.get("resume_reset_epoch", False))
+        prior_epoch = int(extra.get("epoch", 0))
+        if resume_reset_epoch:
+            start_epoch = 0
+            best_top1 = -1.0
+            best_path = None
+            print(
+                f"  Loaded weights from epoch {prior_epoch}; "
+                f"resume_reset_epoch=true -> starting at epoch 0/"
+                f"{int(cfg.training.epochs)} (best val reset for new split)."
+            )
+        else:
+            start_epoch = prior_epoch
+            if "val_top1" in extra:
+                best_top1 = float(extra["val_top1"])
+            best_path = resume_path
+            print(
+                f"  Resumed at epoch {start_epoch}/{int(cfg.training.epochs)}; "
+                f"best val top1 so far = {best_top1:.4f}"
+            )
 
         opt_restored = False
         opt_state = extra.get("optimizer_state_dict")

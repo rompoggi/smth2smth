@@ -13,6 +13,7 @@ training:
   min_lr: 0.000001
   label_smoothing: 0.1
   videomix_mode: mixup_cutmix_switch
+  videomix_alpha: 1.0
   videomix_mixup_alpha: 0.8
   videomix_cutmix_alpha: 1.0
   videomix_prob: 1.0
