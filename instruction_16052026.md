@@ -247,6 +247,64 @@ echo "Started SGDR train pid=$(cat "$PID") log=$LOG"
 
 **Monitor for:** `[sgdr] saved cycle-N snapshot` lines at epochs 30, 60, 90.
 
+### Phase 2 — continuation 90→150 ep (after phase 1 finishes)
+
+**Wait for** `test -s checkpoints/track_a/e4_ft.last.pt` and log line `Done.` (or epoch 90/90 + cycle-3 snapshot). GPU headroom (~5.5 GiB / 24 GiB on RTX 3090) already supports **bs=16** (same as phase 1).
+
+```bash
+cd "$REPO_ROOT"
+LOG="logs/truite_e4_continue150_${BATCH_TAG}.log"
+PID="logs/truite_e4_continue150_${BATCH_TAG}.pid"
+
+nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
+  "$PY" -u -m smth2smth.pipelines.train \
+  experiment=track_a_e4_tsm_continue150 track=a \
+  training.resume_from="${REPO_ROOT}/checkpoints/track_a/e4_ft.last.pt" \
+  > "$LOG" 2>&1 &
+echo $! > "$PID"
+echo "Started E4 continue-150 pid=$(cat "$PID") log=$LOG"
+```
+
+**Schedule:** 10-ep linear warmup from epoch 91, then cosine over epochs 101–150 (`T_max=50`). Preset: `track_a_e4_tsm_continue150`. Best/last: `e4_ft.pt`, `e4_ft_150.last.pt`.
+
+**Mid-run resume** (after crash/kill; do not use `e4_ft.pt` unless rolling back):
+
+```bash
+training.resume_from="${REPO_ROOT}/checkpoints/track_a/e4_ft_150.last.pt" \
+  training.resume_apply_cfg_lr=false \
+  training.warmup_start_epoch=90
+```
+
+Append to the same `truite_e4_continue150_${BATCH_TAG}.log`.
+
+**Auto-chain (phase 1 still running):** watcher polls the phase-1 PID and launches phase 2 when it exits (no `kill`):
+
+```bash
+cd "$REPO_ROOT"
+export BATCH_TAG=20260516
+nohup env BATCH_TAG="$BATCH_TAG" bash scripts/truite_e4_chain_continue150.sh \
+  >> "logs/truite_e4_chain_continue150_${BATCH_TAG}.log" 2>&1 &
+echo $! > "logs/truite_e4_chain_continue150_${BATCH_TAG}.pid"
+```
+
+### Phase 3 — train+val fine-tune (after continue-150)
+
+Low-LR polish: **train + official val** (`include_val_in_train=true`; val metrics are **leaky**). Effective batch **64** = `bs=16` × `grad_accum_steps=4`. Weights from `e4_ft.pt` (best 150-ep EMA).
+
+```bash
+cd "$REPO_ROOT"
+LOG="logs/truite_e4_trainval_ft_${BATCH_TAG}.log"
+PID="logs/truite_e4_trainval_ft_${BATCH_TAG}.pid"
+
+nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src \
+  "$PY" -u -m smth2smth.pipelines.train \
+  experiment=track_a_e4_tsm_trainval_ft track=a \
+  > "$LOG" 2>&1 &
+echo $! > "$PID"
+```
+
+Preset `track_a_e4_tsm_trainval_ft`: `lr=1e-5`, 25 ep, 3-ep warmup, `wd=0.01`. Ckpt: `e4_ft_trainval.pt`.
+
 ---
 
 # Machine: thon — E5 (cRT: 3 phases)
@@ -433,6 +491,8 @@ Adapt `experiment=` / paths for other machines (E5 needs **three** sequential st
 | E3 pretrain | `track_a_ssl_pretrain_e3`             |
 | E3 FT       | `track_a_ssl_finetune_e3`             |
 | E4 train    | `track_a_e4_tsm_sgdr`                        |
+| E4 cont.    | `track_a_e4_tsm_continue150`                 |
+| E4 trainval | `track_a_e4_tsm_trainval_ft`                 |
 | E5 pretrain | `track_a_ssl_pretrain_e5`            |
 | E5 FT s1    | `track_a_ssl_finetune_e5`            |
 | E5 FT s2    | `track_a_ssl_finetune_e5_crt`        |
