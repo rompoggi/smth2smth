@@ -15,6 +15,7 @@ import math
 from pathlib import Path
 
 import hydra
+from PIL import Image
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -23,7 +24,14 @@ from torch.utils.data import DataLoader
 
 from smth2smth.pipelines.train import CONFIGS_DIR, _resolve_device
 from smth2smth.shared.data import VideoFrameDataset, build_transforms, collect_video_samples
-from smth2smth.shared.data.video_dataset import parse_class_index
+from smth2smth.shared.data import transforms as transform_constants
+from smth2smth.shared.data.video_dataset import (
+    _list_frame_paths,
+    parse_class_index,
+    pick_segment_frame_indices,
+)
+from torchvision.transforms import Normalize
+from torchvision.transforms import functional as TF
 from smth2smth.shared.io.checkpoints import cfg_from_checkpoint, load_checkpoint
 from smth2smth.shared.io.submission import (
     discover_all_test_videos,
@@ -95,20 +103,11 @@ def run(cfg: DictConfig) -> Path:
     video_names, video_dirs = _resolve_test_videos(test_root, manifest_path)
     print(f"Found {len(video_names)} test videos.")
 
-    sample_list = [(p, 0) for p in video_dirs]
-    dataset = VideoFrameDataset(
-        root_dir=test_root,
-        num_frames=num_frames,
-        transform=eval_transform,
-        sample_list=sample_list,
-    )
-    loader = DataLoader(
-        dataset,
-        batch_size=int(cfg.training.batch_size),
-        shuffle=False,
-        num_workers=int(cfg.training.num_workers),
-        pin_memory=(device.type == "cuda"),
-    )
+    test_cfg = cfg.get("test")
+    num_segment = int(test_cfg.num_segment) if test_cfg is not None else 1
+    num_crop = int(test_cfg.num_crop) if test_cfg is not None else 1
+    flip_tta = bool(test_cfg.flip_tta) if test_cfg is not None else False
+    dense_tta = num_segment > 1 or num_crop > 1 or flip_tta
 
     # If the checkpoint recorded which class indices actually had training
     # samples (added in Phase 1), mask the never-trained logits to ``-inf``
@@ -122,16 +121,17 @@ def run(cfg: DictConfig) -> Path:
         device=device,
     )
 
-    tta_enabled = bool(cfg.training.get("tta", False))
-    tta_flip = bool(cfg.training.get("tta_flip", True))
+    train_dir = Path(str(cfg.dataset.train_dir)).resolve()
     flip_perm: torch.Tensor | None = None
-    if tta_enabled and tta_flip:
-        train_dir = Path(str(cfg.dataset.train_dir)).resolve()
+    if flip_tta or bool(cfg.training.get("tta_flip", True)):
         flip_perm = _build_flip_class_permutation(
             train_dir=train_dir,
             num_classes=int(cfg.num_classes),
             device=device,
         )
+
+    tta_enabled = bool(cfg.training.get("tta", False))
+    tta_flip_cfg = bool(cfg.training.get("tta_flip", True))
 
     # Multi-scale TTA. Default ``[1.0]`` is a no-op (single forward at the
     # training resolution). Adding e.g. ``[0.875, 1.0, 1.125]`` evaluates the
@@ -165,7 +165,6 @@ def run(cfg: DictConfig) -> Path:
     tau = float(cfg.training.get("tta_logit_adjust", 0.0)) if tta_enabled else 0.0
     logit_adjust: torch.Tensor | None = None
     if tau > 0.0:
-        train_dir = Path(str(cfg.dataset.train_dir)).resolve()
         logit_adjust = _build_logit_adjustment(
             train_dir=train_dir,
             num_classes=int(cfg.num_classes),
@@ -177,19 +176,58 @@ def run(cfg: DictConfig) -> Path:
     if amp_infer:
         print("[submit] inference autocast fp16 enabled (matches training.amp).")
 
-    predictions = _predict(
-        model=model,
-        loader=loader,
-        device=device,
-        untrained_mask=untrained_mask,
-        tta_enabled=tta_enabled,
-        tta_flip=tta_flip,
-        flip_perm=flip_perm,
-        tta_scales=tta_scales,
-        logit_adjust=logit_adjust,
-        amp_infer=amp_infer,
-        patch_size=patch_size,
-    )
+    image_size = int(cfg.dataset.image_size)
+
+    if dense_tta:
+        n_views = num_segment * num_crop * (2 if flip_tta else 1)
+        print(
+            f"[test-tta] num_segment={num_segment} num_crop={num_crop} "
+            f"flip_tta={flip_tta} -> {n_views} views/video"
+        )
+        predictions = _predict_dense_tta(
+            model=model,
+            video_dirs=video_dirs,
+            num_frames=num_frames,
+            image_size=image_size,
+            use_imagenet_norm=use_imagenet_norm,
+            device=device,
+            untrained_mask=untrained_mask,
+            flip_perm=flip_perm if flip_tta else None,
+            logit_adjust=logit_adjust,
+            amp_infer=amp_infer,
+            num_segment=num_segment,
+            num_crop=num_crop,
+            flip_tta=flip_tta,
+            micro_batch=int(cfg.training.batch_size),
+        )
+    else:
+        sample_list = [(p, 0) for p in video_dirs]
+        dataset = VideoFrameDataset(
+            root_dir=test_root,
+            num_frames=num_frames,
+            transform=eval_transform,
+            sample_list=sample_list,
+        )
+        loader = DataLoader(
+            dataset,
+            batch_size=int(cfg.training.batch_size),
+            shuffle=False,
+            num_workers=int(cfg.training.num_workers),
+            pin_memory=(device.type == "cuda"),
+        )
+        predictions = _predict(
+            model=model,
+            loader=loader,
+            device=device,
+            untrained_mask=untrained_mask,
+            tta_enabled=tta_enabled,
+            tta_flip=tta_flip_cfg,
+            flip_perm=flip_perm if tta_enabled and tta_flip_cfg else None,
+            tta_scales=tta_scales,
+            logit_adjust=logit_adjust if tta_enabled else None,
+            amp_infer=amp_infer,
+            patch_size=patch_size,
+        )
     if len(predictions) != len(video_names):
         raise RuntimeError(f"Prediction count {len(predictions)} != video count {len(video_names)}")
 
@@ -282,6 +320,135 @@ def _build_flip_class_permutation(
     else:
         print("[tta] no left/right class pair detected; flip remap is identity.")
     return torch.tensor(perm, dtype=torch.long, device=device)
+
+
+def _eval_normalize(use_imagenet_norm: bool) -> Normalize:
+    """Return the eval normalization transform matching :func:`build_transforms`."""
+    if use_imagenet_norm:
+        return Normalize(
+            mean=transform_constants._IMAGENET_MEAN,
+            std=transform_constants._IMAGENET_STD,
+        )
+    return Normalize(
+        mean=transform_constants._SYMMETRIC_MEAN,
+        std=transform_constants._SYMMETRIC_STD,
+    )
+
+
+def _crop_x_offsets(num_crop: int, crop_size: int, resized_w: int) -> list[int]:
+    """Horizontal crop offsets for ``num_crop`` evenly spaced ``crop_size`` windows."""
+    if num_crop <= 1:
+        return [max(0, (resized_w - crop_size) // 2)]
+    max_off = max(0, resized_w - crop_size)
+    return [int(round(i * max_off / (num_crop - 1))) for i in range(num_crop)]
+
+
+def _load_tta_video_views(
+    video_dir: Path,
+    *,
+    num_frames: int,
+    image_size: int,
+    normalize: Normalize,
+    num_segment: int,
+    num_crop: int,
+    flip_tta: bool,
+) -> list[torch.Tensor]:
+    """Build ``(T, C, H, W)`` tensors for each dense-TTA view of one video."""
+    frame_paths = _list_frame_paths(video_dir)
+    num_available = len(frame_paths)
+    if num_available == 0:
+        raise RuntimeError(f"No frames under {video_dir}")
+
+    resized_h = image_size
+    resized_w = image_size if num_crop <= 1 else int(round(image_size * 1.14))
+    crop_lefts = _crop_x_offsets(num_crop, image_size, resized_w)
+
+    views: list[torch.Tensor] = []
+    for seg_idx in range(num_segment):
+        indices = pick_segment_frame_indices(
+            num_available, num_frames, seg_idx, num_segment
+        )
+        raw_frames: list[Image.Image] = []
+        for frame_index in indices:
+            with Image.open(frame_paths[frame_index]) as image:
+                raw_frames.append(image.convert("RGB"))
+
+        for crop_left in crop_lefts:
+            frame_tensors = []
+            for frame in raw_frames:
+                x = TF.resize(frame, [resized_h, resized_w])
+                x = TF.crop(x, 0, crop_left, image_size, image_size)
+                frame_tensors.append(normalize(TF.to_tensor(x)))
+            clip = torch.stack(frame_tensors, dim=0)
+            views.append(clip)
+            if flip_tta:
+                views.append(torch.flip(clip, dims=[-1]))
+    return views
+
+
+@torch.no_grad()
+def _predict_dense_tta(
+    *,
+    model: nn.Module,
+    video_dirs: list[Path],
+    num_frames: int,
+    image_size: int,
+    use_imagenet_norm: bool,
+    device: torch.device,
+    untrained_mask: torch.Tensor | None,
+    flip_perm: torch.Tensor | None,
+    logit_adjust: torch.Tensor | None,
+    amp_infer: bool,
+    num_segment: int,
+    num_crop: int,
+    flip_tta: bool,
+    micro_batch: int,
+) -> list[int]:
+    """Softmax-average predictions over segment × crop × optional flip views."""
+    normalize = _eval_normalize(use_imagenet_norm)
+    model.eval()
+    predictions: list[int] = []
+    micro_batch = max(1, micro_batch)
+    log_every = 200
+
+    for vid_idx, video_dir in enumerate(video_dirs):
+        views = _load_tta_video_views(
+            video_dir,
+            num_frames=num_frames,
+            image_size=image_size,
+            normalize=normalize,
+            num_segment=num_segment,
+            num_crop=num_crop,
+            flip_tta=flip_tta,
+        )
+        probs_total: torch.Tensor | None = None
+        n_views = 0
+        for start in range(0, len(views), micro_batch):
+            batch_views = views[start : start + micro_batch]
+            video_batch = torch.stack(batch_views, dim=0).to(device, non_blocking=True)
+            logits = _logits_for_batch(
+                model,
+                video_batch,
+                untrained_mask,
+                logit_adjust=logit_adjust,
+                amp_infer=amp_infer,
+            )
+            batch_probs = torch.softmax(logits, dim=1)
+            for local_i, probs in enumerate(batch_probs):
+                view_probs = probs
+                global_view = start + local_i
+                # Flipped views are appended immediately after their unflipped pair.
+                if flip_tta and flip_perm is not None and global_view % 2 == 1:
+                    view_probs = view_probs.index_select(dim=0, index=flip_perm)
+                probs_total = view_probs if probs_total is None else probs_total + view_probs
+                n_views += 1
+        assert probs_total is not None and n_views > 0
+        predictions.append(int((probs_total / float(n_views)).argmax().item()))
+
+        if (vid_idx + 1) % log_every == 0 or (vid_idx + 1) == len(video_dirs):
+            print(f"[test-tta] {vid_idx + 1}/{len(video_dirs)} videos", flush=True)
+
+    return predictions
 
 
 @torch.no_grad()

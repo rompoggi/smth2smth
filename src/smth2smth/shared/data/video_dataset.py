@@ -161,6 +161,52 @@ def pick_frame_indices(num_available: int, num_frames: int) -> list[int]:
     return [int(round(float(x))) for x in positions]
 
 
+def pick_segment_frame_indices(
+    num_available: int,
+    num_frames: int,
+    segment_idx: int,
+    num_segments: int,
+) -> list[int]:
+    """Pick ``num_frames`` indices from temporal segment ``segment_idx`` of ``num_segments``.
+
+    The video timeline is split into ``num_segments`` contiguous chunks; frames are
+    sampled with the same linspace rule as :func:`pick_frame_indices` inside the
+    chosen chunk. Used for multi-segment test-time augmentation at submission.
+
+    Args:
+        num_available: Total frames in the video folder.
+        num_frames: Target clip length ``T``.
+        segment_idx: Zero-based segment index in ``[0, num_segments)``.
+        num_segments: Number of temporal segments (``1`` delegates to
+            :func:`pick_frame_indices`).
+
+    Returns:
+        Absolute frame indices into the video folder.
+
+    Raises:
+        ValueError: If ``segment_idx`` is out of range or inputs are invalid.
+    """
+    if num_segments <= 1:
+        return pick_frame_indices(num_available, num_frames)
+    if segment_idx < 0 or segment_idx >= num_segments:
+        raise ValueError(f"segment_idx must be in [0, {num_segments}), got {segment_idx}.")
+    if num_available <= 0 or num_frames <= 0:
+        raise ValueError("num_available and num_frames must be positive.")
+
+    if num_available == 1:
+        return [0] * num_frames
+
+    boundaries = torch.linspace(0, num_available, steps=num_segments + 1).long()
+    seg_start = int(boundaries[segment_idx].item())
+    seg_end = int(boundaries[segment_idx + 1].item())
+    seg_len = max(1, seg_end - seg_start)
+    if seg_len == 1:
+        return [seg_start] * num_frames
+
+    positions = torch.linspace(0, seg_len - 1, steps=num_frames)
+    return [seg_start + int(round(float(x))) for x in positions]
+
+
 class VideoFrameDataset(Dataset):
     """Lazy dataset of fixed-length frame tensors per video folder.
 
