@@ -7,6 +7,7 @@ defaults:
   - train: default
   - augment: none
   - pretrain: default
+  - test: default
   - track: a
   - experiment: baseline_pretrained
   - _self_

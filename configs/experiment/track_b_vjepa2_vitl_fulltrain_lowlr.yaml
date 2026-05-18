@@ -1,0 +1,20 @@
+# @package _global_
+# Track B ViT-L LoRA: low-LR continuation on train+val after fulltrain submit (68.09% test).
+#
+# Warm-starts from ``vitl_fulltrain_lora.pt`` (Run 5 epoch 8). ``resume_apply_cfg_lr``
+# resets head/LoRA peaks to the lower rates below and fast-forwards cosine from the
+# resumed epoch index. Val metrics remain optimistic (val clips are in train).
+defaults:
+  - track_b_vjepa2_vitl_fulltrain
+
+training:
+  lr: 5.0e-5
+  lora_lr: 1.0e-5
+  min_lr: 1.0e-6
+  warmup_epochs: 1
+  weight_decay: 0.08
+  label_smoothing: 0.1
+  epochs: 23
+  resume_apply_cfg_lr: true
+  resume_from: checkpoints/track_b/vitl_fulltrain_lora.pt
+  checkpoint_path: checkpoints/track_b/vitl_fulltrain_lora_lowlr.pt

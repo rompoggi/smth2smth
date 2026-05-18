@@ -12,6 +12,9 @@
 defaults:
   - track_b_vjepa2
 
+augment:
+  random_horizontal_flip: false
+
 model:
   hf_repo: facebook/vjepa2-vitl-fpc64-256
   freeze_backbone: true
@@ -23,6 +26,7 @@ model:
 
 training:
   epochs: 30
+  num_workers: 0
   warmup_epochs: 3
   scheduler_cosine: true
   eval_every_n_epochs: 1

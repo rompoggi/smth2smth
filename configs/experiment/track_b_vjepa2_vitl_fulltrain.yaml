@@ -1,0 +1,15 @@
+# @package _global_
+# Track B ViT-L LoRA: final fit on train + official val (51.7k clips).
+#
+# Warm-starts from the best val checkpoint (Run 4 epoch 7) and continues the
+# 30-epoch cosine schedule. Val metrics each epoch are for monitoring only (val
+# clips are in the train set).
+defaults:
+  - track_b_vjepa2_vitl_30e_warmup
+
+dataset:
+  include_val_in_train: true
+
+training:
+  checkpoint_path: checkpoints/track_b/vitl_fulltrain_lora.pt
+  resume_from: checkpoints/track_b/vitl_30e_warmup_lora.pt

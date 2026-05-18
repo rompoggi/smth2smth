@@ -1,0 +1,9 @@
+# @package _global_
+# Test-time augmentation knobs for :mod:`smth2smth.pipelines.submit`.
+#
+# Typical strong TTA (TSN-style): ``num_segment=2``, ``num_crop=3``, ``flip_tta=true``
+# -> 2 * 3 * 2 = 12 views per video (softmax-averaged).
+test:
+  num_segment: 1
+  num_crop: 1
+  flip_tta: false
