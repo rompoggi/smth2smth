@@ -13,10 +13,12 @@ from smth2smth.track_b.vjepa2 import (
     AttentiveProbe,
     MeanLinearHead,
     VJEPA2Probe,
+    VJEPA2SSv2FTProbe,
 )
 
 __all__ = [
     "AttentiveProbe",
     "MeanLinearHead",
     "VJEPA2Probe",
+    "VJEPA2SSv2FTProbe",
 ]

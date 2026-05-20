@@ -1,0 +1,68 @@
+# @package _global_
+# E1: SSv2-FT checkpoint swap + head-slice + LoRA at 16 frames.
+#
+# Loads ``facebook/vjepa2-vitl-fpc16-256-ssv2`` (Meta's supervised SSv2 ViT-L
+# finetune, 73.7% on full 174-class SSv2 val), slices its 174-class classifier
+# down to our subset (32 of 33 indices; class 027 has no local folder so its
+# row is randomly initialized), keeps Meta's pretrained attentive pooler, and
+# attaches PEFT LoRA on the encoder's attention projections. Training updates
+# the LoRA adapters + pooler + sliced classifier; the base encoder stays frozen.
+#
+# Inputs: 16 frames at 256² (the fpc16 head was trained at fpc16). Our local
+# 4-real-frames-duplicated-to-16 distribution feeds through unchanged; the
+# zero-motion-delta token structure is a distribution shift the original head
+# never saw, so LoRA closes part of that gap.
+#
+# TTA at submit time: 2 segments × 3 spatial crops, no flip (see E2 config /
+# track_b_next_steps.md §5 for rationale). The (18,19) Pulling-L↔R remap is
+# computed automatically in submit.py from the class folder names.
+defaults:
+  - override /model: vjepa2
+
+augment:
+  random_horizontal_flip: false
+
+model:
+  name: vjepa2_ssv2ft
+  pretrained: true
+  hf_repo: facebook/vjepa2-vitl-fpc16-256-ssv2
+  init_head_from_ssv2: true
+  # ``label_source_dir`` defaults to ``${dataset.train_dir}`` inside the builder.
+  freeze_backbone: true
+  lora_enabled: true
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  lora_target_modules: null
+  attn_implementation: sdpa
+
+dataset:
+  num_frames: 16
+  image_size: 256
+  use_official_val: true
+
+training:
+  batch_size: 4
+  epochs: 15
+  lr: 0.0005           # probe + pooler head LR
+  lora_lr: 0.0001
+  optimizer: adamw
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 1
+  min_lr: 0.00001
+  label_smoothing: 0.1
+  amp: true
+  ema_enabled: true
+  ema_decay: 0.999
+  eval_ema: true
+  tta: false           # use the dense 2x3 path at submit time, not training-time view averaging
+  tta_flip: false
+  early_stopping_enabled: false
+  log_interval_steps: 50
+  checkpoint_path: checkpoints/track_b/ssv2ft_lora16f.pt
+
+test:
+  num_segment: 2
+  num_crop: 3
+  flip_tta: false

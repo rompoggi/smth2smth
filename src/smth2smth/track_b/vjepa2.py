@@ -60,6 +60,7 @@ Forward contract:
 from __future__ import annotations
 
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any, Literal
 
 import torch
@@ -71,6 +72,7 @@ from smth2smth.shared.models.registry import register_model
 HeadType = Literal["attentive", "linear", "mean_linear"]
 
 DEFAULT_HF_REPO: str = "facebook/vjepa2-vitl-fpc64-256"
+DEFAULT_SSV2FT_HF_REPO: str = "facebook/vjepa2-vitl-fpc16-256-ssv2"
 
 _DEFAULT_LORA_TARGETS: tuple[str, ...] = ("query", "key", "value", "proj")
 
@@ -420,19 +422,7 @@ class VJEPA2Probe(nn.Module):
 def build_vjepa2(cfg: DictConfig) -> nn.Module:
     """Builder hook used by :func:`smth2smth.shared.models.registry.build_model`."""
     model_cfg = cfg.model
-    lora_tm_raw = model_cfg.get("lora_target_modules")
-    lora_tm: Sequence[str] | None
-    if lora_tm_raw is None:
-        lora_tm = None
-    elif isinstance(lora_tm_raw, (list, tuple)):
-        lora_tm = [str(x) for x in lora_tm_raw]
-    else:
-        from omegaconf import ListConfig, OmegaConf
-
-        if isinstance(lora_tm_raw, ListConfig):
-            lora_tm = [str(x) for x in OmegaConf.to_container(lora_tm_raw, resolve=True)]  # type: ignore[arg-type]
-        else:
-            lora_tm = None
+    lora_tm = _resolve_lora_target_modules(model_cfg.get("lora_target_modules"))
     return VJEPA2Probe(
         num_classes=int(model_cfg.num_classes),
         hf_repo=str(model_cfg.get("hf_repo", DEFAULT_HF_REPO)),
@@ -445,6 +435,241 @@ def build_vjepa2(cfg: DictConfig) -> nn.Module:
         lora_r=int(model_cfg.get("lora_r", 8)),
         lora_alpha=int(model_cfg.get("lora_alpha", 16)),
         lora_dropout=float(model_cfg.get("lora_dropout", 0.05)),
-        lora_target_modules=lora_tm if isinstance(lora_tm, (list, tuple)) else None,
+        lora_target_modules=lora_tm,
+        attn_implementation=str(model_cfg.get("attn_implementation", "sdpa")),
+    )
+
+
+def _resolve_lora_target_modules(raw: Any) -> Sequence[str] | None:
+    """Coerce a Hydra/OmegaConf value for ``lora_target_modules`` to a plain list.
+
+    ``None``/missing returns ``None`` (callers substitute their default). Lists,
+    tuples, and ``ListConfig`` are converted to ``list[str]``. Anything else
+    (scalar, dict, etc.) is rejected as a config error.
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, (list, tuple)):
+        return [str(x) for x in raw]
+    from omegaconf import ListConfig, OmegaConf
+
+    if isinstance(raw, ListConfig):
+        return [str(x) for x in OmegaConf.to_container(raw, resolve=True)]  # type: ignore[arg-type]
+    return None
+
+
+def _load_local_to_ssv2_idx(
+    label_source_dir: Path,
+    id2label: dict[int, str],
+    num_classes: int,
+    log_fn: Any = print,
+) -> torch.Tensor:
+    """Build the ``(num_classes,)`` index tensor mapping local class idx → SSv2 native idx.
+
+    Uses the same normalized-name + token-aligned-unique-prefix matching as
+    :func:`smth2smth.track_b.zero_shot.build_label_mapping`. Every local class
+    folder under ``label_source_dir`` must resolve to a unique SSv2 idx; we
+    raise loudly on any unmatched name so head-slice doesn't silently align to
+    the wrong class. The output is indexed by *local* class index (so the i-th
+    row of the sliced classifier corresponds to local class ``i``); class
+    indices not present in the folder layout (e.g. local idx 027 in the 32-
+    class subset) are filled with ``-1`` and must be masked downstream.
+    """
+    from smth2smth.track_b.zero_shot import build_label_mapping
+
+    if not label_source_dir.is_dir():
+        raise FileNotFoundError(
+            f"label_source_dir={label_source_dir!s} does not exist; required to "
+            "derive the local→SSv2 class-index map for head-slice."
+        )
+    class_dirs = sorted(p for p in label_source_dir.iterdir() if p.is_dir())
+    mapping, unmatched = build_label_mapping(class_dirs, id2label, log_fn=log_fn)
+    if unmatched:
+        raise RuntimeError(
+            "Cannot align the following local class folders to SSv2 id2label: "
+            f"{unmatched!r}. Fix the folder names or extend the matcher."
+        )
+    if not mapping:
+        raise RuntimeError(
+            f"Empty local→SSv2 mapping derived from {label_source_dir!s}."
+        )
+    idx_tensor = torch.full((num_classes,), -1, dtype=torch.long)
+    for local_idx, ssv2_idx in mapping.items():
+        if 0 <= local_idx < num_classes:
+            idx_tensor[local_idx] = int(ssv2_idx)
+    n_resolved = int((idx_tensor >= 0).sum().item())
+    log_fn(
+        f"[ssv2ft] head-slice: resolved {n_resolved}/{num_classes} local class indices "
+        f"({len(mapping)} folder matches)"
+    )
+    return idx_tensor
+
+
+class VJEPA2SSv2FTProbe(nn.Module):
+    """V-JEPA 2 SSv2-finetuned classifier with head-sliced, optionally LoRA-adapted encoder.
+
+    Loads :class:`transformers.VJEPA2ForVideoClassification` from an SSv2-
+    finetuned checkpoint (e.g. ``facebook/vjepa2-vitl-fpc16-256-ssv2``), keeps
+    Meta's pretrained attentive pooler, and replaces the 174-class linear
+    classifier with one whose rows are *initialized from the corresponding 32
+    rows of Meta's classifier*. This imports the supervised SSv2 class
+    prototypes for our subset, so the model starts well above random and far
+    above an SSL-only baseline. The encoder is wrapped with PEFT LoRA when
+    ``lora_enabled`` is set; the pooler and classifier are always trainable.
+
+    Forward: ``(B, T, C, H, W)`` → ``(B, num_classes)`` logits via
+    ``VJEPA2ForVideoClassification.forward(pixel_values_videos=...).logits``.
+
+    Args:
+        num_classes: Number of local class indices in our subset.
+        hf_repo: SSv2-finetuned HuggingFace repo.
+        label_source_dir: Path whose subdirectories are ``NNN_<SSv2-label>``
+            class folders; used at construction time to derive the
+            local→SSv2 index map for head-slicing. Required when
+            ``init_head_from_ssv2`` is true.
+        init_head_from_ssv2: When ``True`` (default), slice Meta's 174-class
+            classifier rows into a fresh ``nn.Linear(hidden, num_classes)``.
+            Set ``False`` for inference-time reconstruction from a saved
+            checkpoint (random head; the saved state dict overlays it).
+        freeze_backbone_base: Keep the pretrained encoder weights frozen
+            (LoRA adapter weights remain trainable when ``lora_enabled``).
+        lora_enabled, lora_r, lora_alpha, lora_dropout, lora_target_modules:
+            Standard PEFT knobs (see :func:`_try_apply_peft_lora`).
+        attn_implementation: ``transformers`` attention backend.
+    """
+
+    def __init__(
+        self,
+        num_classes: int,
+        hf_repo: str = DEFAULT_SSV2FT_HF_REPO,
+        *,
+        label_source_dir: str | Path | None = None,
+        init_head_from_ssv2: bool = True,
+        freeze_backbone_base: bool = True,
+        lora_enabled: bool = False,
+        lora_r: int = 16,
+        lora_alpha: int = 32,
+        lora_dropout: float = 0.05,
+        lora_target_modules: Sequence[str] | None = None,
+        attn_implementation: str = "sdpa",
+    ) -> None:
+        super().__init__()
+        try:
+            from transformers import VJEPA2ForVideoClassification
+        except ImportError as exc:
+            raise ImportError(
+                "The 'vjepa2_ssv2ft' model requires the 'transformers' package."
+            ) from exc
+
+        self.hf_repo: str = str(hf_repo)
+        self.lora_enabled: bool = bool(lora_enabled)
+        self.freeze_backbone_base: bool = bool(freeze_backbone_base)
+
+        load_kwargs: dict[str, Any] = {}
+        if attn_implementation:
+            load_kwargs["attn_implementation"] = attn_implementation
+        model = VJEPA2ForVideoClassification.from_pretrained(self.hf_repo, **load_kwargs)
+
+        hidden = int(model.config.hidden_size)
+        self.feature_dim: int = hidden
+
+        if init_head_from_ssv2:
+            if label_source_dir is None:
+                raise ValueError(
+                    "init_head_from_ssv2=True requires label_source_dir to derive "
+                    "the local→SSv2 class index map."
+                )
+            id2label = {int(k): str(v) for k, v in model.config.id2label.items()}
+            idx_tensor = _load_local_to_ssv2_idx(
+                Path(str(label_source_dir)).resolve(),
+                id2label,
+                int(num_classes),
+            )
+            self.register_buffer("local_to_ssv2_idx", idx_tensor, persistent=True)
+            new_head = nn.Linear(hidden, int(num_classes), bias=True)
+            with torch.no_grad():
+                resolved = idx_tensor >= 0
+                if resolved.any():
+                    sel = idx_tensor.clone()
+                    sel[~resolved] = 0  # safe gather; unresolved rows overwritten below
+                    new_head.weight.data.copy_(model.classifier.weight.data.index_select(0, sel))
+                    new_head.bias.data.copy_(model.classifier.bias.data.index_select(0, sel))
+                if (~resolved).any():
+                    # Local indices without a SSv2 match (e.g. missing class 027): random init.
+                    nn.init.normal_(new_head.weight.data[~resolved], mean=0.0, std=0.01)
+                    nn.init.zeros_(new_head.bias.data[~resolved])
+        else:
+            self.register_buffer(
+                "local_to_ssv2_idx",
+                torch.full((int(num_classes),), -1, dtype=torch.long),
+                persistent=True,
+            )
+            new_head = nn.Linear(hidden, int(num_classes), bias=True)
+            nn.init.normal_(new_head.weight, mean=0.0, std=0.01)
+            nn.init.zeros_(new_head.bias)
+
+        model.classifier = new_head
+        model.num_labels = int(num_classes)
+        model.config.num_labels = int(num_classes)
+
+        if self.freeze_backbone_base:
+            for param in model.vjepa2.parameters():
+                param.requires_grad = False
+
+        if self.lora_enabled:
+            tm = list(lora_target_modules) if lora_target_modules is not None else list(_DEFAULT_LORA_TARGETS)
+            model.vjepa2 = _try_apply_peft_lora(
+                model.vjepa2,
+                r=int(lora_r),
+                lora_alpha=int(lora_alpha),
+                lora_dropout=float(lora_dropout),
+                target_modules=tm,
+            )
+
+        self.model = model
+
+    def train(self, mode: bool = True) -> VJEPA2SSv2FTProbe:
+        """Set training mode but keep a fully-frozen encoder in eval (no LoRA)."""
+        super().train(mode)
+        if self.freeze_backbone_base and not self.lora_enabled:
+            # Encoder stays in eval to avoid stochastic depth / dropout drift.
+            base = self.model.vjepa2
+            if hasattr(base, "get_base_model"):
+                base.get_base_model().eval()  # type: ignore[no-untyped-call]
+            else:
+                base.eval()
+        return self
+
+    def forward(self, video_batch: torch.Tensor) -> torch.Tensor:
+        """Run the SSv2-finetuned classifier on a clip batch."""
+        outputs = self.model(pixel_values_videos=video_batch)
+        return outputs.logits
+
+
+@register_model("vjepa2_ssv2ft")
+def build_vjepa2_ssv2ft(cfg: DictConfig) -> nn.Module:
+    """Builder for :class:`VJEPA2SSv2FTProbe` (SSv2-FT checkpoint + head-slice + LoRA)."""
+    model_cfg = cfg.model
+    lora_tm = _resolve_lora_target_modules(model_cfg.get("lora_target_modules"))
+
+    # ``label_source_dir`` defaults to the dataset's train_dir so the model can
+    # auto-derive the local→SSv2 mapping at construction time. Override at the
+    # CLI or in the config to point at any folder whose class names match.
+    default_label_source = None
+    if hasattr(cfg, "dataset"):
+        default_label_source = cfg.dataset.get("train_dir", None)
+    label_source_dir = model_cfg.get("label_source_dir", default_label_source)
+
+    return VJEPA2SSv2FTProbe(
+        num_classes=int(model_cfg.num_classes),
+        hf_repo=str(model_cfg.get("hf_repo", DEFAULT_SSV2FT_HF_REPO)),
+        label_source_dir=label_source_dir,
+        init_head_from_ssv2=bool(model_cfg.get("init_head_from_ssv2", True)),
+        freeze_backbone_base=bool(model_cfg.get("freeze_backbone", True)),
+        lora_enabled=bool(model_cfg.get("lora_enabled", False)),
+        lora_r=int(model_cfg.get("lora_r", 16)),
+        lora_alpha=int(model_cfg.get("lora_alpha", 32)),
+        lora_dropout=float(model_cfg.get("lora_dropout", 0.05)),
+        lora_target_modules=lora_tm,
         attn_implementation=str(model_cfg.get("attn_implementation", "sdpa")),
     )
