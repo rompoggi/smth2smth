@@ -1,0 +1,45 @@
+# @package _global_
+# E3: 4-block attentive classifier on the SSL-only ViT-L base + last-2-block concat.
+#
+# Mirrors Meta's published probe architecture (depth=4, num_heads=16) and the
+# DINOv2/PE-Core "concatenate last K block tokens" convention. Compared to the
+# default single-block multi-query AttentiveProbe, the 4-block stack lets the
+# probe combine motion cues across tokens before pooling. Concatenating the
+# last 2 hidden states doubles the channel width (2 × 1024 = 2048) so the head
+# sees fine-grained features from the penultimate block as well.
+#
+# Stacks orthogonally with LoRA on the encoder (E5 axis). VRAM check: head
+# self-attention runs at 2048-d on each token sequence; at 16 frames × 256² ×
+# tubelet 2 the token count is N = 256 (16×16 spatial × 8 temporal); the MHA
+# inside the probe stays inexpensive.
+defaults:
+  - track_b_vjepa2_vitl_30e_warmup
+
+model:
+  head_type: multi_block_attentive
+  head_num_heads: 16
+  head_depth: 4
+  head_mlp_ratio: 4.0
+  head_last_k_blocks: 2
+  head_dropout: 0.1
+  lora_enabled: true
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  lora_target_modules: null
+
+training:
+  lr: 3.0e-4
+  lora_lr: 1.0e-4
+  min_lr: 1.0e-5
+  warmup_epochs: 1
+  weight_decay: 0.05
+  label_smoothing: 0.1
+  epochs: 20
+  checkpoint_path: checkpoints/track_b/vitl_4block_lastk2.pt
+  resume_from: null
+
+test:
+  num_segment: 2
+  num_crop: 3
+  flip_tta: false

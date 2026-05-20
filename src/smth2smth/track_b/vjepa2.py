@@ -69,7 +69,7 @@ from omegaconf import DictConfig
 
 from smth2smth.shared.models.registry import register_model
 
-HeadType = Literal["attentive", "linear", "mean_linear"]
+HeadType = Literal["attentive", "linear", "mean_linear", "multi_block_attentive"]
 
 DEFAULT_HF_REPO: str = "facebook/vjepa2-vitl-fpc64-256"
 DEFAULT_SSV2FT_HF_REPO: str = "facebook/vjepa2-vitl-fpc16-256-ssv2"
@@ -236,6 +236,79 @@ class MeanLinearHead(nn.Module):
         return self.classifier(pooled)
 
 
+class MultiBlockAttentiveProbe(nn.Module):
+    """Meta's V-JEPA 2 attentive classifier: D self-attention blocks + cross-attention pool.
+
+    Replicates the ``AttentiveClassifier(embed_dim=1024, num_heads=16, depth=4,
+    num_classes=N)`` architecture from facebookresearch/vjepa2 (eval config
+    ``num_probe_blocks: 4``, ``num_heads: 16``, used to score 73.7 % on SSv2-174
+    ViT-L). Compared to :class:`AttentiveProbe` (single MHA layer), the
+    multi-block stack lets the probe combine fine-grained motion cues across
+    tokens before pooling, which is the structurally largest probe-side change
+    available for a frozen encoder.
+
+    Args:
+        feature_dim: Hidden size of the input tokens (``K × backbone_hidden``
+            when last-K-block concat is enabled upstream).
+        num_classes: Output dimensionality.
+        num_heads: Attention heads for both self-attention and cross-attention.
+            Must divide ``feature_dim``.
+        depth: Number of self-attention blocks before pooling.
+        mlp_ratio: FFN expansion factor inside each self-attention block.
+        dropout: Dropout in attention and FFN.
+    """
+
+    def __init__(
+        self,
+        feature_dim: int,
+        num_classes: int,
+        num_heads: int = 16,
+        depth: int = 4,
+        mlp_ratio: float = 4.0,
+        dropout: float = 0.0,
+    ) -> None:
+        super().__init__()
+        if feature_dim % num_heads != 0:
+            raise ValueError(
+                f"num_heads={num_heads} does not divide feature_dim={feature_dim}."
+            )
+        if depth < 1:
+            raise ValueError(f"depth must be >= 1, got {depth}.")
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=feature_dim,
+            nhead=num_heads,
+            dim_feedforward=int(feature_dim * float(mlp_ratio)),
+            dropout=dropout,
+            activation="gelu",
+            batch_first=True,
+            norm_first=True,
+        )
+        self.self_attn_blocks = nn.TransformerEncoder(encoder_layer, num_layers=int(depth))
+        self.query = nn.Parameter(torch.empty(1, 1, feature_dim))
+        nn.init.trunc_normal_(self.query, std=0.02)
+        self.cross_attn = nn.MultiheadAttention(
+            embed_dim=feature_dim,
+            num_heads=num_heads,
+            dropout=dropout,
+            batch_first=True,
+        )
+        self.norm = nn.LayerNorm(feature_dim)
+        self.dropout = nn.Dropout(dropout)
+        self.classifier = nn.Linear(feature_dim, num_classes)
+        nn.init.normal_(self.classifier.weight, mean=0.0, std=0.01)
+        nn.init.zeros_(self.classifier.bias)
+
+    def forward(self, tokens: torch.Tensor) -> torch.Tensor:
+        h = self.self_attn_blocks(tokens)
+        b = h.size(0)
+        q = self.query.expand(b, -1, -1)
+        pooled, _ = self.cross_attn(q, h, h, need_weights=False)
+        pooled = pooled.squeeze(1)
+        pooled = self.norm(pooled)
+        pooled = self.dropout(pooled)
+        return self.classifier(pooled)
+
+
 def _build_head(
     head_type: HeadType,
     feature_dim: int,
@@ -243,6 +316,8 @@ def _build_head(
     num_heads: int,
     head_num_queries: int,
     dropout: float,
+    head_depth: int = 4,
+    head_mlp_ratio: float = 4.0,
 ) -> nn.Module:
     """Construct the requested classifier head."""
     if head_type == "attentive":
@@ -253,6 +328,15 @@ def _build_head(
             num_queries=int(head_num_queries),
             dropout=dropout,
         )
+    if head_type == "multi_block_attentive":
+        return MultiBlockAttentiveProbe(
+            feature_dim=feature_dim,
+            num_classes=num_classes,
+            num_heads=num_heads,
+            depth=int(head_depth),
+            mlp_ratio=float(head_mlp_ratio),
+            dropout=dropout,
+        )
     if head_type in ("linear", "mean_linear"):
         return MeanLinearHead(
             feature_dim=feature_dim,
@@ -260,7 +344,8 @@ def _build_head(
             dropout=dropout,
         )
     raise ValueError(
-        f"Unknown head_type: {head_type!r}. Expected one of 'attentive', 'linear', 'mean_linear'."
+        f"Unknown head_type: {head_type!r}. Expected one of 'attentive', "
+        "'multi_block_attentive', 'linear', 'mean_linear'."
     )
 
 
@@ -311,6 +396,9 @@ class VJEPA2Probe(nn.Module):
         head_num_heads: int = 8,
         head_num_queries: int = 1,
         head_dropout: float = 0.0,
+        head_depth: int = 4,
+        head_mlp_ratio: float = 4.0,
+        head_last_k_blocks: int = 1,
         freeze_backbone: bool = True,
         lora_enabled: bool = False,
         lora_r: int = 8,
@@ -332,6 +420,7 @@ class VJEPA2Probe(nn.Module):
         self.hf_repo: str = str(hf_repo)
         self.freeze_backbone: bool = bool(freeze_backbone)
         self.lora_enabled: bool = bool(lora_enabled)
+        self.head_last_k_blocks: int = max(1, int(head_last_k_blocks))
 
         if self.lora_enabled and not self.freeze_backbone:
             raise ValueError(
@@ -374,7 +463,9 @@ class VJEPA2Probe(nn.Module):
                 f"Backbone {self.hf_repo!r} does not expose ``config.hidden_size``; "
                 "this wrapper expects a HuggingFace ``VJEPA2Model``-shaped model."
             )
-        self.feature_dim: int = int(backbone_config.hidden_size)
+        backbone_hidden = int(backbone_config.hidden_size)
+        # Last-K-block concat multiplies the channel width fed into the head.
+        self.feature_dim: int = backbone_hidden * self.head_last_k_blocks
 
         self.head = _build_head(
             head_type=head_type,
@@ -383,6 +474,8 @@ class VJEPA2Probe(nn.Module):
             num_heads=int(head_num_heads),
             head_num_queries=int(head_num_queries),
             dropout=float(head_dropout),
+            head_depth=int(head_depth),
+            head_mlp_ratio=float(head_mlp_ratio),
         )
 
         # Gradients through encoder when LoRA adapters train or full FT.
@@ -401,7 +494,26 @@ class VJEPA2Probe(nn.Module):
         return self
 
     def _encode(self, video_batch: torch.Tensor) -> torch.Tensor:
-        """Run the V-JEPA 2 encoder and return the patch-token sequence."""
+        """Run the V-JEPA 2 encoder and return the patch-token sequence.
+
+        With ``head_last_k_blocks > 1`` the channel dim is the concatenation
+        of the last ``K`` encoder hidden states, which the multi-block head
+        consumes directly. Default ``K == 1`` is byte-for-byte identical to
+        the original behavior.
+        """
+        if self.head_last_k_blocks > 1:
+            outputs = self.backbone(
+                pixel_values_videos=video_batch,
+                skip_predictor=True,
+                output_hidden_states=True,
+            )
+            hidden_states = outputs.hidden_states
+            if hidden_states is None or len(hidden_states) < self.head_last_k_blocks:
+                raise RuntimeError(
+                    f"Backbone returned {len(hidden_states) if hidden_states else 0} hidden "
+                    f"states; head_last_k_blocks={self.head_last_k_blocks} requires more."
+                )
+            return torch.cat(list(hidden_states[-self.head_last_k_blocks :]), dim=-1)
         outputs = self.backbone(
             pixel_values_videos=video_batch,
             skip_predictor=True,
@@ -430,6 +542,9 @@ def build_vjepa2(cfg: DictConfig) -> nn.Module:
         head_num_heads=int(model_cfg.get("head_num_heads", 8)),
         head_num_queries=int(model_cfg.get("head_num_queries", 1)),
         head_dropout=float(model_cfg.get("head_dropout", 0.0)),
+        head_depth=int(model_cfg.get("head_depth", 4)),
+        head_mlp_ratio=float(model_cfg.get("head_mlp_ratio", 4.0)),
+        head_last_k_blocks=int(model_cfg.get("head_last_k_blocks", 1)),
         freeze_backbone=bool(model_cfg.get("freeze_backbone", True)),
         lora_enabled=bool(model_cfg.get("lora_enabled", False)),
         lora_r=int(model_cfg.get("lora_r", 8)),

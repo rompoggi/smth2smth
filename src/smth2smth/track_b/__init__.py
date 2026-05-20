@@ -12,6 +12,7 @@ from smth2smth.track_b import vjepa2 as _vjepa2  # noqa: F401
 from smth2smth.track_b.vjepa2 import (
     AttentiveProbe,
     MeanLinearHead,
+    MultiBlockAttentiveProbe,
     VJEPA2Probe,
     VJEPA2SSv2FTProbe,
 )
@@ -19,6 +20,7 @@ from smth2smth.track_b.vjepa2 import (
 __all__ = [
     "AttentiveProbe",
     "MeanLinearHead",
+    "MultiBlockAttentiveProbe",
     "VJEPA2Probe",
     "VJEPA2SSv2FTProbe",
 ]
