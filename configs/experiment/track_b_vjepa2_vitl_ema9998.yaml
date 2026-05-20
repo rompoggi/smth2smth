@@ -1,0 +1,30 @@
+# @package _global_
+# E4: Re-enable EMA on the proven ViT-L LoRA recipe with decay 0.9998.
+#
+# Direct target of the train/val gap we see in vitl_fulltrain_lora_lowlr
+# (train top1 ≈ 0.94 at epoch 10 vs val 0.89). The training loop already
+# supports parameter-EMA via ``torch.optim.swa_utils.AveragedModel`` and
+# evaluates both live and EMA copies per epoch; ``ema_enabled: true`` +
+# ``eval_ema: true`` selects whichever has the better val top1 for the
+# saved checkpoint (see ``pipelines/train.py``).
+#
+# Decay 0.9998 (vs the default 0.999) trades a slower ramp-up early in
+# training for a smoother long-horizon shadow — the right knob for our
+# overfitting profile per Morales-Brotons et al. 2024 (arXiv 2411.18704).
+# The frozen ViT-L backbone is identical between live and EMA copies, so
+# the extra ~1.2 GB shadow is a no-op in value but costs VRAM; runs on
+# 24 GB 3090 without issue.
+defaults:
+  - track_b_vjepa2_vitl_30e_warmup
+
+training:
+  ema_enabled: true
+  ema_decay: 0.9998
+  eval_ema: true
+  checkpoint_path: checkpoints/track_b/vitl_ema9998.pt
+  resume_from: null
+
+test:
+  num_segment: 2
+  num_crop: 3
+  flip_tta: false
