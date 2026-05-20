@@ -1,0 +1,15 @@
+# @package _global_
+# Official V-JEPA 2 SSv2 evaluation protocol:
+#   2 temporal segments × 3 spatial crops, NO horizontal flip.
+#
+# Matches ``configs/eval/vitg-384/ssv2.yaml`` in facebookresearch/vjepa2
+# (``num_segments: 2``, ``num_views_per_segment: 3``) and the checkpoint tag
+# ``ssv2-vitl-16x2x3.pt``. Disabling the flip view fixes the −9.6 pp regression
+# on direction-sensitive SSv2 classes documented in track_b_next_steps.md §5.
+#
+# The submit pipeline still derives the local Pulling-L↔R remap from class
+# folder names; with ``flip_tta: false`` it just never applies the flip view.
+test:
+  num_segment: 2
+  num_crop: 3
+  flip_tta: false
