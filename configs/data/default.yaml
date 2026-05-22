@@ -34,6 +34,13 @@ dataset:
   # honest holdout for validation metrics. Ignores ``include_val_in_train``.
   official_val_holdout_ratio: 0.0
   seed: ${seed}
+  # Open-world (Track B) extra training data. When ``use_extra`` is true, every
+  # clip under ``train_extra_dir`` is appended to the *training* set only (never
+  # validation), so it never leaks into val metrics. The folder must follow the
+  # same ``NNN_Class/video_id/frame_*.jpg`` layout as ``train_dir``. Used by E6
+  # (re-downsampled SSv2 subset in our 4-frame-duplicated-to-16 distribution).
+  use_extra: false
+  train_extra_dir: ${dataset.root}/train_extra
   max_samples: null
   # Balanced per-class subsampling (see ``train._balanced_per_class_subsample``).
   max_samples_per_class: null

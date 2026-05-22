@@ -84,24 +84,28 @@ def _try_apply_peft_lora(
     lora_alpha: int,
     lora_dropout: float,
     target_modules: Sequence[str] | None,
+    use_dora: bool = False,
 ) -> nn.Module:
-    """Wrap ``backbone`` with HuggingFace PEFT LoRA adapters if ``peft`` is installed.
+    """Wrap ``backbone`` with HuggingFace PEFT LoRA (or DoRA) adapters.
 
     Args:
         backbone: A ``transformers`` pre-trained encoder (e.g. ``VJEPA2Model``).
         r: LoRA rank.
         lora_alpha: LoRA scaling (typically equal to ``r`` or ``2*r``).
         lora_dropout: Dropout on LoRA paths.
-        target_modules: Submodule name suffixes to attach adapters to (matched
-            by PEFT against the module graph). Defaults to ViT-style attention
-            projections.
+        target_modules: Submodule name suffixes to attach adapters to.
+            Defaults to ViT-style attention projections.
+        use_dora: When ``True``, use Weight-Decomposed Low-Rank Adaptation
+            (Liu et al., ICML 2024, arXiv 2402.09353) instead of vanilla LoRA.
+            Requires ``peft >= 0.10``.
 
     Returns:
         The PEFT-wrapped model (trainable adapters, frozen base weights).
 
     Raises:
         ImportError: If the ``peft`` package is not installed.
-        RuntimeError: If PEFT cannot match any ``target_modules`` (mis-config).
+        RuntimeError: If PEFT cannot match any ``target_modules`` (mis-config),
+            or if ``use_dora=True`` but the installed PEFT version is too old.
     """
     try:
         from peft import LoraConfig, get_peft_model
@@ -112,13 +116,22 @@ def _try_apply_peft_lora(
         ) from exc
 
     modules = list(target_modules) if target_modules else list(_DEFAULT_LORA_TARGETS)
-    lora_config = LoraConfig(
+    lora_kwargs: dict[str, Any] = dict(
         r=int(r),
         lora_alpha=int(lora_alpha),
         lora_dropout=float(lora_dropout),
         bias="none",
         target_modules=modules,
     )
+    if use_dora:
+        import inspect as _inspect
+
+        if "use_dora" not in _inspect.signature(LoraConfig).parameters:
+            raise RuntimeError(
+                "model.dora_enabled=true requires peft>=0.10 with LoraConfig.use_dora."
+            )
+        lora_kwargs["use_dora"] = True
+    lora_config = LoraConfig(**lora_kwargs)
     try:
         return get_peft_model(backbone, lora_config)
     except Exception as exc:
@@ -283,7 +296,9 @@ class MultiBlockAttentiveProbe(nn.Module):
             batch_first=True,
             norm_first=True,
         )
-        self.self_attn_blocks = nn.TransformerEncoder(encoder_layer, num_layers=int(depth))
+        self.self_attn_blocks = nn.TransformerEncoder(
+            encoder_layer, num_layers=int(depth), enable_nested_tensor=False
+        )
         self.query = nn.Parameter(torch.empty(1, 1, feature_dim))
         nn.init.trunc_normal_(self.query, std=0.02)
         self.cross_attn = nn.MultiheadAttention(
@@ -405,6 +420,7 @@ class VJEPA2Probe(nn.Module):
         lora_alpha: int = 16,
         lora_dropout: float = 0.05,
         lora_target_modules: Sequence[str] | None = None,
+        dora_enabled: bool = False,
         attn_implementation: str = "sdpa",
     ) -> None:
         super().__init__()
@@ -447,6 +463,7 @@ class VJEPA2Probe(nn.Module):
                 lora_alpha=int(lora_alpha),
                 lora_dropout=float(lora_dropout),
                 target_modules=tm,
+                use_dora=bool(dora_enabled),
             )
         else:
             self.backbone = backbone
@@ -551,6 +568,7 @@ def build_vjepa2(cfg: DictConfig) -> nn.Module:
         lora_alpha=int(model_cfg.get("lora_alpha", 16)),
         lora_dropout=float(model_cfg.get("lora_dropout", 0.05)),
         lora_target_modules=lora_tm,
+        dora_enabled=bool(model_cfg.get("dora_enabled", False)),
         attn_implementation=str(model_cfg.get("attn_implementation", "sdpa")),
     )
 
@@ -666,6 +684,7 @@ class VJEPA2SSv2FTProbe(nn.Module):
         lora_alpha: int = 32,
         lora_dropout: float = 0.05,
         lora_target_modules: Sequence[str] | None = None,
+        dora_enabled: bool = False,
         attn_implementation: str = "sdpa",
     ) -> None:
         super().__init__()
@@ -702,17 +721,20 @@ class VJEPA2SSv2FTProbe(nn.Module):
             )
             self.register_buffer("local_to_ssv2_idx", idx_tensor, persistent=True)
             new_head = nn.Linear(hidden, int(num_classes), bias=True)
+            # Random small-Gaussian baseline for *every* row; resolved rows are
+            # then overwritten with Meta's trained prototypes. Unresolved local
+            # indices (e.g. missing class 027) keep this random init so they
+            # never inherit another class's prototype. Note: a masked-tensor
+            # ``nn.init.normal_(weight[mask])`` would silently no-op (boolean
+            # indexing returns a copy), so we init the whole tensor up-front.
             with torch.no_grad():
+                nn.init.normal_(new_head.weight, mean=0.0, std=0.01)
+                nn.init.zeros_(new_head.bias)
                 resolved = idx_tensor >= 0
                 if resolved.any():
-                    sel = idx_tensor.clone()
-                    sel[~resolved] = 0  # safe gather; unresolved rows overwritten below
-                    new_head.weight.data.copy_(model.classifier.weight.data.index_select(0, sel))
-                    new_head.bias.data.copy_(model.classifier.bias.data.index_select(0, sel))
-                if (~resolved).any():
-                    # Local indices without a SSv2 match (e.g. missing class 027): random init.
-                    nn.init.normal_(new_head.weight.data[~resolved], mean=0.0, std=0.01)
-                    nn.init.zeros_(new_head.bias.data[~resolved])
+                    src = idx_tensor[resolved]
+                    new_head.weight.data[resolved] = model.classifier.weight.data.index_select(0, src)
+                    new_head.bias.data[resolved] = model.classifier.bias.data.index_select(0, src)
         else:
             self.register_buffer(
                 "local_to_ssv2_idx",
@@ -739,6 +761,7 @@ class VJEPA2SSv2FTProbe(nn.Module):
                 lora_alpha=int(lora_alpha),
                 lora_dropout=float(lora_dropout),
                 target_modules=tm,
+                use_dora=bool(dora_enabled),
             )
 
         self.model = model
@@ -786,5 +809,6 @@ def build_vjepa2_ssv2ft(cfg: DictConfig) -> nn.Module:
         lora_alpha=int(model_cfg.get("lora_alpha", 32)),
         lora_dropout=float(model_cfg.get("lora_dropout", 0.05)),
         lora_target_modules=lora_tm,
+        dora_enabled=bool(model_cfg.get("dora_enabled", False)),
         attn_implementation=str(model_cfg.get("attn_implementation", "sdpa")),
     )

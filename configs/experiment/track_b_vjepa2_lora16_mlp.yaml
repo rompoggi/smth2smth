@@ -1,0 +1,26 @@
+# @package _global_
+# E5a: LoRA r=16 / alpha=32 with MLP targets (fc1, fc2) added.
+#
+# Single-variable delta over E1 (track_b_vjepa2_ssv2ft_lora16f): E1 already
+# runs r=16 alpha=32 on the SSv2-FT encoder but adapts attention only
+# (query/key/value/proj). This config adds the encoder MLP projections
+# (fc1, fc2 in transformers' VJEPA2MLP) to the LoRA target set — the published
+# transfer-learning sweet spot (r=16 alpha=2r + MLP targets). torchtune's
+# Llama-2 LoRA tutorial reports ~+4 pp on truthfulqa from this exact change at
+# r=64; the gain is smaller on vision but still positive in our overfitting
+# regime. Everything else (backbone, head, data split, seed, TTA) is inherited
+# from E1, so the report gets a clean attention-only-vs-attention+MLP row.
+#
+# Pair this run with track_b_vjepa2_dora16_mlp.yaml on a second machine (same
+# seed, same data, only use_dora differs) for a clean LoRA-vs-DoRA ablation row.
+defaults:
+  - track_b_vjepa2_ssv2ft_lora16f
+
+model:
+  # Add the encoder MLP projections to the attention-only E1 target set.
+  lora_target_modules: ["query", "key", "value", "proj", "fc1", "fc2"]
+  dora_enabled: false
+
+training:
+  checkpoint_path: checkpoints/track_b/ssv2ft_lora16_mlp.pt
+  resume_from: null

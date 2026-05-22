@@ -93,6 +93,12 @@ Priority: 5
 
 ---
 
+### Experiment 2b: TTA protocol (baked into E1 config)
+
+The 2×3 no-flip TTA is already set in `track_b_vjepa2_ssv2ft_lora16f.yaml` (`tta_flip: false`, `test.num_segment: 2`, `test.num_crop: 3`). There is no separate E2 training run — the TTA fix is applied at submit time and inherited by all configs that extend E1. The `(18, 19)` Pulling-L↔R remap is computed automatically in `submit.py` from class folder names.
+
+---
+
 ### Experiment 6: 4-frame-regime full-SSv2 augmentation + frozen-probe baseline (novelty angle)
 
 Hypothesis: The local dataset feeds 4 real frames duplicated 4× into a 16-slot tensor (the Kaggle test set is in the same distribution). Meta's SSv2-FT head has never seen this zero-motion-delta token structure. Two outputs from one experimental track: (a) a *frozen-probe* baseline ("no LoRA, head-only") quantifies the ceiling under temporal distribution shift — directly the novelty story for the professor (4-frame → 16-frame transfer is unaddressed in the V-JEPA 2 paper); (b) pulling the full SSv2 train videos for our 32 classes, re-downsampling to 4 frames at the professor's exact stride, then duplicating to 16, gives ~10× more training rows in the *correct* distribution — a labeled-data win the rules permit in the open-world track.
@@ -103,6 +109,134 @@ Implementation Details:
 - Two configs extending Experiment 1: `..._frozen_probe.yaml` (LoRA disabled, head-only) and `..._extra_train.yaml` (LoRA on, extra data on). Run frozen-probe first; it is the single-variable ablation against Experiment 1 (LoRA on/off) that the report needs.
 - Open verification first (per §"Open verification items"): write a 30-line script that loads one clip from the existing dataloader, asserts `tensor[:, 0]==tensor[:, 1]==tensor[:, 2]==tensor[:, 3]` etc. to confirm the 4-dup-to-16 layout before committing to the re-downsampling pipeline.
 
+Verified frame layout (empirical, `scripts/verify_4frame_dup_layout.py` on `data/train/000_Closing_something/video_10061`):
+- 4 frames on disk; sampler indices `[0,0,0,1,1,1,1,1,2,2,2,2,2,3,3,3]`; duplication groups `[[0,1,2],[3,4,5,6,7],[8,9,10,11,12],[13,14,15]]` (sizes 3,5,5,3).
+- NOT even 4× duplication — the linspace sampler produces uneven repeats when 4 does not divide 16 evenly.
+- The download script stores 4 real frames per extra clip (matching the on-disk layout). The dataloader's `pick_frame_indices` handles 4→16 expansion identically for train and extra clips.
+
 Estimated Effort: High
 
 Priority: 6
+
+---
+
+## How to Launch (SSH Agent Reference)
+
+### Environment
+
+```bash
+# Working directory: /Data/thomas.turkieh/smth2smth
+# Python: 3.12.9 via uv (pyproject.toml specifies exact version)
+# CUDA: 12.8  GPU: RTX 3090 (24 GB VRAM)
+
+# Install / sync dependencies (run once per machine)
+uv sync
+
+# All commands below assume cwd = repo root
+# PYTHONPATH is handled automatically by Hydra (pythonpath = ["src"] in pyproject.toml)
+```
+
+### Launch commands
+
+All training runs use the same Hydra entrypoint. The `experiment=<name>` override selects the config from `configs/experiment/<name>.yaml`.
+
+```bash
+# E1 — SSv2-FT checkpoint swap + head-slice + LoRA r=16 (HIGHEST PRIORITY — run first)
+uv run python -m smth2smth.pipelines.train experiment=track_b_vjepa2_ssv2ft_lora16f
+
+# E3 — 4-block attentive head + last-2-block concat (SSL base, NOT SSv2-FT)
+uv run python -m smth2smth.pipelines.train experiment=track_b_vjepa2_4block_lastk2
+
+# E4 — EMA decay=0.9998 on the SSL-base LoRA recipe
+uv run python -m smth2smth.pipelines.train experiment=track_b_vjepa2_vitl_ema9998
+
+# E5a — LoRA r=16 + MLP targets (fc1/fc2), extending E1
+uv run python -m smth2smth.pipelines.train experiment=track_b_vjepa2_lora16_mlp
+
+# E5b — DoRA r=16 + MLP targets, extending E5a (run on second machine in parallel with E5a)
+uv run python -m smth2smth.pipelines.train experiment=track_b_vjepa2_dora16_mlp
+
+# E6a — Frozen-probe baseline: SSv2-FT encoder, NO LoRA, head-only (run before E6b)
+uv run python -m smth2smth.pipelines.train experiment=track_b_vjepa2_ssv2ft_frozen_probe
+
+# E6b — SSv2-FT + LoRA + extra SSv2 training data (requires E6b prerequisite below)
+uv run python -m smth2smth.pipelines.train experiment=track_b_vjepa2_ssv2ft_extra_train
+```
+
+### Submission / inference
+
+```bash
+uv run python -m smth2smth.pipelines.submit experiment=track_b_vjepa2_ssv2ft_lora16f
+# Swap experiment= to use a different checkpoint. TTA: 2 segments × 3 crops, no flip.
+```
+
+### E6b prerequisite: populate data/train_extra/
+
+E6b requires `data/train_extra/` to exist with SSv2 source clips re-downsampled to 4 frames. Needs: (1) SSv2 source `.webm` files and (2) SSv2 `train.json` labels (registration at 20bn.com required).
+
+```bash
+# Step 0: verify the local frame layout (should print "4 unique frames" with sizes 3,5,5,3)
+uv run python scripts/verify_4frame_dup_layout.py --expect-unique 4
+
+# Step 1: dry-run the plan (no decode, no writes — confirms class matching)
+uv run python scripts/download_ssv2_subset_4frame.py \
+    --ssv2-labels-json /path/to/ssv2/train.json \
+    --local-classes-dir data/train
+
+# Step 2: extract (needs PyAV — already in pyproject.toml as av>=17.0.1)
+uv run python scripts/download_ssv2_subset_4frame.py \
+    --ssv2-labels-json /path/to/ssv2/train.json \
+    --ssv2-videos-dir /path/to/ssv2/20bn-something-something-v2 \
+    --local-classes-dir data/train \
+    --out-dir data/train_extra \
+    --limit-per-class 200 \
+    --no-dry-run
+
+# Step 3: launch E6b
+uv run python -m smth2smth.pipelines.train experiment=track_b_vjepa2_ssv2ft_extra_train
+```
+
+### Checkpoint locations
+
+| Experiment | Config file | Checkpoint saved to |
+|---|---|---|
+| E1 | `track_b_vjepa2_ssv2ft_lora16f` | `checkpoints/track_b/ssv2ft_lora16f.pt` |
+| E3 | `track_b_vjepa2_4block_lastk2` | `checkpoints/track_b/vitl_4block_lastk2.pt` |
+| E4 | `track_b_vjepa2_vitl_ema9998` | `checkpoints/track_b/vitl_ema9998.pt` |
+| E5a | `track_b_vjepa2_lora16_mlp` | `checkpoints/track_b/ssv2ft_lora16_mlp.pt` |
+| E5b | `track_b_vjepa2_dora16_mlp` | `checkpoints/track_b/ssv2ft_dora16_mlp.pt` |
+| E6a | `track_b_vjepa2_ssv2ft_frozen_probe` | `checkpoints/track_b/ssv2ft_frozen_probe.pt` |
+| E6b | `track_b_vjepa2_ssv2ft_extra_train` | `checkpoints/track_b/ssv2ft_extra_train.pt` |
+
+### Config inheritance map
+
+```
+track_b_vjepa2_vitl_30e_warmup  (old SSL base — E3, E4 still extend this)
+├── track_b_vjepa2_4block_lastk2           (E3)
+└── track_b_vjepa2_vitl_ema9998            (E4)
+
+track_b_vjepa2_ssv2ft_lora16f              (E1 — SSv2-FT + LoRA r=16)
+├── track_b_vjepa2_lora16_mlp              (E5a — adds MLP LoRA targets)
+│   └── track_b_vjepa2_dora16_mlp         (E5b — DoRA instead of LoRA)
+├── track_b_vjepa2_ssv2ft_frozen_probe     (E6a — no LoRA)
+└── track_b_vjepa2_ssv2ft_extra_train      (E6b — extra data on)
+```
+
+### Priority order for a single GPU
+
+1. **E1** — `track_b_vjepa2_ssv2ft_lora16f` (highest EV: SSv2-FT init + head-slice)
+2. **E6a** — `track_b_vjepa2_ssv2ft_frozen_probe` (ablation baseline for the novelty story; depends on E1 finishing to compare)
+3. **E5a** — `track_b_vjepa2_lora16_mlp` (MLP LoRA targets delta over E1)
+4. **E5b** — `track_b_vjepa2_dora16_mlp` (DoRA arm — run on a second machine in parallel with E5a if available)
+5. **E6b** — `track_b_vjepa2_ssv2ft_extra_train` (requires SSv2 source data; run last or concurrently on a second machine)
+6. **E3** / **E4** — lower priority; still on the old SSL base, not yet ported to the SSv2-FT encoder
+
+### Notes for the SSH agent
+
+- **HuggingFace model download**: `facebook/vjepa2-vitl-fpc16-256-ssv2` (~1.2 GB) is downloaded automatically on first run by `transformers`. Ensure HF_HOME or cache dir has enough space and network access. If offline, pre-cache with `huggingface-cli download facebook/vjepa2-vitl-fpc16-256-ssv2`.
+- **AMP / bf16**: All E1-derived configs use `amp: true`. The 3090 supports bf16; if running on an older card, add `training.amp=false` as a Hydra override.
+- **Resume**: Add `training.resume_from=checkpoints/track_b/<name>.pt` to resume an interrupted run.
+- **Logs**: Hydra outputs go to `outputs/<date>/<time>/`. The training loop also appends to `logs/` with a timestamped filename.
+- **Data paths**: Default data root is `data/` relative to repo root. Override with `dataset.root=/abs/path` if data lives elsewhere.
+- **Class 027**: This local class folder is absent (only 32 of 33 classes exist). The head-slice builder handles this silently by randomly initializing that row. All configs are aware.
+- **The 4-frame distribution shift**: Local clips have 4 real frames on disk; `pick_frame_indices(4, 16)` expands to 16 via linspace rounding (groups of sizes 3,5,5,3 — not even 4×). The SSv2-FT head was trained on real 16-frame sequences. This distribution mismatch is the paper's novelty claim; E6a/E6b address it experimentally.

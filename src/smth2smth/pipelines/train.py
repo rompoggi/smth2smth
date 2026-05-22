@@ -141,12 +141,54 @@ def _balanced_per_class_subsample(
     return [samples[i] for i in range(len(samples)) if i in kept]
 
 
+def _collect_extra_train_samples(
+    use_extra: bool,
+    train_extra_dir: str | Path | None,
+) -> list[tuple[Path, int]]:
+    """Collect open-world extra training clips (Track B / E6).
+
+    Returns an empty list when ``use_extra`` is false. When enabled, every clip
+    under ``train_extra_dir`` is collected with the same class-prefix parsing as
+    the primary train split, so the extra rows can be appended to (and only to)
+    the training set. Fails loudly when ``use_extra`` is true but the directory
+    is unset or missing — silently training on zero extra clips would corrupt an
+    ablation row.
+
+    Args:
+        use_extra: ``dataset.use_extra`` flag.
+        train_extra_dir: ``dataset.train_extra_dir`` path.
+
+    Returns:
+        ``(video_dir, class_index)`` pairs from ``train_extra_dir`` (possibly
+        empty when ``use_extra`` is false).
+
+    Raises:
+        ValueError: If ``use_extra`` is true but ``train_extra_dir`` is unset.
+        FileNotFoundError: If ``use_extra`` is true but the directory is absent.
+    """
+    if not use_extra:
+        return []
+    if not train_extra_dir:
+        raise ValueError(
+            "dataset.use_extra=true requires dataset.train_extra_dir to be set."
+        )
+    extra_dir = Path(str(train_extra_dir)).resolve()
+    if not extra_dir.is_dir():
+        raise FileNotFoundError(
+            f"dataset.use_extra=true but train_extra_dir does not exist: {extra_dir}. "
+            "Run scripts/download_ssv2_subset_4frame.py first, or set use_extra=false."
+        )
+    return collect_video_samples(extra_dir)
+
+
 def _split_trainable_params_head_vs_lora(model: nn.Module) -> tuple[list[nn.Parameter], list[nn.Parameter]]:
     """Partition trainable parameters into probe/head vs PEFT LoRA adapters.
 
-    HuggingFace PEFT names adapter weights with ``lora_A`` / ``lora_B`` in the
-    parameter name. Everything else trainable is treated as the head (or
-    non-LoRA trainables).
+    HuggingFace PEFT names all adapter weights with a ``lora_`` prefix in the
+    parameter name: ``lora_A`` / ``lora_B`` for vanilla LoRA, plus
+    ``lora_magnitude_vector`` for DoRA. We route every ``lora_`` param to the
+    adapter group so DoRA's magnitude vectors get the dedicated LoRA LR rather
+    than the (typically higher) head LR. Everything else trainable is the head.
 
     Args:
         model: Network possibly wrapped with ``PeftModel`` on the backbone.
@@ -159,7 +201,7 @@ def _split_trainable_params_head_vs_lora(model: nn.Module) -> tuple[list[nn.Para
     for name, param in model.named_parameters():
         if not param.requires_grad:
             continue
-        if "lora_A" in name or "lora_B" in name:
+        if "lora_" in name:
             lora_params.append(param)
         else:
             head_params.append(param)
@@ -455,6 +497,20 @@ def run(cfg: DictConfig) -> Path | None:
             all_samples,
             val_ratio=float(cfg.dataset.val_ratio),
             seed=int(cfg.dataset.seed),
+        )
+
+    # Open-world (Track B / E6) extra training data. Appended to the *training*
+    # set only; validation always stays on the in-distribution split above.
+    extra_samples = _collect_extra_train_samples(
+        bool(cfg.dataset.get("use_extra", False)),
+        cfg.dataset.get("train_extra_dir"),
+    )
+    if extra_samples:
+        train_samples = list(train_samples) + extra_samples
+        print(
+            f"[data] use_extra=true: +{len(extra_samples)} extra train clips from "
+            f"{Path(str(cfg.dataset.get('train_extra_dir'))).resolve()} "
+            f"(train total={len(train_samples)})"
         )
 
     # Class indices that actually have at least one training sample. Recorded

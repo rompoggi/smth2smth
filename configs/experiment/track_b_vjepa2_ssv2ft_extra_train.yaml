@@ -1,0 +1,25 @@
+# @package _global_
+# E6b: SSv2-FT + LoRA, trained on the local 32-class set PLUS the re-downsampled
+# full-SSv2 subset (open-world labeled-data win).
+#
+# Extends E1 (track_b_vjepa2_ssv2ft_lora16f) and only flips on the extra data:
+# every clip under ``dataset.train_extra_dir`` is appended to training (val
+# stays on the official held-out folder). The extra clips are SSv2 source
+# videos for our 32 class names, re-downsampled to the project's
+# 4-frame-duplicated-to-16 distribution by scripts/download_ssv2_subset_4frame.py
+# — so the encoder adapts on ~10x more rows in the *correct* test-time
+# distribution, which Track B's rules permit.
+#
+# Prerequisite: run scripts/download_ssv2_subset_4frame.py to populate
+# data/train_extra/, after confirming the frame layout with
+# scripts/verify_4frame_dup_layout.py (per the E6 open-verification gate).
+defaults:
+  - track_b_vjepa2_ssv2ft_lora16f
+
+dataset:
+  use_extra: true
+  # train_extra_dir defaults to ${dataset.root}/train_extra (see configs/data/default.yaml).
+
+training:
+  checkpoint_path: checkpoints/track_b/ssv2ft_extra_train.pt
+  resume_from: null

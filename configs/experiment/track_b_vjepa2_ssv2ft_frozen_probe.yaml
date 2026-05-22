@@ -1,0 +1,26 @@
+# @package _global_
+# E6a: Frozen-probe baseline — SSv2-FT encoder, no LoRA, head-only training.
+#
+# The single-variable ablation against E1 (track_b_vjepa2_ssv2ft_lora16f):
+# everything is identical except the encoder LoRA adapters are removed, so only
+# Meta's attentive pooler + our sliced 32-class classifier receive gradients.
+#
+# Purpose (the novelty story for the report): quantify the ceiling under the
+# 4-real-frames-duplicated-to-16 temporal distribution shift *without* adapting
+# the encoder. The gap between this frozen-probe number and E1 (LoRA on) is
+# exactly the value LoRA recovers from that zero-motion-delta token structure —
+# a transfer regime the V-JEPA 2 paper never measured.
+#
+# Run this BEFORE the extra-data arm: it is the clean LoRA-on/off comparison.
+defaults:
+  - track_b_vjepa2_ssv2ft_lora16f
+
+model:
+  lora_enabled: false
+
+training:
+  # Head-only: a single LR (no separate lora_lr param group is created when
+  # there are no LoRA params). Keep the head LR from E1.
+  lr: 0.0005
+  checkpoint_path: checkpoints/track_b/ssv2ft_frozen_probe.pt
+  resume_from: null

@@ -1,0 +1,20 @@
+# @package _global_
+# E5b: DoRA (weight-decomposed LoRA, Liu et al. ICML 2024 arXiv 2402.09353)
+# r=16 / alpha=32 with MLP targets (fc1, fc2).
+#
+# DoRA decomposes each adapted weight into magnitude x direction, which
+# empirically narrows the gap to full FT at the same parameter budget.
+# CLIP-DoRA reports +0.28 % avg over prior PEFT SOTA on 11 few-shot vision
+# tasks — modest in the vision regime, but free given a single config flip.
+#
+# Extends E5a so the ONLY difference from track_b_vjepa2_lora16_mlp.yaml is
+# model.dora_enabled — same backbone, head, target modules, seed, and data.
+# That guarantees a one-variable LoRA-vs-DoRA ablation row for the report.
+defaults:
+  - track_b_vjepa2_lora16_mlp
+
+model:
+  dora_enabled: true
+
+training:
+  checkpoint_path: checkpoints/track_b/ssv2ft_dora16_mlp.pt
