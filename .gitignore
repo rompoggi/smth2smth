@@ -31,6 +31,7 @@ Thumbs.db
 # --- Secrets ---
 .env
 .env.*
+!.env.example
 
 # --- Data (large; not versioned) ---
 /data/

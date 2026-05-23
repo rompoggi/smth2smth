@@ -46,6 +46,14 @@ from smth2smth.shared.utils import (
     split_train_val_stratified,
 )
 from smth2smth.shared.utils.splits import label_counts
+from smth2smth.shared.utils.wandb_run import (
+    WandbTracker,
+    build_step_metrics_callback,
+    load_repo_dotenv,
+    log_epoch_summary,
+)
+
+load_repo_dotenv()
 
 CONFIGS_DIR = str(Path(__file__).resolve().parents[3] / "configs")
 
@@ -1167,8 +1175,15 @@ def run(cfg: DictConfig) -> Path | None:
             f"(every {int(cfg.training.get('stability_log_every', 1))} step(s))"
         )
 
+    wandb_tracker = WandbTracker(cfg)
+    steps_per_epoch = len(train_loader)
+
     try:
         for epoch in range(start_epoch, int(cfg.training.epochs)):
+            epoch_step_offset = epoch * steps_per_epoch
+            step_metrics_cb = build_step_metrics_callback(
+                wandb_tracker, step_offset=epoch_step_offset
+            )
             if (
                 scheduler_name != "sgdr"
                 and warmup_epochs > 0
@@ -1201,6 +1216,7 @@ def run(cfg: DictConfig) -> Path | None:
                 ema_model=ema_model,
                 class_weights=class_weights,
                 stability_logger=stability_logger,
+                step_metrics_callback=step_metrics_cb,
             )
             eval_every_n_epochs = max(1, int(cfg.training.get("eval_every_n_epochs", 1)))
             eval_ema = bool(cfg.training.get("eval_ema", True))
@@ -1216,6 +1232,16 @@ def run(cfg: DictConfig) -> Path | None:
                 )
                 if cosine_scheduler is not None and epoch >= warmup_epochs:
                     cosine_scheduler.step()
+                if wandb_tracker.should_log_epoch(epoch + 1, int(cfg.training.epochs)):
+                    log_epoch_summary(
+                        wandb_tracker,
+                        epoch_one_indexed=epoch + 1,
+                        steps_per_epoch=steps_per_epoch,
+                        train_stats=train_stats,
+                        val_stats=None,
+                        lr=float(optimizer.param_groups[0]["lr"]),
+                        best_top1=best_top1,
+                    )
                 _save_last_checkpoint(epoch_done=epoch + 1, latest_val_top1=None)
                 continue
 
@@ -1310,6 +1336,18 @@ def run(cfg: DictConfig) -> Path | None:
                             f"{early_stopping_patience} consecutive epochs."
                         )
                         break
+
+            if wandb_tracker.should_log_epoch(epoch + 1, int(cfg.training.epochs)):
+                log_epoch_summary(
+                    wandb_tracker,
+                    epoch_one_indexed=epoch + 1,
+                    steps_per_epoch=steps_per_epoch,
+                    train_stats=train_stats,
+                    val_stats=val_stats,
+                    ema_val_stats=ema_stats,
+                    lr=float(optimizer.param_groups[0]["lr"]),
+                    best_top1=best_top1,
+                )
             if cosine_scheduler is not None and (
                 scheduler_name == "sgdr" or epoch >= warmup_epochs
             ):
@@ -1345,6 +1383,7 @@ def run(cfg: DictConfig) -> Path | None:
     finally:
         if stability_logger is not None:
             stability_logger.close()
+        wandb_tracker.finish()
         _free_cuda_memory(reason="run-end")
 
     if best_path is None:

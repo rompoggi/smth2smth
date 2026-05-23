@@ -1,0 +1,70 @@
+# @package _global_
+# Track A — MCG-NJU VideoMAE SSv2 *fine-tuning recipe* (ViT-B, official aug + optim).
+#
+# This preset fixes the **training recipe only**.  Point it at any compatible SSL
+# encoder with two Hydra overrides (or use scripts/launch_videomae_official_ssv2_ft.sh):
+#
+#   model.init_from=<path/to/ssl_encoder.pt>     # trunk_state_dict, VideoMAE ViT-B
+#   training.checkpoint_path=<path/to/ft_out.pt> # supervised weights written here
+#   training.wandb.name=<run_label>              # W&B run title (optional)
+#
+# Encoder constraints (must match pretrain or pos_embed load will fail):
+#   - variant vit_b, tube_t (default 1), num_frames (default 16)
+#
+# Example — same recipe, different SSL checkpoint:
+#
+#   SSL_ENCODER=checkpoints/track_a/ssl/espadon_t16_encoder_ep50.pt \
+#   RUN_NAME=mae50-ft-f16 \
+#   ./scripts/launch_videomae_official_ssv2_ft.sh
+#
+# See new_ideas_tracka.md § Research Question 4 for recipe provenance.
+defaults:
+  - override /model: video_mae_vit
+  - override /augment: official_videomae_ssv2
+  - override /train: videomae_official_ssv2
+  - override /test: vjepa2_official_2x3
+
+model:
+  variant: vit_b
+  num_classes: ${num_classes}
+  tube_t: 1
+  drop_path_rate: 0.2
+  dropout: 0.0
+  head: mean
+  gradient_checkpointing: true
+  # Override: path to SSL encoder (pretrain_videomae.py output).
+  init_from: null
+  interpolate_src_num_frames: ${dataset.num_frames}
+
+dataset:
+  num_frames: 16
+  image_size: 224
+  use_official_val: true
+  include_val_in_train: false
+
+seed: 42
+
+training:
+  # Effective batch 64 = batch_size × grad_accum_steps (repeated_aug=2 is separate).
+  batch_size: 8
+  grad_accum_steps: 8
+  log_interval_steps: 25
+  epochs: 50
+  early_stopping_enabled: true
+  early_stopping_patience: 15
+  # Override: where to write best/last supervised checkpoints.
+  checkpoint_path: null
+  tta: true
+  tta_flip: false
+  tta_scales: null
+  wandb:
+    enabled: true
+    project: smth2smth-frame-ablation
+    mode: online
+    # Override: human-readable W&B run name (e.g. mae50-ft-f16).
+    name: null
+    tags:
+      - track_a
+      - videomae_official_ssv2
+      - rq4
+    log_interval_epochs: 1

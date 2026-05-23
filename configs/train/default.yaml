@@ -158,3 +158,15 @@ training:
   class_balance_sampler: none
   class_balance_loss: none
   class_balance_beta: 0.999
+  # Weights & Biases (optional). Loads repo-root ``.env`` when python-dotenv is installed.
+  # ``entity`` / ``project`` fall back to ``WANDB_ENTITY`` / ``WANDB_PROJECT`` env vars.
+  wandb:
+    enabled: false
+    project: null
+    entity: null
+    name: null
+    run_name: null
+    tags: []
+    # ``online`` | ``offline`` | ``disabled``; null → use ``WANDB_MODE`` env.
+    mode: null
+    log_interval_epochs: 1

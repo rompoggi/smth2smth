@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -48,6 +49,7 @@ def train_one_epoch(
     ema_model: torch.optim.swa_utils.AveragedModel | None = None,
     class_weights: torch.Tensor | None = None,
     stability_logger: Callable[..., None] | None = None,
+    step_metrics_callback: Callable[[dict[str, float], int], None] | None = None,
 ) -> EpochStats:
     """Run one training epoch and return aggregated metrics.
 
@@ -178,6 +180,15 @@ def train_one_epoch(
                 f"    [{ts}] step {step_idx}/{total_steps} | "
                 f"avg train loss {avg_loss:.4f} top1 {avg_top1:.4f} top5 {avg_top5:.4f}"
             )
+            if step_metrics_callback is not None:
+                step_metrics_callback(
+                    {
+                        "train/loss": avg_loss,
+                        "train/top1": avg_top1,
+                        "train/top5": avg_top5,
+                    },
+                    step_idx,
+                )
 
     return _aggregate(running_loss, running_top1_correct, running_top5_correct, total)
 

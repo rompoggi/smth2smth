@@ -1,0 +1,24 @@
+# @package _global_
+# MCG-NJU VideoMAE SSv2 fine-tune augmentation (FINETUNE.md / ssv2.py).
+augment:
+  name: official_videomae_ssv2
+  random_horizontal_flip: false
+  random_horizontal_flip_prob: 0.0
+  random_crop: false
+  multiscale_crop: true
+  multiscale_scale: [0.08, 1.0]
+  multiscale_aspect: [0.75, 1.3333]
+  color_jitter: false
+  sync_across_frames: true
+  randaugment:
+    enabled: true
+    n: 4
+    m: 7.0
+    mode: spatial
+    magnitude_max: 30.0
+    ops: null
+  random_erase:
+    enabled: true
+    prob: 0.25
+    mode: pixel
+    count: 1

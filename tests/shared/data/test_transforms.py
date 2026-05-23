@@ -168,3 +168,24 @@ def test_sync_across_frames_applies_identical_crop_and_jitter() -> None:
     assert isinstance(out, list)
     assert len(out) == 2
     assert torch.allclose(out[0], out[1])
+
+
+def test_official_multiscale_crop_and_random_erase_shapes() -> None:
+    """Official VideoMAE SSv2 aug: MultiScaleCrop + RandAug + RandomErase."""
+    augment = {
+        "random_horizontal_flip": False,
+        "random_crop": False,
+        "multiscale_crop": True,
+        "multiscale_scale": [0.08, 1.0],
+        "multiscale_aspect": [0.75, 1.3333],
+        "sync_across_frames": True,
+        "randaugment": {"enabled": True, "n": 4, "m": 7.0, "mode": "spatial"},
+        "random_erase": {"enabled": True, "prob": 1.0, "mode": "pixel", "count": 1},
+    }
+    pipe = build_transforms(
+        image_size=32, is_training=True, use_imagenet_norm=False, augment=augment
+    )
+    frame = Image.new("RGB", (96, 72), color=(120, 80, 40))
+    tensor = pipe(frame)
+    assert isinstance(tensor, torch.Tensor)
+    assert tensor.shape == (3, 32, 32)

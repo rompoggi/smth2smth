@@ -11,6 +11,7 @@ so that existing call sites and the smoke test keep working.
 
 from __future__ import annotations
 
+import math
 import random
 from collections.abc import Mapping, Sequence
 from typing import Any
@@ -43,6 +44,70 @@ def _augment_get(augment: Mapping[str, Any] | None, key: str, default: Any) -> A
     except Exception:
         return default
     return default if value is None else value
+
+
+def _sample_multiscale_crop_fractions(
+    scale: tuple[float, float],
+    aspect: tuple[float, float],
+) -> tuple[float, float, float, float]:
+    """Sample a random resized crop as fractions of image height/width.
+
+    Matches torchvision ``RandomResizedCrop`` area/aspect sampling used in the
+    MCG-NJU VideoMAE SSv2 recipe (scale in [0.08, 1.0], aspect in [0.75, 1.33]).
+
+    Returns:
+        ``(top_frac, left_frac, height_frac, width_frac)`` in ``[0, 1]``.
+    """
+    scale_lo, scale_hi = float(scale[0]), float(scale[1])
+    aspect_lo, aspect_hi = float(aspect[0]), float(aspect[1])
+    for _ in range(10):
+        target_area = random.uniform(scale_lo, scale_hi)
+        log_aspect = random.uniform(math.log(aspect_lo), math.log(aspect_hi))
+        aspect_ratio = math.exp(log_aspect)
+        height_frac = math.sqrt(target_area / aspect_ratio)
+        width_frac = math.sqrt(target_area * aspect_ratio)
+        if height_frac <= 1.0 and width_frac <= 1.0 and min(height_frac, width_frac) > 0.05:
+            top_frac = random.uniform(0.0, 1.0 - height_frac)
+            left_frac = random.uniform(0.0, 1.0 - width_frac)
+            return top_frac, left_frac, height_frac, width_frac
+    height_frac = width_frac = 0.9
+    top_frac = left_frac = 0.05
+    return top_frac, left_frac, height_frac, width_frac
+
+
+def _random_erase_tensor(
+    tensor: torch.Tensor,
+    *,
+    prob: float,
+    mode: str,
+    count: int,
+    sl: float = 0.02,
+    sh: float = 0.4,
+    r1: float = 0.3,
+) -> torch.Tensor:
+    """Apply DeiT-style random erasing on a ``(C, H, W)`` tensor in ``[0, 1]``."""
+    if prob <= 0.0 or random.random() > prob:
+        return tensor
+    out = tensor.clone()
+    _, height, width = out.shape
+    area = height * width
+    for _ in range(max(1, int(count))):
+        for _attempt in range(100):
+            target_area = random.uniform(sl, sh) * area
+            aspect = random.uniform(r1, 1.0 / r1)
+            erase_h = int(round(math.sqrt(target_area * aspect)))
+            erase_w = int(round(math.sqrt(target_area / aspect)))
+            if erase_h < height and erase_w < width:
+                top = random.randint(0, height - erase_h)
+                left = random.randint(0, width - erase_w)
+                if mode == "pixel":
+                    out[:, top : top + erase_h, left : left + erase_w] = torch.rand(
+                        out.size(0), erase_h, erase_w, device=out.device, dtype=out.dtype
+                    )
+                else:
+                    out[:, top : top + erase_h, left : left + erase_w] = 0.0
+                break
+    return out
 
 
 def build_transforms(
@@ -120,6 +185,18 @@ def build_transforms(
     gaussian_blur_radius_min = float(_augment_get(augment, "gaussian_blur_radius_min", 0.1))
     gaussian_blur_radius_max = float(_augment_get(augment, "gaussian_blur_radius_max", 2.0))
 
+    use_multiscale_crop = bool(_augment_get(augment, "multiscale_crop", False))
+    ms_scale_cfg = _augment_get(augment, "multiscale_scale", [0.08, 1.0])
+    ms_aspect_cfg = _augment_get(augment, "multiscale_aspect", [0.75, 1.3333])
+    multiscale_scale = (float(ms_scale_cfg[0]), float(ms_scale_cfg[1]))
+    multiscale_aspect = (float(ms_aspect_cfg[0]), float(ms_aspect_cfg[1]))
+
+    re_cfg = _augment_get(augment, "random_erase", None)
+    random_erase_enabled = bool(_augment_get(re_cfg, "enabled", False)) and is_training
+    random_erase_prob = float(_augment_get(re_cfg, "prob", 0.0))
+    random_erase_mode = str(_augment_get(re_cfg, "mode", "pixel"))
+    random_erase_count = int(_augment_get(re_cfg, "count", 1))
+
     return _FrameOrClipTransform(
         image_size=image_size,
         resize_size=resize_size,
@@ -139,6 +216,13 @@ def build_transforms(
         gaussian_blur_prob=gaussian_blur_prob,
         gaussian_blur_radius_min=gaussian_blur_radius_min,
         gaussian_blur_radius_max=gaussian_blur_radius_max,
+        use_multiscale_crop=use_multiscale_crop,
+        multiscale_scale=multiscale_scale,
+        multiscale_aspect=multiscale_aspect,
+        random_erase_enabled=random_erase_enabled,
+        random_erase_prob=random_erase_prob,
+        random_erase_mode=random_erase_mode,
+        random_erase_count=random_erase_count,
     )
 
 
@@ -185,6 +269,13 @@ class _FrameOrClipTransform:
         gaussian_blur_prob: float = 0.0,
         gaussian_blur_radius_min: float = 0.1,
         gaussian_blur_radius_max: float = 2.0,
+        use_multiscale_crop: bool = False,
+        multiscale_scale: tuple[float, float] = (0.08, 1.0),
+        multiscale_aspect: tuple[float, float] = (0.75, 1.3333),
+        random_erase_enabled: bool = False,
+        random_erase_prob: float = 0.0,
+        random_erase_mode: str = "pixel",
+        random_erase_count: int = 1,
     ) -> None:
         self.image_size = image_size
         self.resize_size = resize_size
@@ -204,6 +295,13 @@ class _FrameOrClipTransform:
         self.gaussian_blur_prob = gaussian_blur_prob
         self.gaussian_blur_radius_min = gaussian_blur_radius_min
         self.gaussian_blur_radius_max = gaussian_blur_radius_max
+        self.use_multiscale_crop = use_multiscale_crop
+        self.multiscale_scale = multiscale_scale
+        self.multiscale_aspect = multiscale_aspect
+        self.random_erase_enabled = random_erase_enabled
+        self.random_erase_prob = random_erase_prob
+        self.random_erase_mode = random_erase_mode
+        self.random_erase_count = random_erase_count
 
     def __call__(
         self, image_or_images: Image.Image | Sequence[Image.Image]
@@ -252,7 +350,14 @@ class _FrameOrClipTransform:
             if randaugment_params is not None
             else self._sample_randaugment_params(num_frames=num_frames),
         }
-        if self.use_random_crop:
+        if self.use_multiscale_crop:
+            if self.is_training:
+                params["multiscale_frac"] = _sample_multiscale_crop_fractions(
+                    self.multiscale_scale, self.multiscale_aspect
+                )
+            else:
+                params["multiscale_frac"] = None
+        elif self.use_random_crop:
             if self.is_training:
                 top = random.randint(0, self.resize_size - self.image_size)
                 left = random.randint(0, self.resize_size - self.image_size)
@@ -261,6 +366,10 @@ class _FrameOrClipTransform:
                 top = (self.resize_size - self.image_size) // 2
                 left = (self.resize_size - self.image_size) // 2
                 params["crop_ijhw"] = (top, left, self.image_size, self.image_size)
+        if self.random_erase_enabled:
+            params["random_erase"] = random.random() < self.random_erase_prob
+        else:
+            params["random_erase"] = False
         if self.is_training and self.use_hflip:
             params["flip"] = bool(torch.rand(1).item() < self.hflip_prob)
         if (
@@ -303,10 +412,23 @@ class _FrameOrClipTransform:
             if len(levels) > 0:
                 level = levels[min(frame_index, len(levels) - 1)]
                 image = self.randaugment._apply_ops_to_frame(image, op_names, level)
-        x = F.resize(image, [self.resize_size, self.resize_size])
-        crop = params.get("crop_ijhw")
-        if crop is not None:
-            x = F.crop(x, *crop)
+        ms_frac = params.get("multiscale_frac")
+        if ms_frac is not None:
+            top_f, left_f, h_f, w_f = ms_frac
+            width, height = image.size
+            crop_h = max(1, int(round(h_f * height)))
+            crop_w = max(1, int(round(w_f * width)))
+            top = min(int(round(top_f * height)), height - crop_h)
+            left = min(int(round(left_f * width)), width - crop_w)
+            x = F.crop(image, top, left, crop_h, crop_w)
+            x = F.resize(x, [self.image_size, self.image_size])
+        elif self.use_multiscale_crop and not self.is_training:
+            x = F.resize(image, [self.image_size, self.image_size])
+        else:
+            x = F.resize(image, [self.resize_size, self.resize_size])
+            crop = params.get("crop_ijhw")
+            if crop is not None:
+                x = F.crop(x, *crop)
         if bool(params.get("flip", False)):
             x = F.hflip(x)
         if bool(params.get("grayscale", False)):
@@ -327,4 +449,11 @@ class _FrameOrClipTransform:
                 elif fn_id == 3 and hue_factor is not None:
                     x = F.adjust_hue(x, float(hue_factor))
         x = F.to_tensor(x)
+        if bool(params.get("random_erase", False)):
+            x = _random_erase_tensor(
+                x,
+                prob=1.0,
+                mode=self.random_erase_mode,
+                count=self.random_erase_count,
+            )
         return self.normalize(x)
