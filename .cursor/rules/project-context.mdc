@@ -32,14 +32,14 @@ alwaysApply: true
 - Optionally write a **pid file** next to the log for monitoring (`echo $! > logs/....pid`).
 - The report documents this pattern (see `report/main.tex` and `report/track_b.tex` for concrete command templates). Prefer the same style for consistency.
 
-## Training runs: always report in the LaTeX report
+## Training runs: log in your machine-local markdown file
 
-When you **start** a training (or long eval) job for this project:
+**Do not** edit `report/track_a.tex` or `report/track_b.tex` for run status (merge conflicts across hosts). Follow **`.cursor/rules/distributed-run-log.mdc`** strictly:
 
-1. **Add or update a row** in the **Track B run logbook** table in `report/track_b.tex` (and the analogous place for Track A in `report/track_a.tex` or `main.tex` tail if you add a Track‑A run log). Set status to **`RUNNING`** and record **log path**, **PID file path** (if used), **Hydra experiment preset** (`experiment=...`), and **compact hyperparameters** (see below).
-2. **Hyperparameters in prose:** do **not** spell out “learning rate (lr) is …” every time. Keep a **symbol glossary** table in the report (Track B: `report/track_b.tex`, table with label `tab:trackb-glossary`) mapping short symbols (`lr`, `wd`, `bs`, `E`, `wu`, `T`, `Sz`, `repo`, `expt`, `ema`, `ev`, `LoRA`, …) to the Hydra key and plain-language meaning. In each run row, write only compact assignments, e.g. `lr=1e-3`, `E=30`, `LoRA: r=8, α=16`.
-3. **When the run finishes or fails:** check **`kill -0 $(cat pidfile)`** (or read the log tail for `Done.` / tracebacks), then **update the same row**: status **`DONE`** or **`FAILED`**, fill **best val metrics** (and checkpoint path if relevant). If the process is still alive, keep **`RUNNING`** and optionally refresh **interim** best metrics from the log.
-4. **Never leave a started job undocumented** in the report if the user asked for training work on this repo—either add the row immediately or explicitly tell the user the table path to paste into.
+- Log path: `report/$(whoami)/$(hostname | cut -d. -f1).md` (e.g. `report/romain.poggi/rouget.md`).
+- On job **start** / **finish** / **fail** / **submit**: append (or update top `RUNNING` block) with status, log/PID, ckpt, **results only** — not code or long hyperparameter prose.
+- Link the run spec in [`experiments/`](../../experiments/) (e.g. [`experiment_16052026`](../../experiments/experiment_16052026.md)); no line numbers; **do not edit `experiments/**` when logging**. Hydra preset as plain `` `experiment=name` `` only.
+- **`report/track_a.tex` and `report/track_b.tex`:** agents may edit **only if the user explicitly asks**; otherwise markdown only.
 
 ## LaTeX / report editing
 
