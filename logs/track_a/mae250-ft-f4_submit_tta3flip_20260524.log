@@ -1,0 +1,577 @@
+model:
+  name: video_mae_vit
+  variant: vit_b
+  num_classes: ${num_classes}
+  tube_t: 1
+  patch_size: 16
+  mlp_ratio: 4.0
+  drop_path_rate: 0.2
+  dropout: 0.0
+  head: mean
+  head_num_heads: 4
+  init_from: null
+  interpolate_pos_embed: false
+  interpolate_src_image_size: 224
+  interpolate_src_num_frames: ${dataset.num_frames}
+  gradient_checkpointing: true
+  freeze_backbone: false
+  residual_variant: prenorm
+  hc_n: 4
+  hc_sk_iters: 3
+  hc_sk_tau: 1.0
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: submissions/track_a_mae250-ft-f4_tta3flip_20260524.csv
+  num_frames: 4
+  val_ratio: 0.2
+  use_official_val: true
+  include_val_in_train: false
+  official_val_holdout_ratio: 0.0
+  seed: ${seed}
+  use_extra: false
+  train_extra_dir: ${dataset.root}/train_extra
+  max_samples: null
+  max_samples_per_class: null
+  image_size: 224
+  time_reversal_prob: 0.0
+  temporal_reversal_augment:
+    enabled: false
+    prob: 0.5
+  class_boosting:
+    enabled: false
+training:
+  optimizer: adamw
+  lr: 0.0005
+  weight_decay: 0.05
+  layer_decay: 0.75
+  epochs: 50
+  warmup_epochs: 5
+  scheduler: cosine
+  scheduler_cosine: true
+  min_lr: 1.0e-06
+  label_smoothing: 0.1
+  videomix_mode: mixup_cutmix_switch
+  videomix_mixup_alpha: 0.8
+  videomix_cutmix_alpha: 1.0
+  videomix_prob: 1.0
+  videomix_switch_prob: 0.5
+  repeated_aug: 2
+  amp: true
+  amp_dtype: bf16
+  ema_enabled: true
+  ema_decay: 0.9999
+  early_stopping_enabled: true
+  early_stopping_patience: 15
+  early_stopping_min_delta: 0.001
+  num_workers: 4
+  log_interval_steps: 25
+  device: cuda
+  wandb:
+    enabled: true
+    mode: online
+    project: smth2smth-frame-ablation
+    name: null
+    tags:
+    - track_a
+    - videomae_official_ssv2
+    - rq4
+    log_interval_epochs: 1
+  checkpoint_path: checkpoints/track_a/videomaev2+ft/mae250-ft-f4.pt
+  tta: true
+  tta_flip: true
+  tta_scales:
+  - 0.857
+  - 1.0
+  - 1.143
+  batch_size: 4
+  grad_accum_steps: 8
+augment:
+  name: official_videomae_ssv2
+  random_horizontal_flip: false
+  random_horizontal_flip_prob: 0.0
+  random_crop: false
+  multiscale_crop: true
+  multiscale_scale:
+  - 0.08
+  - 1.0
+  multiscale_aspect:
+  - 0.75
+  - 1.3333
+  color_jitter: false
+  sync_across_frames: true
+  randaugment:
+    enabled: true
+    'n': 4
+    m: 7.0
+    mode: spatial
+    magnitude_max: 30.0
+    ops: null
+  random_erase:
+    enabled: true
+    prob: 0.25
+    mode: pixel
+    count: 1
+pretrain:
+  epochs: 100
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 50
+  checkpoint_path: ${hydra:runtime.cwd}/ssl_trunk.pt
+  max_frames: null
+  image_size: 224
+  local_image_size: 96
+  num_local_views: 6
+  out_dim: 4096
+  hidden_dim: 2048
+  bottleneck_dim: 256
+  n_layers: 3
+  teacher_temp: 0.04
+  student_temp: 0.1
+  center_momentum: 0.9
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
+test:
+  num_segment: 1
+  num_crop: 1
+  flip_tta: false
+track:
+  name: a
+  description: 'Closed-world track: train from scratch.'
+seed: 42
+num_classes: 33
+
+Error executing job with overrides: ['track=a', 'experiment=track_a_videomae_official_ssv2_ft', 'dataset.num_frames=4', 'training.checkpoint_path=checkpoints/track_a/videomaev2+ft/mae250-ft-f4.pt', 'training.tta=true', 'training.tta_flip=true', 'training.tta_scales=[0.857,1.0,1.143]', 'test.num_segment=1', 'test.num_crop=1', 'test.flip_tta=false', 'training.batch_size=4', 'dataset.submission_output=submissions/track_a_mae250-ft-f4_tta3flip_20260524.csv']
+Traceback (most recent call last):
+  File "/Data/romain.poggi/smth2smth/src/smth2smth/pipelines/submit.py", line 638, in main
+    run(cfg)
+  File "/Data/romain.poggi/smth2smth/src/smth2smth/pipelines/submit.py", line 75, in run
+    checkpoint = load_checkpoint(checkpoint_path, map_location=device)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/src/smth2smth/shared/io/checkpoints.py", line 79, in load_checkpoint
+    payload = torch.load(in_path, map_location=map_location, weights_only=False)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/serialization.py", line 1579, in load
+    return _load(
+           ^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/serialization.py", line 2190, in _load
+    result = unpickler.load()
+             ^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/serialization.py", line 2154, in persistent_load
+    typed_storage = load_tensor(
+                    ^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/serialization.py", line 2116, in load_tensor
+    wrap_storage = restore_location(storage, location)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/serialization.py", line 1920, in restore_location
+    return default_restore_location(storage, str(map_location))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/serialization.py", line 734, in default_restore_location
+    result = fn(storage, location)
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/serialization.py", line 668, in _deserialize
+    return obj.to(device=device)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/storage.py", line 289, in to
+    return _to(self, device, non_blocking)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/_utils.py", line 106, in _to
+    untyped_storage = torch.UntypedStorage(self.size(), device=device)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 20.00 MiB. GPU 0 has a total capacity of 23.54 GiB of which 17.38 MiB is free. Process 1425839 has 9.05 GiB memory in use. Process 1429249 has 13.40 GiB memory in use. Including non-PyTorch memory, this process has 938.00 MiB memory in use. Of the allocated memory 608.62 MiB is allocated by PyTorch, and 73.38 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+[2026-05-24T17:26:51+02:00] waiter PID 1432674 — need >= 18000 MiB free GPU memory
+[2026-05-24T17:26:51+02:00] waiter PID 1432674 — need >= 18000 MiB free GPU memory
+[2026-05-24T17:26:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:26:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:27:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:27:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:28:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:28:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:29:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:29:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:30:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:30:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:31:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:31:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:32:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:32:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:33:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:33:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:34:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:34:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:35:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:35:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:36:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:36:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:37:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:37:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:38:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:38:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:39:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:39:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:40:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:40:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:41:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:41:51+02:00] GPU free 961 MiB — waiting 60s
+[2026-05-24T17:42:51+02:00] GPU free 14688 MiB — waiting 60s
+[2026-05-24T17:42:51+02:00] GPU free 14688 MiB — waiting 60s
+model:
+  name: video_mae_vit
+  variant: vit_b
+  num_classes: ${num_classes}
+  tube_t: 1
+  patch_size: 16
+  mlp_ratio: 4.0
+  drop_path_rate: 0.2
+  dropout: 0.0
+  head: mean
+  head_num_heads: 4
+  init_from: null
+  interpolate_pos_embed: false
+  interpolate_src_image_size: 224
+  interpolate_src_num_frames: ${dataset.num_frames}
+  gradient_checkpointing: true
+  freeze_backbone: false
+  residual_variant: prenorm
+  hc_n: 4
+  hc_sk_iters: 3
+  hc_sk_tau: 1.0
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: submissions/track_a_mae250-ft-f4_tta3flip_20260524.csv
+  num_frames: 4
+  val_ratio: 0.2
+  use_official_val: true
+  include_val_in_train: false
+  official_val_holdout_ratio: 0.0
+  seed: ${seed}
+  use_extra: false
+  train_extra_dir: ${dataset.root}/train_extra
+  max_samples: null
+  max_samples_per_class: null
+  image_size: 224
+  time_reversal_prob: 0.0
+  temporal_reversal_augment:
+    enabled: false
+    prob: 0.5
+  class_boosting:
+    enabled: false
+training:
+  optimizer: adamw
+  lr: 0.0005
+  weight_decay: 0.05
+  layer_decay: 0.75
+  epochs: 50
+  warmup_epochs: 5
+  scheduler: cosine
+  scheduler_cosine: true
+  min_lr: 1.0e-06
+  label_smoothing: 0.1
+  videomix_mode: mixup_cutmix_switch
+  videomix_mixup_alpha: 0.8
+  videomix_cutmix_alpha: 1.0
+  videomix_prob: 1.0
+  videomix_switch_prob: 0.5
+  repeated_aug: 2
+  amp: true
+  amp_dtype: bf16
+  ema_enabled: true
+  ema_decay: 0.9999
+  early_stopping_enabled: true
+  early_stopping_patience: 15
+  early_stopping_min_delta: 0.001
+  num_workers: 4
+  log_interval_steps: 25
+  device: cuda
+  wandb:
+    enabled: true
+    mode: online
+    project: smth2smth-frame-ablation
+    name: null
+    tags:
+    - track_a
+    - videomae_official_ssv2
+    - rq4
+    log_interval_epochs: 1
+  checkpoint_path: checkpoints/track_a/videomaev2+ft/mae250-ft-f4.pt
+  tta: true
+  tta_flip: true
+  tta_scales:
+  - 0.857
+  - 1.0
+  - 1.143
+  batch_size: 4
+  grad_accum_steps: 8
+augment:
+  name: official_videomae_ssv2
+  random_horizontal_flip: false
+  random_horizontal_flip_prob: 0.0
+  random_crop: false
+  multiscale_crop: true
+  multiscale_scale:
+  - 0.08
+  - 1.0
+  multiscale_aspect:
+  - 0.75
+  - 1.3333
+  color_jitter: false
+  sync_across_frames: true
+  randaugment:
+    enabled: true
+    'n': 4
+    m: 7.0
+    mode: spatial
+    magnitude_max: 30.0
+    ops: null
+  random_erase:
+    enabled: true
+    prob: 0.25
+    mode: pixel
+    count: 1
+pretrain:
+  epochs: 100
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 50
+  checkpoint_path: ${hydra:runtime.cwd}/ssl_trunk.pt
+  max_frames: null
+  image_size: 224
+  local_image_size: 96
+  num_local_views: 6
+  out_dim: 4096
+  hidden_dim: 2048
+  bottleneck_dim: 256
+  n_layers: 3
+  teacher_temp: 0.04
+  student_temp: 0.1
+  center_momentum: 0.9
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
+test:
+  num_segment: 1
+  num_crop: 1
+  flip_tta: false
+track:
+  name: a
+  description: 'Closed-world track: train from scratch.'
+seed: 42
+num_classes: 33
+
+Indexing video folders under: /Data/romain.poggi/smth2smth/data/test
+Found 6913 test videos.
+[submit] masking 1 never-trained class index/indices: [27]
+[tta] flip-pair remap: [(18, 19)] (others identity).
+[tta] ViT scale 0.857 -> 192x192 (patch_size=16)
+[tta] ViT scale 1 -> 224x224 (patch_size=16)
+[tta] ViT scale 1.143 -> 256x256 (patch_size=16)
+[submit] inference autocast fp16 enabled (matches training.amp).
+Error executing job with overrides: ['track=a', 'experiment=track_a_videomae_official_ssv2_ft', 'dataset.num_frames=4', 'training.checkpoint_path=checkpoints/track_a/videomaev2+ft/mae250-ft-f4.pt', 'training.tta=true', 'training.tta_flip=true', 'training.tta_scales=[0.857,1.0,1.143]', 'test.num_segment=1', 'test.num_crop=1', 'test.flip_tta=false', 'training.batch_size=4', 'dataset.submission_output=submissions/track_a_mae250-ft-f4_tta3flip_20260524.csv']
+Traceback (most recent call last):
+  File "/Data/romain.poggi/smth2smth/src/smth2smth/pipelines/submit.py", line 638, in main
+    run(cfg)
+  File "/Data/romain.poggi/smth2smth/src/smth2smth/pipelines/submit.py", line 218, in run
+    predictions = _predict(
+                  ^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/src/smth2smth/pipelines/submit.py", line 560, in _predict
+    scaled_logits = _logits_for_batch(
+                    ^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/src/smth2smth/pipelines/submit.py", line 465, in _logits_for_batch
+    logits = model(video_batch)
+             ^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/src/smth2smth/shared/models/video_mae.py", line 605, in forward
+    features = self.encoder(x)  # (B, N, D) — already layer-normed
+               ^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/src/smth2smth/shared/models/video_mae.py", line 479, in forward
+    tokens = self.patch_embed(x) + self.pos_embed  # (B, N, D)
+             ~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~
+RuntimeError: The size of tensor a (576) must match the size of tensor b (784) at non-singleton dimension 1
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+model:
+  name: video_mae_vit
+  variant: vit_b
+  num_classes: ${num_classes}
+  tube_t: 1
+  patch_size: 16
+  mlp_ratio: 4.0
+  drop_path_rate: 0.2
+  dropout: 0.0
+  head: mean
+  head_num_heads: 4
+  init_from: null
+  interpolate_pos_embed: false
+  interpolate_src_image_size: 224
+  interpolate_src_num_frames: ${dataset.num_frames}
+  gradient_checkpointing: true
+  freeze_backbone: false
+  residual_variant: prenorm
+  hc_n: 4
+  hc_sk_iters: 3
+  hc_sk_tau: 1.0
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: submissions/track_a_mae250-ft-f4_tta3flip_20260524.csv
+  num_frames: 4
+  val_ratio: 0.2
+  use_official_val: true
+  include_val_in_train: false
+  official_val_holdout_ratio: 0.0
+  seed: ${seed}
+  use_extra: false
+  train_extra_dir: ${dataset.root}/train_extra
+  max_samples: null
+  max_samples_per_class: null
+  image_size: 224
+  time_reversal_prob: 0.0
+  temporal_reversal_augment:
+    enabled: false
+    prob: 0.5
+  class_boosting:
+    enabled: false
+training:
+  optimizer: adamw
+  lr: 0.0005
+  weight_decay: 0.05
+  layer_decay: 0.75
+  epochs: 50
+  warmup_epochs: 5
+  scheduler: cosine
+  scheduler_cosine: true
+  min_lr: 1.0e-06
+  label_smoothing: 0.1
+  videomix_mode: mixup_cutmix_switch
+  videomix_mixup_alpha: 0.8
+  videomix_cutmix_alpha: 1.0
+  videomix_prob: 1.0
+  videomix_switch_prob: 0.5
+  repeated_aug: 2
+  amp: true
+  amp_dtype: bf16
+  ema_enabled: true
+  ema_decay: 0.9999
+  early_stopping_enabled: true
+  early_stopping_patience: 15
+  early_stopping_min_delta: 0.001
+  num_workers: 4
+  log_interval_steps: 25
+  device: cuda
+  wandb:
+    enabled: true
+    mode: online
+    project: smth2smth-frame-ablation
+    name: null
+    tags:
+    - track_a
+    - videomae_official_ssv2
+    - rq4
+    log_interval_epochs: 1
+  checkpoint_path: checkpoints/track_a/videomaev2+ft/mae250-ft-f4.pt
+  tta: true
+  tta_flip: true
+  tta_scales:
+  - 0.857
+  - 1.0
+  - 1.143
+  batch_size: 2
+  grad_accum_steps: 8
+augment:
+  name: official_videomae_ssv2
+  random_horizontal_flip: false
+  random_horizontal_flip_prob: 0.0
+  random_crop: false
+  multiscale_crop: true
+  multiscale_scale:
+  - 0.08
+  - 1.0
+  multiscale_aspect:
+  - 0.75
+  - 1.3333
+  color_jitter: false
+  sync_across_frames: true
+  randaugment:
+    enabled: true
+    'n': 4
+    m: 7.0
+    mode: spatial
+    magnitude_max: 30.0
+    ops: null
+  random_erase:
+    enabled: true
+    prob: 0.25
+    mode: pixel
+    count: 1
+pretrain:
+  epochs: 100
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 50
+  checkpoint_path: ${hydra:runtime.cwd}/ssl_trunk.pt
+  max_frames: null
+  image_size: 224
+  local_image_size: 96
+  num_local_views: 6
+  out_dim: 4096
+  hidden_dim: 2048
+  bottleneck_dim: 256
+  n_layers: 3
+  teacher_temp: 0.04
+  student_temp: 0.1
+  center_momentum: 0.9
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
+test:
+  num_segment: 1
+  num_crop: 1
+  flip_tta: false
+track:
+  name: a
+  description: 'Closed-world track: train from scratch.'
+seed: 42
+num_classes: 33
+
+Indexing video folders under: /Data/romain.poggi/smth2smth/data/test
+Found 6913 test videos.
+[submit] masking 1 never-trained class index/indices: [27]
+[tta] flip-pair remap: [(18, 19)] (others identity).
+[tta] ViT scale 0.857 -> 192x192 (patch_size=16)
+[tta] ViT scale 1 -> 224x224 (patch_size=16)
+[tta] ViT scale 1.143 -> 256x256 (patch_size=16)
+[submit] inference autocast fp16 enabled (matches training.amp).
+Wrote 6913 rows to /Data/romain.poggi/smth2smth/submissions/track_a_mae250-ft-f4_tta3flip_20260524.csv
