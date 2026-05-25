@@ -271,6 +271,34 @@ def _is_hc_scalar(name: str) -> bool:
     return leaf in {"M", "M_raw", "alpha_pre", "beta"}
 
 
+_TEMPORAL_LEAF_PREFIXES = (
+    "norm_t.",
+    "temporal_attn.",
+    "temporal_fc.",
+    "t_adapter.",
+    "joint_adapter.",
+)
+
+
+def _is_new_temporal_param(name: str) -> bool:
+    """Detect Arch-3/Arch-4 temporal-module params living inside an encoder block.
+
+    The TimeSformer-style temporal attention + ``temporal_fc`` (divided_st) and
+    the AIM zero-init adapters + their ``norm_t`` (aim_reuse) are *randomly /
+    zero* initialised. The experiment doc's single highest-leverage recipe rule
+    is that these new modules train at the full base LR, NOT the LLRD-decayed
+    rate of the pretrained block they are nested in ("randomly-initialized
+    modules get base LR; pretrained layers get LLRD"). Detection is name-based
+    so the LLRD builder stays model-agnostic, mirroring :func:`_is_hc_scalar`.
+    """
+    if not name.startswith("encoder.blocks."):
+        return False
+    parts = name.split(".", 3)
+    if len(parts) < 4:
+        return False
+    return parts[3].startswith(_TEMPORAL_LEAF_PREFIXES)
+
+
 def _videomae_layer_id(name: str, depth: int) -> int:
     """Map a ``VideoMAEViT`` parameter name to a depth index for LLRD.
 
@@ -281,9 +309,11 @@ def _videomae_layer_id(name: str, depth: int) -> int:
 
     HC scalars (``encoder.alpha_out`` and per-block ``attn_router`` /
     ``mlp_router`` parameters) are routed to the top layer so they train at
-    the full base LR — see :func:`_is_hc_scalar`.
+    the full base LR — see :func:`_is_hc_scalar`. The same applies to the new
+    temporal modules (Arch 3/4) nested inside pretrained blocks — see
+    :func:`_is_new_temporal_param`.
     """
-    if _is_hc_scalar(name):
+    if _is_hc_scalar(name) or _is_new_temporal_param(name):
         return depth + 1
     if name.startswith("encoder.patch_embed") or name == "encoder.pos_embed":
         return 0
@@ -343,6 +373,66 @@ def _build_llrd_param_groups(
             "or that the model is video_mae_vit."
         )
     return [groups[k] for k in sorted(groups)]
+
+
+def _log_diverse_arch_init_diagnostics(model: nn.Module) -> None:
+    """One-time init-time sanity print for the diverse-head / temporal archs.
+
+    For temporal models (Arch 3/4) this is the doc's "single highest-payoff
+    sanity check": every temporal identity projection (``temporal_fc`` /
+    adapter up-projection) must be *exactly* zero after init_from loading, so
+    the temporal path contributes nothing at step 0 and the encoder output
+    equals the plain pretrained backbone. A non-zero value means the identity
+    init was clobbered (e.g. by a stray re-init) and the run would train the
+    temporal blocks from scratch — the doc's top failure mode for Arch 3.
+
+    For the Perceiver head (Arch 2) it prints the init query pairwise cosine
+    (should be ≈0; >0.7 later means query collapse).
+    """
+    from smth2smth.shared.models.video_mae import (
+        AIMReuseBlock,
+        DividedSpaceTimeBlock,
+        VideoMAEViT,
+    )
+
+    if not isinstance(model, VideoMAEViT):
+        return
+    enc = model.encoder
+    temporal_mode = getattr(enc, "temporal_mode", "none")
+    if temporal_mode != "none":
+        max_abs = 0.0
+        n_blocks = 0
+        for blk in enc.blocks:
+            if isinstance(blk, DividedSpaceTimeBlock):
+                n_blocks += 1
+                max_abs = max(
+                    max_abs,
+                    float(blk.temporal_fc.weight.abs().max()),
+                    float(blk.temporal_fc.bias.abs().max()),
+                )
+            elif isinstance(blk, AIMReuseBlock):
+                n_blocks += 1
+                for adapter in (blk.t_adapter, blk.joint_adapter):
+                    max_abs = max(
+                        max_abs,
+                        float(adapter.up.weight.abs().max()),
+                        float(adapter.up.bias.abs().max()),
+                    )
+        if max_abs == 0.0:
+            status = "OK (temporal path == identity at step 0)"
+        else:
+            status = f"BROKEN: identity projection not zero (max|param|={max_abs:.3e})"
+        print(
+            f"[diverse-arch] temporal_mode={temporal_mode}, {n_blocks} temporal "
+            f"block(s) at full base LR; identity-at-init {status}"
+        )
+    pool_head = getattr(model, "pool_head", None)
+    if pool_head is not None:
+        print(
+            f"[diverse-arch] pool_head: num_queries={pool_head.num_queries}, "
+            f"init query pairwise cosine={pool_head.query_pairwise_cosine():.4f} "
+            f"(>0.7 later ⇒ query collapse)."
+        )
 
 
 class RepeatedAugSampler(torch.utils.data.Sampler[int]):
@@ -740,6 +830,11 @@ def run(cfg: DictConfig) -> Path | None:
                 )
                 if backbone_missing:
                     print(f"[init_from] backbone keys NOT covered by SSL: {backbone_missing[:8]}...")
+
+    # Diverse-head / temporal-arch init-time sanity print (Arch 1–4). No-op for
+    # the mean-pool control. Runs after init_from so the identity-at-init check
+    # reflects the loaded weights.
+    _log_diverse_arch_init_diagnostics(model)
 
     # Class-balanced cross-entropy weights (opt-in). Composes with
     # label-smoothing and video-mixing: the same tensor is passed both to
@@ -1281,6 +1376,18 @@ def run(cfg: DictConfig) -> Path | None:
                     f"val loss {val_stats.loss:.4f} top1 {val_stats.top1:.4f} "
                     f"top5 {val_stats.top5:.4f}{ema_tag}"
                 )
+
+            # Diverse-head failure-mode probes (Arch 1 MLP liveness / Arch 2
+            # query collapse). Refreshed by the eval forward just run; no-op for
+            # the mean-pool control and the temporal-only archs.
+            head_diag = (
+                model.head_diagnostics()
+                if hasattr(model, "head_diagnostics")
+                else {}
+            )
+            if head_diag:
+                diag_str = ", ".join(f"{k.split('/')[-1]}={v:.4f}" for k, v in head_diag.items())
+                print(f"  [head-diag] {diag_str}")
 
             # Pick the better of (live, EMA) for checkpointing. The chosen
             # state_dict is saved as ``model_state_dict`` so ``submit.py`` /

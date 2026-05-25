@@ -1,0 +1,62 @@
+# @package _global_
+# Architecture 2 — 16-query Perceiver pooling head.
+#
+# Same VideoMAE SSv2 fine-tune recipe as the control; the head is 16 learnable
+# queries cross-attending (12 heads) to all space-time tokens, residual MLP, then
+# mean-pool over queries. Lets the head learn complementary "views" of the clip.
+# See experiments/diverse_classifier_heads_post_mae.md (Arch 2; Q-sweep is a
+# free follow-up if this is competitive).
+#
+# Launch:
+#   PYTHONPATH=src uv run python -u -m smth2smth.pipelines.train \
+#     experiment=track_a_diverse_arch2_perceiver
+defaults:
+  - override /model: video_mae_vit
+  - override /augment: official_videomae_ssv2
+  - override /train: videomae_official_ssv2
+  - override /test: vjepa2_official_2x3
+
+model:
+  variant: vit_b
+  num_classes: ${num_classes}
+  tube_t: 1
+  drop_path_rate: 0.2
+  dropout: 0.0
+  head: perceiver         # Arch 2: multi-query Perceiver aggregator
+  head_queries: 16
+  head_num_heads: 12      # match the ViT-B backbone
+  head_mlp_ratio: 4.0
+  gradient_checkpointing: true
+  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/videomaev2_t4native_encoder_ep500.pt
+  interpolate_src_num_frames: ${dataset.num_frames}
+
+dataset:
+  num_frames: 4
+  image_size: 224
+  use_official_val: true
+  include_val_in_train: false
+
+seed: 42
+
+training:
+  batch_size: 8
+  grad_accum_steps: 8
+  log_interval_steps: 25
+  epochs: 50
+  early_stopping_enabled: true
+  early_stopping_patience: 15
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/videomaev2+ft/arch2-perceiver-q16.pt
+  tta: true
+  tta_flip: false
+  tta_scales: null
+  wandb:
+    enabled: true
+    project: smth2smth-diverse-heads
+    mode: online
+    name: arch2-perceiver-q16
+    tags:
+      - track_a
+      - diverse_heads
+      - arch2_perceiver
+    log_interval_epochs: 1
+    log_interval_steps: 25

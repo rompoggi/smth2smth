@@ -1,0 +1,75 @@
+# @package _global_
+# Architecture 4 — AIM-style reused-spatial-MSA temporal adapter + Perceiver head.
+#
+# Every one of the 12 ViT-B blocks gains an AIM temporal step that REUSES the
+# block's spatial self-attention weights (no new attention params) along the
+# temporal axis, followed by a zero-init bottleneck adapter (D→64→D); a second
+# zero-init adapter runs parallel to the MLP (joint adaptation). Both adapters are
+# zero at init → identity at step 0. Classifier is the Arch-2 16-query Perceiver.
+# Architecturally orthogonal to Arch 3 (shares vs. introduces temporal weights).
+#
+# Same full-base-LR routing for the adapters as Arch 3 (train.py
+# `_is_new_temporal_param`). Confirm the "[diverse-arch] ... identity-at-init OK"
+# line at startup.
+#
+# Note on the doc's T'=2 caveat: this setup is tube_t=1 / num_frames=4 → T'=4
+# temporal tokens, so the reused-MSA temporal axis is length 4 (not the degenerate
+# length-2 the doc warned about for tube_t=2). A tube_t=1 / T=8 follow-up is the
+# lever if Arch 4 wins round 1.
+#
+# Launch:
+#   PYTHONPATH=src uv run python -u -m smth2smth.pipelines.train \
+#     experiment=track_a_diverse_arch4_aim
+defaults:
+  - override /model: video_mae_vit
+  - override /augment: official_videomae_ssv2
+  - override /train: videomae_official_ssv2
+  - override /test: vjepa2_official_2x3
+
+model:
+  variant: vit_b
+  num_classes: ${num_classes}
+  tube_t: 1
+  drop_path_rate: 0.2
+  dropout: 0.0
+  head: perceiver
+  head_queries: 16
+  head_num_heads: 12
+  head_mlp_ratio: 4.0
+  temporal_mode: aim_reuse    # Arch 4
+  temporal_layers: 12         # all 12 blocks (AIM default)
+  aim_bottleneck: 64
+  gradient_checkpointing: true
+  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/videomaev2_t4native_encoder_ep500.pt
+  interpolate_src_num_frames: ${dataset.num_frames}
+
+dataset:
+  num_frames: 4
+  image_size: 224
+  use_official_val: true
+  include_val_in_train: false
+
+seed: 42
+
+training:
+  batch_size: 8
+  grad_accum_steps: 8
+  log_interval_steps: 25
+  epochs: 50
+  early_stopping_enabled: true
+  early_stopping_patience: 15
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/videomaev2+ft/arch4-aim.pt
+  tta: true
+  tta_flip: false
+  tta_scales: null
+  wandb:
+    enabled: true
+    project: smth2smth-diverse-heads
+    mode: online
+    name: arch4-aim
+    tags:
+      - track_a
+      - diverse_heads
+      - arch4_aim
+    log_interval_epochs: 1
+    log_interval_steps: 25

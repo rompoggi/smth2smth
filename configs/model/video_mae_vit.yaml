@@ -8,8 +8,16 @@ model:
   mlp_ratio: 4.0
   drop_path_rate: 0.0     # stochastic depth (set to 0.1 at fine-tune time)
   dropout: 0.0
-  head: mean              # mean (VideoMAE paper) or attn (attentive probe)
-  head_num_heads: 4       # only used when head=attn
+  head: mean              # mean | attn (legacy probe) | attn_probe (Arch 1) | perceiver (Arch 2-4)
+  head_num_heads: 4       # cross-attn heads for attn/attn_probe/perceiver (use 12 to match ViT-B)
+  head_queries: 16        # learnable queries for head=perceiver (Arch 2); head=attn_probe forces 1
+  head_mlp_ratio: 4.0     # MLP ratio inside the attn_probe / perceiver head
+  # Temporal modeling injected into the *last* ``temporal_layers`` encoder blocks
+  # (Architectures 3 & 4). 'none' = unchanged backbone. New temporal modules are
+  # identity at init and train at full base LR (see train.py _is_new_temporal_param).
+  temporal_mode: none     # none | divided_st (Arch 3) | aim_reuse (Arch 4)
+  temporal_layers: 0      # number of last blocks to wrap (e.g. 6 for Arch 3, 12 for Arch 4)
+  aim_bottleneck: 64      # adapter bottleneck dim for temporal_mode=aim_reuse
   init_from: null         # path to a VideoMAE SSL encoder checkpoint
   # Fine-tune at a different resolution than pretrain (e.g. 224→256).
   interpolate_pos_embed: false

@@ -172,6 +172,128 @@ class TransformerBlock(nn.Module):
         return x
 
 
+# ── Temporal-modeling blocks (Architectures 3 & 4) ─────────────────────────────
+#
+# Both subclass :class:`TransformerBlock` so the inherited ``norm1`` / ``attn`` /
+# ``norm2`` / ``mlp`` keep their original ``encoder.blocks.{i}.*`` parameter
+# names and load directly from a pretrained VideoMAE checkpoint. Only the *new*
+# temporal modules carry novel names and start from a zero-contribution init, so
+# at step 0 the wrapped block is bit-for-bit the pretrained block (the
+# identity-at-init guarantee the doc flags as the single highest-payoff check).
+#
+# Spatial size is inferred from the token count at forward time (``S = N // n_t``)
+# so multi-scale TTA (variable H×W) keeps working with a fixed temporal grid.
+
+
+class DividedSpaceTimeBlock(TransformerBlock):
+    """Divided space-time block (Architecture 3): TimeSformer-style temporal
+    attention *before* the inherited spatial block.
+
+    Tokens at the same spatial position attend across the ``n_t`` temporal
+    positions. The temporal output projection ``temporal_fc`` is zero-init'd by
+    :meth:`VideoMAEEncoder._init_temporal_identity`, so the temporal path emits
+    zero at step 0 and the block reduces exactly to the pretrained ViT block.
+    """
+
+    def __init__(
+        self,
+        dim: int,
+        num_heads: int,
+        mlp_ratio: float = 4.0,
+        drop_path: float = 0.0,
+        *,
+        n_t: int = 4,
+    ) -> None:
+        super().__init__(dim, num_heads, mlp_ratio, drop_path)
+        if n_t < 1:
+            raise ValueError(f"n_t must be >= 1, got {n_t}.")
+        self.n_t = int(n_t)
+        self.norm_t = nn.LayerNorm(dim)
+        self.temporal_attn = nn.MultiheadAttention(dim, num_heads, batch_first=True)
+        self.temporal_fc = nn.Linear(dim, dim)  # zero-init → identity at step 0
+
+    def _temporal(self, x: torch.Tensor) -> torch.Tensor:
+        # x: (B, N, D), already LayerNorm'd by the caller.
+        B, N, D = x.shape
+        T = self.n_t
+        S = N // T
+        x = x.view(B, T, S, D).permute(0, 2, 1, 3).reshape(B * S, T, D)
+        y, _ = self.temporal_attn(x, x, x, need_weights=False)
+        y = self.temporal_fc(y)
+        return y.view(B, S, T, D).permute(0, 2, 1, 3).reshape(B, N, D)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = x + self.drop_path(self._temporal(self.norm_t(x)))
+        return super().forward(x)  # inherited pre-norm spatial block
+
+
+class ZeroInitAdapter(nn.Module):
+    """Bottleneck adapter (D→b→D) with a zero-init up-projection (Architecture 4).
+
+    The up-projection weight+bias are zeroed by
+    :meth:`VideoMAEEncoder._init_temporal_identity` so the adapter contributes
+    zero at step 0 (AIM §3.2: "initialize the adapter to zero ... to detach the
+    effect of temporal adaptation at the beginning of training").
+    """
+
+    def __init__(self, dim: int, bottleneck: int = 64) -> None:
+        super().__init__()
+        self.down = nn.Linear(dim, bottleneck)
+        self.act = nn.GELU()
+        self.up = nn.Linear(bottleneck, dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.up(self.act(self.down(x)))
+
+
+class AIMReuseBlock(TransformerBlock):
+    """AIM-style reused-MSA temporal adapter block (Architecture 4).
+
+    Reuses the inherited spatial-attention weights (``self.attn``) for temporal
+    attention via an einsum reshape — *no new attention parameters* — then
+    applies a zero-init bottleneck adapter to pull the temporally-mixed features
+    back into distribution. A second zero-init adapter runs parallel to the MLP
+    (AIM's joint adaptation). Both adapters are zero at init, so the block
+    reduces exactly to the pretrained ViT block at step 0.
+    """
+
+    def __init__(
+        self,
+        dim: int,
+        num_heads: int,
+        mlp_ratio: float = 4.0,
+        drop_path: float = 0.0,
+        *,
+        n_t: int = 4,
+        bottleneck: int = 64,
+    ) -> None:
+        super().__init__(dim, num_heads, mlp_ratio, drop_path)
+        if n_t < 1:
+            raise ValueError(f"n_t must be >= 1, got {n_t}.")
+        self.n_t = int(n_t)
+        self.norm_t = nn.LayerNorm(dim)
+        self.t_adapter = ZeroInitAdapter(dim, bottleneck)
+        self.joint_adapter = ZeroInitAdapter(dim, bottleneck)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B, N, D = x.shape
+        T = self.n_t
+        S = N // T
+        # 1) Temporal step: reuse the spatial-attn weights along the T axis.
+        x_t = self.norm_t(x).view(B, T, S, D).permute(0, 2, 1, 3).reshape(B * S, T, D)
+        a_t, _ = self.attn(x_t, x_t, x_t, need_weights=False)  # REUSE self.attn
+        a_t = self.t_adapter(a_t)  # zero-init → 0 at step 0
+        a_t = a_t.view(B, S, T, D).permute(0, 2, 1, 3).reshape(B, N, D)
+        x = x + self.drop_path(a_t)
+        # 2) Original spatial attn + MLP, with a parallel joint adapter on the MLP input.
+        normed1 = self.norm1(x)
+        attn_out, _ = self.attn(normed1, normed1, normed1, need_weights=False)
+        x = x + self.drop_path(attn_out)
+        normed2 = self.norm2(x)
+        x = x + self.drop_path(self.mlp(normed2)) + self.joint_adapter(normed2)
+        return x
+
+
 # ── Hyper-Connections (HC) and Manifold-Constrained HC (mHC) ───────────────────
 #
 # Implements Zhu et al. *Hyper-Connections* (ICLR 2025, arXiv:2409.19606) and
@@ -410,12 +532,25 @@ class VideoMAEEncoder(nn.Module):
         hc_n: int = 4,
         hc_sk_iters: int = 3,
         hc_sk_tau: float = 1.0,
+        temporal_mode: str = "none",
+        temporal_layers: int = 0,
+        aim_bottleneck: int = 64,
     ) -> None:
         super().__init__()
         if residual_variant not in {"prenorm", "shc", "mhc"}:
             raise ValueError(
                 f"residual_variant must be 'prenorm', 'shc' or 'mhc', got "
                 f"{residual_variant!r}."
+            )
+        if temporal_mode not in {"none", "divided_st", "aim_reuse"}:
+            raise ValueError(
+                f"temporal_mode must be 'none', 'divided_st' or 'aim_reuse', "
+                f"got {temporal_mode!r}."
+            )
+        if temporal_mode != "none" and residual_variant != "prenorm":
+            raise ValueError(
+                "temporal_mode is only supported with residual_variant='prenorm' "
+                f"(got {residual_variant!r})."
             )
         self.embed_dim = embed_dim
         self.residual_variant = residual_variant
@@ -434,12 +569,36 @@ class VideoMAEEncoder(nn.Module):
 
         self.pos_embed = nn.Parameter(torch.zeros(1, self.num_tokens, embed_dim))
 
+        # Temporal-modeling config (Architectures 3 & 4). ``temporal_layers``
+        # is the number of *last* blocks that get the temporal variant; it is
+        # clamped to [0, depth]. ``temporal_layers=0`` with a non-"none" mode is
+        # treated as "no temporal blocks" (a no-op, equivalent to "none").
+        self.temporal_mode = temporal_mode
+        self.temporal_layers = max(0, min(int(temporal_layers), depth))
+        self.aim_bottleneck = int(aim_bottleneck)
+        n_t = self.patch_embed.n_t
+        temporal_start = depth - self.temporal_layers if temporal_mode != "none" else depth
+
         dpr = [drop_path_rate * i / max(1, depth - 1) for i in range(depth)]
         if residual_variant == "prenorm":
-            self.blocks = nn.ModuleList([
-                TransformerBlock(embed_dim, num_heads, mlp_ratio, dpr[i])
-                for i in range(depth)
-            ])
+            blocks: list[nn.Module] = []
+            for i in range(depth):
+                if i >= temporal_start and temporal_mode == "divided_st":
+                    blocks.append(
+                        DividedSpaceTimeBlock(
+                            embed_dim, num_heads, mlp_ratio, dpr[i], n_t=n_t
+                        )
+                    )
+                elif i >= temporal_start and temporal_mode == "aim_reuse":
+                    blocks.append(
+                        AIMReuseBlock(
+                            embed_dim, num_heads, mlp_ratio, dpr[i],
+                            n_t=n_t, bottleneck=self.aim_bottleneck,
+                        )
+                    )
+                else:
+                    blocks.append(TransformerBlock(embed_dim, num_heads, mlp_ratio, dpr[i]))
+            self.blocks = nn.ModuleList(blocks)
             self.alpha_out: nn.Parameter | None = None
         else:
             hc_kwargs = dict(
@@ -460,6 +619,10 @@ class VideoMAEEncoder(nn.Module):
             self.alpha_out = nn.Parameter(e0.clone())
         self.norm = nn.LayerNorm(embed_dim)
         self._init_weights()
+        # MUST run after _init_weights (which trunc-normals every Linear): zero
+        # the temporal identity projections so the temporal path is a no-op at
+        # step 0 and the encoder output equals the plain pretrained backbone.
+        self._init_temporal_identity()
 
     def _init_weights(self) -> None:
         nn.init.trunc_normal_(self.pos_embed, std=0.02)
@@ -471,6 +634,19 @@ class VideoMAEEncoder(nn.Module):
             elif isinstance(m, nn.LayerNorm):
                 nn.init.ones_(m.weight)
                 nn.init.zeros_(m.bias)
+
+    def _init_temporal_identity(self) -> None:
+        """Zero the temporal identity projections (Arch 3 ``temporal_fc`` /
+        Arch 4 adapter up-projections) so each temporal block contributes zero
+        at step 0. See :class:`DividedSpaceTimeBlock` / :class:`AIMReuseBlock`."""
+        for blk in self.blocks:
+            if isinstance(blk, DividedSpaceTimeBlock):
+                nn.init.zeros_(blk.temporal_fc.weight)
+                nn.init.zeros_(blk.temporal_fc.bias)
+            elif isinstance(blk, AIMReuseBlock):
+                for adapter in (blk.t_adapter, blk.joint_adapter):
+                    nn.init.zeros_(adapter.up.weight)
+                    nn.init.zeros_(adapter.up.bias)
 
     def _pos_embed_for_input(self, x: torch.Tensor) -> torch.Tensor:
         """Return ``pos_embed`` resized to match the spatial grid of ``x``."""
@@ -563,6 +739,99 @@ class AttentiveProbeHead(nn.Module):
         return self.norm(out.squeeze(1))                   # (B, D)
 
 
+class CrossAttnPoolHead(nn.Module):
+    """Unified V-JEPA / Perceiver attentive-pooling head (Architectures 1 & 2).
+
+    ``num_queries`` learnable query tokens cross-attend (multi-head) to the full
+    encoder token sequence; the attended queries pass through a residual MLP and
+    are mean-pooled to a single ``(B, D)`` feature for the external classifier.
+
+      - ``num_queries=1``  → Architecture 1 (V-JEPA single-query attentive probe)
+      - ``num_queries=16`` → Architecture 2 (Perceiver multi-query aggregator)
+
+    Unlike :class:`AttentiveProbeHead` this adds the full V-JEPA block structure
+    (LN on queries *and* KV, a residual on the query, and a residual 4× MLP),
+    matching the experiment-doc sketches. No positional encoding is added to the
+    KV side: VideoMAEv2's sincos PE is already injected at patch-embed, and EP
+    (Psomas et al. 2026) recommends against re-PE'ing the KV side.
+
+    Diagnostics for the doc's "top failure mode" checks (updated on eval-mode
+    forwards only, so training throughput is unaffected by the device sync):
+      - ``last_mlp_activity_ratio`` (Arch 1): mean ``‖MLP(norm2(z))‖ / ‖z‖`` on
+        the most recent eval forward. < 0.05 ⇒ the MLP path is dead (collapsed
+        to identity); the doc suggests dropping to ``mlp_ratio=2`` then.
+      - ``query_pairwise_cosine()`` (Arch 2): mean off-diagonal cosine of the
+        layer-normed queries. > 0.7 ⇒ query collapse to a glorified mean-pool.
+    """
+
+    def __init__(
+        self,
+        dim: int,
+        num_heads: int = 12,
+        num_queries: int = 1,
+        mlp_ratio: float = 4.0,
+        drop: float = 0.0,
+    ) -> None:
+        super().__init__()
+        if dim % num_heads != 0:
+            raise ValueError(
+                f"dim={dim} must be divisible by num_heads={num_heads}."
+            )
+        if num_queries < 1:
+            raise ValueError(f"num_queries must be >= 1, got {num_queries}.")
+        self.num_queries = int(num_queries)
+        self.queries = nn.Parameter(torch.zeros(1, num_queries, dim))
+        self.norm_q = nn.LayerNorm(dim)
+        self.norm_kv = nn.LayerNorm(dim)
+        self.attn = nn.MultiheadAttention(dim, num_heads, batch_first=True, dropout=drop)
+        self.norm2 = nn.LayerNorm(dim)
+        hidden = int(dim * mlp_ratio)
+        self.mlp = nn.Sequential(
+            nn.Linear(dim, hidden),
+            nn.GELU(),
+            nn.Dropout(drop),
+            nn.Linear(hidden, dim),
+            nn.Dropout(drop),
+        )
+        self.norm_out = nn.LayerNorm(dim)
+        nn.init.trunc_normal_(self.queries, std=0.02)
+        # Diagnostic scalar, refreshed on eval forwards. NaN until first eval.
+        self.last_mlp_activity_ratio: float = float("nan")
+
+    def forward(self, tokens: torch.Tensor) -> torch.Tensor:
+        """tokens: (B, N, D) → (B, D) pooled feature."""
+        B = tokens.size(0)
+        q = self.norm_q(self.queries.expand(B, -1, -1))    # (B, Q, D)
+        kv = self.norm_kv(tokens)                          # (B, N, D)
+        z, _ = self.attn(q, kv, kv, need_weights=False)    # (B, Q, D)
+        z = z + q                                          # residual on query
+        mlp_out = self.mlp(self.norm2(z))
+        if not self.training:
+            # Arch-1 failure-mode probe (eval-only to avoid a per-step sync).
+            denom = z.norm(dim=-1).mean().clamp_min(1e-6)
+            self.last_mlp_activity_ratio = float(
+                (mlp_out.norm(dim=-1).mean() / denom).item()
+            )
+        z = z + mlp_out
+        z = self.norm_out(z)                               # (B, Q, D)
+        return z.mean(dim=1)                               # (B, D)
+
+    @torch.no_grad()
+    def query_pairwise_cosine(self) -> float:
+        """Mean off-diagonal cosine similarity of the layer-normed queries.
+
+        Returns 0.0 for a single query. A value > 0.7 indicates the Perceiver
+        queries have collapsed onto each other (Arch-2 failure mode).
+        """
+        if self.num_queries < 2:
+            return 0.0
+        q = F.normalize(self.norm_q(self.queries.squeeze(0)), dim=-1)  # (Q, D)
+        sim = q @ q.t()                                                # (Q, Q)
+        eye = torch.eye(self.num_queries, device=q.device, dtype=q.dtype)
+        off = (sim - eye).abs().sum()
+        return float(off.item() / (self.num_queries * (self.num_queries - 1)))
+
+
 # ── Supervised model ───────────────────────────────────────────────────────────
 
 
@@ -594,15 +863,21 @@ class VideoMAEViT(nn.Module):
         dropout: float = 0.0,
         head: str = "mean",
         head_num_heads: int = 4,
+        head_queries: int = 16,
+        head_mlp_ratio: float = 4.0,
         gradient_checkpointing: bool = False,
         residual_variant: str = "prenorm",
         hc_n: int = 4,
         hc_sk_iters: int = 3,
         hc_sk_tau: float = 1.0,
+        temporal_mode: str = "none",
+        temporal_layers: int = 0,
+        aim_bottleneck: int = 64,
     ) -> None:
         super().__init__()
-        if head not in {"mean", "attn"}:
-            raise ValueError(f"head must be 'mean' or 'attn', got {head!r}.")
+        valid_heads = {"mean", "attn", "attn_probe", "perceiver"}
+        if head not in valid_heads:
+            raise ValueError(f"head must be one of {sorted(valid_heads)}, got {head!r}.")
         self.encoder = VideoMAEEncoder(
             num_frames=num_frames,
             img_size=img_size,
@@ -618,11 +893,29 @@ class VideoMAEViT(nn.Module):
             hc_n=hc_n,
             hc_sk_iters=hc_sk_iters,
             hc_sk_tau=hc_sk_tau,
+            temporal_mode=temporal_mode,
+            temporal_layers=temporal_layers,
+            aim_bottleneck=aim_bottleneck,
         )
         self.head_kind = head
+        # Legacy single-query probe (kept under ``attn_pool`` for checkpoint
+        # back-compat with prior head="attn" runs).
         self.attn_pool: AttentiveProbeHead | None = (
             AttentiveProbeHead(embed_dim, head_num_heads) if head == "attn" else None
         )
+        # New V-JEPA / Perceiver pooling head (Architectures 1 & 2). num_queries=1
+        # is the Arch-1 single-query attentive probe; num_queries>1 is the Arch-2
+        # Perceiver. Lives under ``pool_head`` so it never clashes with ``attn_pool``.
+        self.pool_head: CrossAttnPoolHead | None = None
+        if head in {"attn_probe", "perceiver"}:
+            n_queries = 1 if head == "attn_probe" else int(head_queries)
+            self.pool_head = CrossAttnPoolHead(
+                embed_dim,
+                num_heads=head_num_heads,
+                num_queries=n_queries,
+                mlp_ratio=head_mlp_ratio,
+                drop=dropout,
+            )
         self.dropout = nn.Dropout(p=dropout)
         self.classifier = nn.Linear(embed_dim, num_classes)
         nn.init.trunc_normal_(self.classifier.weight, std=0.02)
@@ -633,9 +926,25 @@ class VideoMAEViT(nn.Module):
         features = self.encoder(x)  # (B, N, D) — already layer-normed
         if self.attn_pool is not None:
             pooled = self.attn_pool(features)   # (B, D)
+        elif self.pool_head is not None:
+            pooled = self.pool_head(features)   # (B, D)
         else:
             pooled = features.mean(dim=1)       # (B, D)
         return self.classifier(self.dropout(pooled))
+
+    def head_diagnostics(self) -> dict[str, float]:
+        """Failure-mode probes for the new pooling heads (empty for mean/attn).
+
+        ``head/mlp_activity_ratio`` (Arch 1): < 0.05 ⇒ the head MLP is dead.
+        ``head/query_pairwise_cosine`` (Arch 2): > 0.7 ⇒ the queries collapsed.
+        Values are refreshed by the most recent eval-mode forward.
+        """
+        out: dict[str, float] = {}
+        if self.pool_head is not None:
+            out["head/mlp_activity_ratio"] = self.pool_head.last_mlp_activity_ratio
+            if self.pool_head.num_queries > 1:
+                out["head/query_pairwise_cosine"] = self.pool_head.query_pairwise_cosine()
+        return out
 
     def freeze_backbone_for_classifier_tune(self) -> None:
         """Freeze encoder + attentive pool; train classifier only (cRT stage 2)."""
@@ -1044,9 +1353,14 @@ def build_video_mae_vit(cfg: DictConfig) -> nn.Module:
         dropout=float(cfg.model.get("dropout", 0.0)),
         head=str(cfg.model.get("head", "mean")),
         head_num_heads=int(cfg.model.get("head_num_heads", 4)),
+        head_queries=int(cfg.model.get("head_queries", 16)),
+        head_mlp_ratio=float(cfg.model.get("head_mlp_ratio", 4.0)),
         gradient_checkpointing=bool(cfg.model.get("gradient_checkpointing", False)),
         residual_variant=str(cfg.model.get("residual_variant", "prenorm")),
         hc_n=int(cfg.model.get("hc_n", 4)),
         hc_sk_iters=int(cfg.model.get("hc_sk_iters", 3)),
         hc_sk_tau=float(cfg.model.get("hc_sk_tau", 1.0)),
+        temporal_mode=str(cfg.model.get("temporal_mode", "none")),
+        temporal_layers=int(cfg.model.get("temporal_layers", 0)),
+        aim_bottleneck=int(cfg.model.get("aim_bottleneck", 64)),
     )

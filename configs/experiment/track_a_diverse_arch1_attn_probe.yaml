@@ -1,0 +1,61 @@
+# @package _global_
+# Architecture 1 — V-JEPA-style single-query attentive-probe head.
+#
+# Same MCG-NJU VideoMAE SSv2 fine-tune recipe as the control
+# (track_a_videomae_official_ssv2_ft); the ONLY change is the classifier head:
+# mean-pool → 1 learnable query cross-attending to all space-time tokens, with a
+# residual 4× MLP. Minimum step away from mean-pool (adaptive pooling, no
+# temporal-mechanism change). See experiments/diverse_classifier_heads_post_mae.md.
+#
+# Launch (overnight, T=4 native, ep450 SSL):
+#   PYTHONPATH=src uv run python -u -m smth2smth.pipelines.train \
+#     experiment=track_a_diverse_arch1_attn_probe
+defaults:
+  - override /model: video_mae_vit
+  - override /augment: official_videomae_ssv2
+  - override /train: videomae_official_ssv2
+  - override /test: vjepa2_official_2x3
+
+model:
+  variant: vit_b
+  num_classes: ${num_classes}
+  tube_t: 1
+  drop_path_rate: 0.2
+  dropout: 0.0
+  head: attn_probe        # Arch 1: single learnable query (num_queries forced to 1)
+  head_num_heads: 12      # match the ViT-B backbone (12 heads)
+  head_mlp_ratio: 4.0
+  gradient_checkpointing: true
+  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/videomaev2_t4native_encoder_ep500.pt
+  interpolate_src_num_frames: ${dataset.num_frames}
+
+dataset:
+  num_frames: 4
+  image_size: 224
+  use_official_val: true
+  include_val_in_train: false
+
+seed: 42
+
+training:
+  batch_size: 8
+  grad_accum_steps: 8
+  log_interval_steps: 25
+  epochs: 50
+  early_stopping_enabled: true
+  early_stopping_patience: 15
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/videomaev2+ft/arch1-attn-probe.pt
+  tta: true
+  tta_flip: false
+  tta_scales: null
+  wandb:
+    enabled: true
+    project: smth2smth-diverse-heads
+    mode: online
+    name: arch1-attn-probe
+    tags:
+      - track_a
+      - diverse_heads
+      - arch1_attn_probe
+    log_interval_epochs: 1
+    log_interval_steps: 25

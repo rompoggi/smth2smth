@@ -1,0 +1,72 @@
+# @package _global_
+# Architecture 3 — late-block divided space-time attention + 16-query Perceiver.
+#
+# The last K=6 of the 12 ViT-B blocks gain a TimeSformer-style temporal-attention
+# path (same-spatial-position attention across the T'=4 temporal tokens) whose
+# output projection ``temporal_fc`` is zero-init'd → identity at step 0. Classifier
+# is the Arch-2 16-query Perceiver. Highest single-model EV in the doc.
+#
+# IMPORTANT (doc's highest-leverage rule): the new temporal modules are random/zero
+# init and MUST train at the full base LR, not the LLRD-decayed block rate. This is
+# handled automatically by train.py `_is_new_temporal_param` (routes them to the top
+# LLRD group). The init-time log line "[diverse-arch] ... identity-at-init OK" is the
+# single highest-payoff sanity check — confirm it before letting the run continue.
+#
+# Note: this setup uses tube_t=1 / num_frames=4 → T'=4 temporal tokens (NOT the T'=2
+# the doc assumed for tube_t=2), so the temporal axis is less degenerate than feared.
+#
+# Launch:
+#   PYTHONPATH=src uv run python -u -m smth2smth.pipelines.train \
+#     experiment=track_a_diverse_arch3_divided_st
+defaults:
+  - override /model: video_mae_vit
+  - override /augment: official_videomae_ssv2
+  - override /train: videomae_official_ssv2
+  - override /test: vjepa2_official_2x3
+
+model:
+  variant: vit_b
+  num_classes: ${num_classes}
+  tube_t: 1
+  drop_path_rate: 0.2
+  dropout: 0.0
+  head: perceiver
+  head_queries: 16
+  head_num_heads: 12
+  head_mlp_ratio: 4.0
+  temporal_mode: divided_st   # Arch 3
+  temporal_layers: 6          # last K=6 blocks (Stan-style precedent)
+  gradient_checkpointing: true
+  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/videomaev2_t4native_encoder_ep500.pt
+  interpolate_src_num_frames: ${dataset.num_frames}
+
+dataset:
+  num_frames: 4
+  image_size: 224
+  use_official_val: true
+  include_val_in_train: false
+
+seed: 42
+
+training:
+  batch_size: 8
+  grad_accum_steps: 8
+  log_interval_steps: 25
+  epochs: 50
+  early_stopping_enabled: true
+  early_stopping_patience: 15
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/videomaev2+ft/arch3-divided-st-k6.pt
+  tta: true
+  tta_flip: false
+  tta_scales: null
+  wandb:
+    enabled: true
+    project: smth2smth-diverse-heads
+    mode: online
+    name: arch3-divided-st-k6
+    tags:
+      - track_a
+      - diverse_heads
+      - arch3_divided_st
+    log_interval_epochs: 1
+    log_interval_steps: 25

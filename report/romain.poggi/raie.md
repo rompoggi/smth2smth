@@ -4,6 +4,22 @@ Machine-local experiment log. Other hosts/users have their own files under `repo
 
 ---
 
+## Diverse classifier heads (Arch 1–4) — implementation + dryrun setup | Track A | 2026-05-25 04:46
+
+- **Status:** DONE (code + configs ready; overnight FT runs not yet launched)
+- **Run:** diverse-arch{1,2,3,4}-f4 (overnight 5-way incl. mean-pool control)
+- **Experiment:** [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+- **Hydra:** `experiment=track_a_diverse_arch1_attn_probe` · `…_arch2_perceiver` · `…_arch3_divided_st` · `…_arch4_aim` (control: `experiment=track_a_videomae_official_ssv2_ft`)
+- **Ckpt (SSL init):** `checkpoints/track_a/ssl/videomaev2_t4native_encoder_ep450.pt`
+- **Dryrun:** all 5 compose + load SSL (149 backbone tensors) + forward + 1 epoch on 12-clip subset OK. Params 86.3M (control) / 93.4M (A1,A2) / 111.1M (A3) / 95.8M (A4). Pytest 23 passed.
+- **Setup notes:**
+  - Geometry is tube_t=1/T=4 → **T'=4 temporal tokens** (not the T'=2 the doc assumed), so Arch 3/4 temporal axis is less degenerate than the doc's caveats feared.
+  - New temporal modules (A3/A4) train at full base LR; LLRD 0.75 stays on the pretrained backbone only.
+  - Failure-mode checks wired: A3/A4 log `identity-at-init OK` at startup; A1 MLP-liveness + A2 query-cosine logged each eval epoch.
+  - Fixed pre-existing duplicate `resume_from` key in `configs/train/videomae_official_ssv2.yaml` (was blocking every run on this recipe under current omegaconf).
+
+---
+
 ## mae450-ft-f4 champion TTA submit | Track A | 2026-05-25 03:32
 
 - **Status:** DONE
