@@ -50,7 +50,9 @@ Each entry:
 - **Run:** {run_name or experiment id}
 - **Experiment:** [`{experiments_doc_stem}`](../../experiments/{experiments_doc_stem}.md) — link to the **experiments/** spec (read-only); **never** line numbers or in-file anchors
 - **Hydra:** `experiment={preset}` (plain text; config lives under `configs/experiment/`, not linked from here)
-- **Log:** `{path}` · **PID:** `{path}` (if background job)
+- **Log:** [`{log_basename}`](../../logs/{track_dir}/{log_basename}) — under `logs/track_a/`, `logs/track_b/`, or study dir (see start-resume-runs rule)
+- **W&B:** [run]({url}) — long train/pretrain only; omit for submit/short jobs
+- **PID:** [`{pid}`](../../logs/…/file.pid) — only while **RUNNING** and a pid file exists; remove pid file when done
 - **Ckpt:** `{path}` (target or best)
 - **Metrics:** {one line: val/LB/holdout only — no code, no hyperparameter essays}
 - **Submit:** `{csv path}` → LB **{score}** (if applicable)
@@ -88,6 +90,10 @@ Machine-local experiment log. Other hosts/users have their own files under `repo
 - **Only if the user explicitly asks** may you modify `report/track_a.tex` or `report/track_b.tex` (or consolidate narrative into `main.tex`).
 - Otherwise treat shared LaTeX as **read-only** for run logging.
 - Compiling `report/main.tex` is **not** required when you only touch `report/{user}/{host}.md`.
+
+## Cross-rule: launching runs
+
+When **starting or resuming** training, follow **`.cursor/rules/start-resume-runs.mdc`** (log naming, `logs/track_a|b/`, header with start date + `experiment_doc`, health check, W&B resume, pid cleanup). This file is only for **outcome/status** after launch.
 
 ## Quick check before commit
 

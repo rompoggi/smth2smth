@@ -48,7 +48,9 @@ Log on experiment **start**, **finish**, **failure**, **stop**, or **submission*
 - **Run:** {name}
 - **Experiment:** [`{doc}`](../../experiments/{doc}.md) — **experiments/** spec; **no line numbers**
 - **Hydra:** `experiment={preset}` (text only, not a link to `configs/experiment/`)
-- **Log:** `{path}` · **PID:** `{path}`
+- **Log:** [`…`](../../logs/track_a/…) — per **start-resume-runs** layout
+- **W&B:** [run](url) if training; omit for submit
+- **PID:** link only if RUNNING + pid file exists
 - **Ckpt:** `{path}`
 - **Metrics:** {concise results only}
 - **Submit:** `{csv}` → LB **{pct}** (optional)
@@ -77,3 +79,5 @@ Machine-local experiment log. Other hosts/users have their own files under `repo
 ## LaTeX (`track_a.tex`, `track_b.tex`)
 
 Modify **`report/track_a.tex` or `report/track_b.tex` only if the user explicitly asks**. Otherwise markdown logs are the source of truth for distributed runs.
+
+Launch/resume procedure: **`start-resume-runs.md`** in this folder.

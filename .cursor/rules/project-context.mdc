@@ -40,6 +40,7 @@ alwaysApply: true
 - On job **start** / **finish** / **fail** / **submit**: append (or update top `RUNNING` block) with status, log/PID, ckpt, **results only** — not code or long hyperparameter prose.
 - Link the run spec in [`experiments/`](../../experiments/) (e.g. [`experiment_16052026`](../../experiments/experiment_16052026.md)); no line numbers; **do not edit `experiments/**` when logging**. Hydra preset as plain `` `experiment=name` `` only.
 - **`report/track_a.tex` and `report/track_b.tex`:** agents may edit **only if the user explicitly asks**; otherwise markdown only.
+- **Starting/resuming jobs:** `.cursor/rules/start-resume-runs.mdc` (log paths, health check, W&B, pid cleanup).
 
 ## LaTeX / report editing
 
