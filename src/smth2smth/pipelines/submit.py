@@ -217,6 +217,15 @@ def run(cfg: DictConfig) -> Path:
             num_workers=int(cfg.training.num_workers),
             pin_memory=(device.type == "cuda"),
         )
+        vit_tta_meta = _vit_tta_meta_for_model(
+            model=model,
+            saved_cfg=saved_cfg,
+            cfg=cfg,
+            tta_enabled=tta_enabled,
+            tta_scales=tta_scales,
+            patch_size=patch_size,
+            num_frames=num_frames,
+        )
         predictions = _predict(
             model=model,
             loader=loader,
@@ -229,6 +238,7 @@ def run(cfg: DictConfig) -> Path:
             logit_adjust=logit_adjust if tta_enabled else None,
             amp_infer=amp_infer,
             patch_size=patch_size,
+            vit_tta_meta=vit_tta_meta,
         )
     if len(predictions) != len(video_names):
         raise RuntimeError(f"Prediction count {len(predictions)} != video count {len(video_names)}")
@@ -554,6 +564,60 @@ def _logits_for_batch(
     return logits
 
 
+def _vit_tta_meta_for_model(
+    *,
+    model: nn.Module,
+    saved_cfg: DictConfig,
+    cfg: DictConfig,
+    tta_enabled: bool,
+    tta_scales: list[float],
+    patch_size: int | None,
+    num_frames: int,
+) -> dict[str, object] | None:
+    """Capture canonical ``pos_embed`` for ViT multi-scale TTA at submit time."""
+    if not tta_enabled or patch_size is None:
+        return None
+    model_name = str(saved_cfg.model.get("name", "")) if hasattr(saved_cfg, "model") else ""
+    if model_name != "video_mae_vit":
+        return None
+    if len(tta_scales) <= 1 and all(abs(float(s) - 1.0) < 1e-6 for s in tta_scales):
+        return None
+    encoder = getattr(model, "encoder", None)
+    if encoder is None or not hasattr(encoder, "pos_embed"):
+        return None
+    canonical_side = int(saved_cfg.dataset.get("image_size", cfg.dataset.image_size))
+    return {
+        "base_pe": encoder.pos_embed.detach().clone(),
+        "canonical_side": canonical_side,
+        "num_frames": int(num_frames),
+        "tube_t": int(saved_cfg.model.get("tube_t", 2)),
+        "patch_size": int(patch_size),
+    }
+
+
+def _set_vit_pos_embed_for_side(model: nn.Module, meta: dict[str, object], dst_side: int) -> None:
+    """Resize encoder ``pos_embed`` to match the spatial grid of a TTA scale."""
+    encoder = model.encoder
+    canonical_side = int(meta["canonical_side"])
+    base_pe = meta["base_pe"]
+    assert isinstance(base_pe, torch.Tensor)
+    if dst_side == canonical_side:
+        pe_new = base_pe
+    else:
+        pe_new = interpolate_pos_embed(
+            base_pe,
+            src_num_frames=int(meta["num_frames"]),
+            src_img_size=canonical_side,
+            dst_num_frames=int(meta["num_frames"]),
+            dst_img_size=int(dst_side),
+            tube_t=int(meta["tube_t"]),
+            patch_size=int(meta["patch_size"]),
+        )
+    device = encoder.pos_embed.device
+    dtype = encoder.pos_embed.dtype
+    encoder.pos_embed = nn.Parameter(pe_new.to(device=device, dtype=dtype))
+
+
 def _round_spatial_to_patch_multiple(size: int, patch_size: int) -> int:
     """Round ``size`` to the nearest multiple of ``patch_size`` (minimum ``patch_size``)."""
     if patch_size <= 0:
@@ -603,6 +667,7 @@ def _predict(
     logit_adjust: torch.Tensor | None = None,
     amp_infer: bool = False,
     patch_size: int | None = None,
+    vit_tta_meta: dict[str, object] | None = None,
 ) -> list[int]:
     """Argmax inference, optionally with multi-view TTA.
 
@@ -640,6 +705,8 @@ def _predict(
         n_views = 0
         for scale in tta_scales:
             scaled = _rescale_video(video_batch, scale, patch_size=patch_size)
+            if vit_tta_meta is not None:
+                _set_vit_pos_embed_for_side(model, vit_tta_meta, int(scaled.shape[-2]))
             scaled_logits = _logits_for_batch(
                 model,
                 scaled,
