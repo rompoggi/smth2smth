@@ -1,5 +1,5 @@
 # @package _global_
-# VideoMAE SSL pretrain (T=16): only augments that are enabled.
+# Mild spatial aug for VideoMAE SSL (T-independent; T=4 and T=16 arms).
 augment:
   name: videomae_pretrain_t16
   random_crop: true

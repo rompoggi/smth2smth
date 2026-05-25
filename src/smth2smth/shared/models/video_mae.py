@@ -427,6 +427,10 @@ class VideoMAEEncoder(nn.Module):
         self.patch_embed = PatchEmbed3D(num_frames, img_size, tube_t, patch_size, embed_dim)
         self.num_tokens = self.patch_embed.num_tokens
         self.gradient_checkpointing = bool(gradient_checkpointing)
+        # Grid ``pos_embed`` was trained on (``PatchEmbed3D`` conv accepts other H×W at
+        # inference, e.g. multi-scale TTA — then we trilinearly resize ``pos_embed``).
+        self._pos_src_num_frames = int(num_frames)
+        self._pos_src_img_size = int(img_size)
 
         self.pos_embed = nn.Parameter(torch.zeros(1, self.num_tokens, embed_dim))
 

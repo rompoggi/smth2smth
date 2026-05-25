@@ -4,6 +4,9 @@ training:
   lr: 0.0001
   epochs: 5
   num_workers: 2
+  # DataLoader throughput (used by VideoMAE pretrain when num_workers > 0).
+  persistent_workers: false
+  prefetch_factor: 2
   checkpoint_path: ${hydra:runtime.cwd}/best_model.pt
   # Optional path to a checkpoint to resume from. When set, model weights and
   # the epoch/best-top1 metadata in ``extra`` are loaded. Optimizer, cosine

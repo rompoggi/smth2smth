@@ -17,8 +17,10 @@ Run from the repo root::
 from __future__ import annotations
 
 import math
+import os
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import hydra
 import torch
@@ -119,6 +121,70 @@ def _warmup_cosine_lr(
         pg["lr"] = lr
 
 
+def _init_wandb(cfg: DictConfig, pcfg: DictConfig, *, variant: str) -> Any | None:
+    """Start a W&B run when ``pretrain.wandb_enabled`` is true."""
+    if not bool(pcfg.get("wandb_enabled", False)):
+        return None
+    try:
+        import wandb
+    except ImportError as exc:
+        print(f"[wandb] disabled: {exc}")
+        return None
+
+    api_key = os.environ.get("WANDB_API_KEY")
+    if not api_key:
+        print("[wandb] disabled: WANDB_API_KEY not set (add to .env or export).")
+        return None
+
+    project = str(pcfg.get("wandb_project", "smth2smth"))
+    run_name = pcfg.get("wandb_run_name")
+    group = pcfg.get("wandb_group")
+    tags = list(pcfg.get("wandb_tags") or [])
+    run = wandb.init(
+        project=project,
+        name=str(run_name) if run_name else None,
+        group=str(group) if group else None,
+        tags=tags or None,
+        config=OmegaConf.to_container(cfg, resolve=True),
+    )
+    print(f"[wandb] run started: {run.url}")
+    return run
+
+
+def _encoder_trunk_state_dict(model: VideoMAEPretrainModel) -> dict[str, torch.Tensor]:
+    """Encoder tensors with ``encoder.`` prefix for supervised ``init_from``."""
+    return {f"encoder.{k}": v for k, v in model.encoder.state_dict().items()}
+
+
+def _save_encoder_checkpoint(
+    path: Path,
+    model: VideoMAEPretrainModel,
+    *,
+    epoch: int,
+    variant: str,
+    architecture: str,
+    ema_model: torch.optim.swa_utils.AveragedModel | None,
+) -> None:
+    """Write encoder-only trunk checkpoint (EMA weights when EMA is enabled)."""
+    source = ema_model.module if ema_model is not None else model
+    trunk_state_dict = _encoder_trunk_state_dict(source)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "trunk_state_dict": trunk_state_dict,
+            "epoch": epoch,
+            "variant": variant,
+            "architecture": architecture,
+        },
+        path,
+    )
+    print(
+        f"[videomae] {_now()} wrote trunk checkpoint -> {path} "
+        f"({len(trunk_state_dict)} tensors"
+        f"{', EMA' if ema_model is not None else ''})"
+    )
+
+
 def run(cfg: DictConfig) -> Path:
     """VideoMAE pretraining loop.
 
@@ -182,14 +248,19 @@ def run(cfg: DictConfig) -> Path:
         source_num_frames=source_num_frames,
         temporal_expand_mode=temporal_expand_mode,
     )
-    loader = DataLoader(
-        dataset,
+    loader_kwargs: dict[str, Any] = dict(
         batch_size=int(pcfg.batch_size),
         shuffle=True,
         num_workers=int(cfg.training.num_workers),
         pin_memory=(device.type == "cuda"),
         drop_last=True,
     )
+    if int(cfg.training.num_workers) > 0:
+        loader_kwargs["persistent_workers"] = bool(
+            cfg.training.get("persistent_workers", False)
+        )
+        loader_kwargs["prefetch_factor"] = int(cfg.training.get("prefetch_factor", 2))
+    loader = DataLoader(dataset, **loader_kwargs)
 
     # ── Model ─────────────────────────────────────────────────────────────────
     model_name = str(cfg.model.get("name", "video_mae_vit"))
@@ -291,7 +362,7 @@ def run(cfg: DictConfig) -> Path:
     if ema_enabled and not use_resnet:
 
         def _ema_avg_fn(
-            avg_param: torch.Tensor, model_param: torch.Tensor, num_averaged: int
+            avg_param: torch.Tensor, model_param: torch.Tensor, _num_averaged: int
         ) -> torch.Tensor:
             return ema_decay * avg_param + (1.0 - ema_decay) * model_param
 
@@ -379,6 +450,9 @@ def run(cfg: DictConfig) -> Path:
         optimizer.load_state_dict(state["optimizer_state_dict"])
         if scaler is not None and state.get("scaler_state_dict") is not None:
             scaler.load_state_dict(state["scaler_state_dict"])
+        if ema_model is not None and state.get("ema_state_dict") is not None:
+            ema_model.load_state_dict(state["ema_state_dict"])
+            print("[videomae] EMA state restored from checkpoint.")
         start_epoch = int(state.get("epoch", 0))
         global_step = int(state.get("global_step", 0))
         print(
@@ -446,9 +520,9 @@ def run(cfg: DictConfig) -> Path:
                     if max_grad_norm > 0.0:
                         torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
                     optimizer.step()
-                optimizer.zero_grad(set_to_none=True)
                 if ema_model is not None:
                     ema_model.update_parameters(model)
+                optimizer.zero_grad(set_to_none=True)
 
             global_step += 1
             loss_val = float(loss.item())
@@ -507,18 +581,18 @@ def run(cfg: DictConfig) -> Path:
         # Full resume state (skip for the ResNet-feature pretrain variant — its
         # model layout differs and the FT pipelines don't ever resume it).
         if not use_resnet:
-            torch.save(
-                {
-                    "model_state_dict": model.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
-                    "scaler_state_dict": scaler.state_dict() if scaler is not None else None,
-                    "epoch": ep,
-                    "global_step": global_step,
-                    "variant": variant,
-                    "architecture": model_name,
-                },
-                state_path,
-            )
+            resume_payload: dict[str, Any] = {
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "scaler_state_dict": scaler.state_dict() if scaler is not None else None,
+                "epoch": ep,
+                "global_step": global_step,
+                "variant": variant,
+                "architecture": model_name,
+            }
+            if ema_model is not None:
+                resume_payload["ema_state_dict"] = ema_model.state_dict()
+            torch.save(resume_payload, state_path)
             print(f"[videomae] {_now()} wrote resume state -> {state_path}")
 
     if wandb_run is not None:

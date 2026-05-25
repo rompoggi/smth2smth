@@ -31,6 +31,7 @@ training:
   resume_from: null
   save_last_checkpoint: true
   device: cuda
+  resume_from: null
   wandb:
     enabled: true
     mode: online
