@@ -6,17 +6,16 @@ Scope: truite **untracked / staged** work — HC SHC s44; frame-ablation **mae50
 
 ---
 
-## mae50-ft-f4-val90-holdout FT (ep50 SSL, val90) | Track A | 2026-05-25 03:27
+## mae50-ft-f4-val90-holdout FT (ep50 SSL, val90) | Track A | 2026-05-25 16:18
 
-- **Status:** RUNNING
+- **Status:** DONE
 - **Run:** mae50-ft-f4-val90-holdout
 - **Experiment:** [`videomaev2_t4_native_300e_pretrain`](../../experiments/videomaev2_t4_native_300e_pretrain.md)
 - **Hydra:** `experiment=track_a_videomae_official_ssv2_ft`, `T=4`, `tube_t=1`, SSL `videomaev2_t4native_encoder_ep50.pt`, `dataset.official_val_holdout_ratio=0.1`, `E=50`
 - **Log:** [`mae50-ft-f4-val90-holdout_20260524.log`](../../logs/track_a/mae50-ft-f4-val90-holdout_20260524.log)
-- **W&B:** [run](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/b4v89tlw) (resume 2026-05-25; prior [`mmouih0n`](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/mmouih0n))
-- **PID:** [`mae50-ft-f4-val90-holdout_20260524.pid`](../../logs/track_a/mae50-ft-f4-val90-holdout_20260524.pid)
+- **W&B:** [run](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/b4v89tlw)
 - **Ckpt:** `checkpoints/track_a/videomaev2+ft/mae50-ft-f4-val90-holdout.pt`
-- **Metrics:** best **holdout** val top1=**0.5340** (EMA, ep32); ep34 done; ep35 train ~step 3500/6383
+- **Metrics:** best **holdout** val top1=**0.5370** (EMA, ep35); ep50 EMA **0.5311**; full **50/50** epochs (no early stop)
 
 ---
 
