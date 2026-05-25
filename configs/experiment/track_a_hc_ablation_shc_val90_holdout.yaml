@@ -1,0 +1,30 @@
+# @package _global_
+# HC SHC continuation: train on train + 90% of official val (stratified),
+# evaluate on 10% holdout. Low-LR short FT from honest-val best checkpoint.
+
+defaults:
+  - track_a_hc_ablation_shc
+
+model:
+  init_from: null
+
+dataset:
+  use_official_val: true
+  include_val_in_train: false
+  official_val_holdout_ratio: 0.1
+
+training:
+  resume_from: ${hydra:runtime.cwd}/checkpoints/track_a/hc/shc_n4_s42_ft.pt
+  resume_reset_epoch: true
+  resume_apply_cfg_lr: true
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/hc/shc_n4_s42_ft_val90_holdout.pt
+  epochs: 10
+  warmup_epochs: 2
+  lr: 0.00005
+  early_stopping_patience: 4
+  # Holdout val: log no-TTA (default) + best TTA (3 scales + flip, +1.9 pp ablation).
+  val_eval_tta: true
+  tta: true
+  tta_flip: true
+  tta_scales: [0.857, 1.0, 1.143]
+  stability_log_path: ${hydra:runtime.cwd}/logs/hc/shc_n4_s42_val90_holdout_stability.csv

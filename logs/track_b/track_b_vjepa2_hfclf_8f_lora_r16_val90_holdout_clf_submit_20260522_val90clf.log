@@ -1,0 +1,158 @@
+[2026-05-23T01:44:12+02:00] submit ckpt=checkpoints/track_b/vitl_fpc16ssv2_8f_lora_r16_val90_holdout_clf.pt -> submissions/track_b_vjepa2_hfclf_8f_lora_r16_val90_holdout_clf_20260522_val90clf.csv
+model:
+  name: vjepa2_hf_clf
+  pretrained: true
+  num_classes: ${num_classes}
+  hf_repo: facebook/vjepa2-vitl-fpc16-256-ssv2
+  lora_enabled: true
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  lora_target_modules: .*\.encoder\.layer\.\d+\.attention\.(query|key|value|proj)
+  freeze_backbone: true
+  train_classifier_only: false
+  attn_implementation: sdpa
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: submissions/track_b_vjepa2_hfclf_8f_lora_r16_val90_holdout_clf_20260522_val90clf.csv
+  num_frames: 8
+  val_ratio: 0.2
+  use_official_val: true
+  include_val_in_train: false
+  official_val_holdout_ratio: 0.0
+  seed: ${seed}
+  max_samples: null
+  max_samples_per_class: null
+  image_size: 256
+  time_reversal_prob: 0.0
+  temporal_reversal_augment:
+    enabled: false
+    prob: 0.5
+  class_boosting:
+    enabled: false
+training:
+  batch_size: 8
+  lr: 0.0001
+  epochs: 15
+  num_workers: 4
+  checkpoint_path: checkpoints/track_b/vitl_fpc16ssv2_8f_lora_r16_val90_holdout_clf.pt
+  resume_from: null
+  lora_lr: 0.0001
+  lora_lr_ratio: 0.25
+  motion_lr: null
+  motion_lr_ratio: null
+  resume_apply_cfg_lr: false
+  amp: true
+  device: cuda
+  optimizer: adamw
+  momentum: 0.9
+  nesterov: false
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 1
+  min_lr: 1.0e-05
+  label_smoothing: 0.1
+  videomix_alpha: 0.0
+  videomix_prob: 1.0
+  videomix_mode: cube_cutmix
+  videomix_mixup_alpha: null
+  videomix_cutmix_alpha: null
+  videomix_switch_prob: 0.5
+  layer_decay: null
+  repeated_aug: 1
+  grad_accum_steps: 3
+  amp_dtype: bf16
+  scheduler: none
+  sgdr_T0: 30
+  sgdr_save_snapshots: false
+  early_stopping_enabled: false
+  early_stopping_patience: 10
+  early_stopping_min_delta: 0.0
+  log_interval_steps: 25
+  ema_enabled: false
+  ema_decay: 0.999
+  eval_every_n_epochs: 1
+  eval_ema: false
+  save_last_checkpoint: true
+  last_checkpoint_path: null
+  resume_reset_scheduler: false
+  continuation_warmup_epochs: 0
+  continuation_rewarm_lr: false
+  continuation_peak_lr_ratio: 0.4
+  val_eval_tta: false
+  tta: true
+  tta_flip: false
+  tta_temporal_shift: 0
+  tta_scales: null
+  tta_logit_adjust: 0.0
+  class_balance_sampler: none
+  class_balance_loss: none
+  class_balance_beta: 0.999
+augment:
+  name: vjepa2_heavy
+  random_horizontal_flip: false
+  random_crop: true
+  crop_padding: 32
+  color_jitter: true
+  color_jitter_brightness: 0.3
+  color_jitter_contrast: 0.3
+  color_jitter_saturation: 0.3
+  color_jitter_hue: 0.05
+  sync_across_frames: true
+  randaugment:
+    enabled: true
+    'n': 2
+    m: 9.0
+    mode: temporal_plus
+    magnitude_max: 30.0
+    ops: null
+pretrain:
+  epochs: 100
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 50
+  checkpoint_path: ${hydra:runtime.cwd}/ssl_trunk.pt
+  max_frames: null
+  image_size: 224
+  local_image_size: 96
+  num_local_views: 6
+  out_dim: 4096
+  hidden_dim: 2048
+  bottleneck_dim: 256
+  n_layers: 3
+  teacher_temp: 0.04
+  student_temp: 0.1
+  center_momentum: 0.9
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
+test:
+  num_segment: 1
+  num_crop: 1
+  flip_tta: false
+track:
+  name: b
+  description: 'Open-world track: pretrained backbone allowed.'
+num_classes: 33
+seed: 42
+
+[2026-05-23 01:44:18,565][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/facebook/vjepa2-vitl-fpc16-256-ssv2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[2026-05-23 01:44:18,566][huggingface_hub.utils._http][WARNING] - Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[2026-05-23 01:44:18,578][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/facebook/vjepa2-vitl-fpc16-256-ssv2/4aa02df83918538fc21cfaf576382fa20e489a80/config.json "HTTP/1.1 200 OK"
+[2026-05-23 01:44:18,691][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/facebook/vjepa2-vitl-fpc16-256-ssv2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-05-23 01:44:18,704][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/facebook/vjepa2-vitl-fpc16-256-ssv2/4aa02df83918538fc21cfaf576382fa20e489a80/config.json "HTTP/1.1 200 OK"
+[2026-05-23 01:44:18,826][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/facebook/vjepa2-vitl-fpc16-256-ssv2/resolve/main/model.safetensors "HTTP/1.1 302 Found"
+Loading weights:   0%|          | 0/652 [00:00<?, ?it/s]Loading weights: 100%|██████████| 652/652 [00:00<00:00, 7990.60it/s]
+[vjepa2_hf_clf] head-slice: 32/33 local classes resolved to SSv2 ids; 1 missing -> zero rows.
+Indexing video folders under: /Data/romain.poggi/smth2smth/data/test
+Found 6913 test videos.
+[submit] masking 1 never-trained class index/indices: [27]
+[submit] inference autocast fp16 enabled (matches training.amp).
+Wrote 6913 rows to /Data/romain.poggi/smth2smth/submissions/track_b_vjepa2_hfclf_8f_lora_r16_val90_holdout_clf_20260522_val90clf.csv
+[2026-05-23T01:50:06+02:00] submit done -> submissions/track_b_vjepa2_hfclf_8f_lora_r16_val90_holdout_clf_20260522_val90clf.csv

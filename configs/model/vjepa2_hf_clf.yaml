@@ -1,0 +1,39 @@
+# @package _global_
+# V-JEPA 2 SSv2-finetuned encoder + Meta's pretrained attentive pooler +
+# head-sliced 33-class classifier + (optional) LoRA on encoder attention.
+#
+# This builder loads ``VJEPA2ForVideoClassification`` from HuggingFace verbatim
+# (encoder + 4-block attentive pooler with 16 heads + 174-class linear head),
+# then replaces ``classifier`` with a (num_classes, hidden_size) slice taken
+# from Meta's 174-row head (rows are selected by matching local folder names
+# against ``config.id2label``). LoRA is attached to encoder attention
+# (``query``/``key``/``value``/``proj``) -- those names do NOT exist on the
+# pooler (which uses ``q_proj``/``k_proj``/``v_proj``/``out_proj``), so PEFT
+# leaves the pooler untouched and we train it densely from its Meta init.
+#
+# Frozen at train time:   encoder base weights (~0.3 B params)
+# Trainable at train time: LoRA adapters (a few M) + pooler (~50 M) + sliced
+#                          classifier (33 * 1024 + 33 = 33 K)
+model:
+  name: vjepa2_hf_clf
+  pretrained: true
+  num_classes: ${num_classes}
+  # SSv2-finetuned ViT-L 256 (the only public HF release of Meta's SSv2 probe
+  # for the L-scale encoder). Pretrained on the full 174-class SSv2 train set.
+  hf_repo: facebook/vjepa2-vitl-fpc16-256-ssv2
+  # PEFT LoRA on encoder attention (q/k/v/proj). Default targets match the
+  # encoder only -- pooler attention uses different module names. Standard
+  # alpha convention is alpha=2*r (LoRA paper recommendation; alpha/r is the
+  # adapter scaling factor and 2 has good empirical support in vision PEFT).
+  lora_enabled: true
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  lora_target_modules: null
+  # Always frozen for this builder; kept here only so existing pipeline code
+  # that reads cfg.model.freeze_backbone doesn't break.
+  freeze_backbone: true
+  # When true (e.g. val-holdout cRT): keep LoRA/pooler weights loaded but
+  # frozen; only ``classifier.{weight,bias}`` receive gradients.
+  train_classifier_only: false
+  attn_implementation: sdpa

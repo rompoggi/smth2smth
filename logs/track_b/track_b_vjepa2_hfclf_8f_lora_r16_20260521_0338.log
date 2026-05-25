@@ -1,0 +1,245 @@
+model:
+  name: vjepa2_hf_clf
+  pretrained: true
+  num_classes: ${num_classes}
+  hf_repo: facebook/vjepa2-vitl-fpc16-256-ssv2
+  lora_enabled: true
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  lora_target_modules: .*\.encoder\.layer\.\d+\.attention\.(query|key|value|proj)
+  freeze_backbone: true
+  attn_implementation: sdpa
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: ${hydra:runtime.cwd}/submissions/track_a.csv
+  num_frames: 8
+  val_ratio: 0.2
+  use_official_val: true
+  include_val_in_train: false
+  official_val_holdout_ratio: 0.0
+  seed: ${seed}
+  max_samples: null
+  max_samples_per_class: null
+  image_size: 256
+  time_reversal_prob: 0.0
+  temporal_reversal_augment:
+    enabled: false
+    prob: 0.5
+  class_boosting:
+    enabled: false
+training:
+  batch_size: 12
+  lr: 0.0001
+  epochs: 15
+  num_workers: 4
+  checkpoint_path: checkpoints/track_b/vitl_fpc16ssv2_8f_lora_r16.pt
+  resume_from: null
+  lora_lr: 0.0001
+  lora_lr_ratio: 0.25
+  motion_lr: null
+  motion_lr_ratio: null
+  resume_apply_cfg_lr: false
+  amp: true
+  device: cuda
+  optimizer: adamw
+  momentum: 0.9
+  nesterov: false
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 1
+  min_lr: 1.0e-05
+  label_smoothing: 0.1
+  videomix_alpha: 0.0
+  videomix_prob: 1.0
+  videomix_mode: cube_cutmix
+  videomix_mixup_alpha: null
+  videomix_cutmix_alpha: null
+  videomix_switch_prob: 0.5
+  layer_decay: null
+  repeated_aug: 1
+  grad_accum_steps: 2
+  amp_dtype: bf16
+  scheduler: none
+  sgdr_T0: 30
+  sgdr_save_snapshots: false
+  early_stopping_enabled: false
+  early_stopping_patience: 10
+  early_stopping_min_delta: 0.0
+  log_interval_steps: 25
+  ema_enabled: false
+  ema_decay: 0.999
+  eval_every_n_epochs: 1
+  eval_ema: false
+  save_last_checkpoint: true
+  last_checkpoint_path: null
+  resume_reset_scheduler: false
+  continuation_warmup_epochs: 0
+  continuation_rewarm_lr: false
+  continuation_peak_lr_ratio: 0.4
+  val_eval_tta: false
+  tta: true
+  tta_flip: false
+  tta_temporal_shift: 0
+  tta_scales:
+  - 0.875
+  - 1.0
+  - 1.125
+  tta_logit_adjust: 0.0
+  class_balance_sampler: none
+  class_balance_loss: none
+  class_balance_beta: 0.999
+augment:
+  name: vjepa2_heavy
+  random_horizontal_flip: false
+  random_crop: true
+  crop_padding: 32
+  color_jitter: true
+  color_jitter_brightness: 0.3
+  color_jitter_contrast: 0.3
+  color_jitter_saturation: 0.3
+  color_jitter_hue: 0.05
+  sync_across_frames: true
+  randaugment:
+    enabled: true
+    'n': 2
+    m: 9.0
+    mode: temporal_plus
+    magnitude_max: 30.0
+    ops: null
+pretrain:
+  epochs: 100
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 50
+  checkpoint_path: ${hydra:runtime.cwd}/ssl_trunk.pt
+  max_frames: null
+  image_size: 224
+  local_image_size: 96
+  num_local_views: 6
+  out_dim: 4096
+  hidden_dim: 2048
+  bottleneck_dim: 256
+  n_layers: 3
+  teacher_temp: 0.04
+  student_temp: 0.1
+  center_momentum: 0.9
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
+test:
+  num_segment: 1
+  num_crop: 1
+  flip_tta: false
+track:
+  name: a
+  description: 'Closed-world track: train from scratch.'
+num_classes: 33
+seed: 42
+
+[cuda] cache emptied (run-start). Free: 14.48 / 23.54 GiB
+[data] use_official_val=true: train=44993 (train_dir=44993), val=6745 (from /Data/romain.poggi/smth2smth/data/val)
+[2026-05-21 03:39:02,488][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/facebook/vjepa2-vitl-fpc16-256-ssv2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[2026-05-21 03:39:02,489][huggingface_hub.utils._http][WARNING] - Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[2026-05-21 03:39:02,507][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/facebook/vjepa2-vitl-fpc16-256-ssv2/4aa02df83918538fc21cfaf576382fa20e489a80/config.json "HTTP/1.1 200 OK"
+[2026-05-21 03:39:02,613][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/facebook/vjepa2-vitl-fpc16-256-ssv2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-05-21 03:39:02,621][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/facebook/vjepa2-vitl-fpc16-256-ssv2/4aa02df83918538fc21cfaf576382fa20e489a80/config.json "HTTP/1.1 200 OK"
+[2026-05-21 03:39:02,735][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/facebook/vjepa2-vitl-fpc16-256-ssv2/resolve/main/model.safetensors "HTTP/1.1 302 Found"
+Loading weights:   0%|          | 0/652 [00:00<?, ?it/s]Loading weights: 100%|██████████| 652/652 [00:00<00:00, 14577.68it/s]
+[vjepa2_hf_clf] head-slice: 32/33 local classes resolved to SSv2 ids; 1 missing -> zero rows.
+[model] freeze_backbone ignored (only supported for video_mae_vit).
+[optim] two param groups: head lr=0.0001 (n=65), lora lr=0.0001 (n=192)
+[optim] trainable 52,515,873 / total 378,487,201 params (13.88%)
+[amp] mixed-precision (torch.bfloat16 + GradScaler) enabled.
+[train] grad_accum_steps=2 (effective batch scales up).
+[cuda] OOM during training: CUDA out of memory. Tried to allocate 24.00 MiB. GPU 0 has a total capacity of 23.54 GiB of which 16.88 MiB is free. Process 228971 has 8.67 GiB memory in use. Including non-PyTorch memory, this process has 14.71 GiB memory in use. Of the allocated memory 14.36 GiB is allocated by PyTorch, and 26.43 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf). Releasing memory and aborting this job.
+[cuda] cache emptied (post-OOM). Free: 0.02 / 23.54 GiB
+[cuda] cache emptied (run-end). Free: 0.02 / 23.54 GiB
+Error executing job with overrides: ['experiment=track_b_vjepa2_hfclf_8f_lora_r16']
+Traceback (most recent call last):
+  File "/Data/romain.poggi/smth2smth/src/smth2smth/pipelines/train.py", line 1365, in main
+    run(cfg)
+  File "/Data/romain.poggi/smth2smth/src/smth2smth/pipelines/train.py", line 1146, in run
+    train_stats: EpochStats = train_one_epoch(
+                              ^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/src/smth2smth/shared/engine/trainer.py", line 118, in train_one_epoch
+    logits = model(video_batch)
+             ^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/src/smth2smth/track_b/vjepa2.py", line 722, in forward
+    outputs = self.model(pixel_values_videos=video_batch)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/peft/peft_model.py", line 945, in forward
+    return self.get_base_model()(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/transformers/utils/generic.py", line 900, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/transformers/models/vjepa2/modeling_vjepa2.py", line 1048, in forward
+    pooler_output = self.pooler(last_hidden_state)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/transformers/models/vjepa2/modeling_vjepa2.py", line 844, in forward
+    hidden_state = self.cross_attention_layer(queries, hidden_state)[0]
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/transformers/modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/transformers/models/vjepa2/modeling_vjepa2.py", line 812, in forward
+    hidden_state, *attn_weights = self.cross_attn(
+                                  ^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/transformers/models/vjepa2/modeling_vjepa2.py", line 731, in forward
+    keys = self.k_proj(keys)
+           ^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/torch/nn/modules/linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 24.00 MiB. GPU 0 has a total capacity of 23.54 GiB of which 16.88 MiB is free. Process 228971 has 8.67 GiB memory in use. Including non-PyTorch memory, this process has 14.71 GiB memory in use. Of the allocated memory 14.36 GiB is allocated by PyTorch, and 26.43 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.

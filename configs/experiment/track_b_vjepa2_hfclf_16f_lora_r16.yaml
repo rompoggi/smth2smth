@@ -1,0 +1,67 @@
+# @package _global_
+# Track B headline run aligned with Meta SSv2-FT at fpc=16 (Run 9).
+#
+# Ingestion: 4 real frames per clip on disk; ``dataset.num_frames: 16`` applies
+# ``pick_frame_indices(4, 16)`` (linspace repeats — same as the 8f run but
+# with T=16 so temporal pos-embed / pooler match ``vitl-fpc16-256-ssv2``).
+#
+# Compared to Run 7 (T=8, val 70.60 %): doubles per-clip activations; bs=4,
+# grad_accum=6 keeps effective batch 24. Monitor on W&B (enabled below).
+defaults:
+  - override /model: vjepa2_hf_clf
+  - override /augment: vjepa2_heavy
+
+model:
+  pretrained: true
+  hf_repo: facebook/vjepa2-vitl-fpc16-256-ssv2
+  lora_enabled: true
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  lora_target_modules: '.*\.encoder\.layer\.\d+\.attention\.(query|key|value|proj)'
+  freeze_backbone: true
+  attn_implementation: sdpa
+
+augment:
+  random_horizontal_flip: false
+
+dataset:
+  num_frames: 16
+  image_size: 256
+  use_official_val: true
+
+training:
+  batch_size: 4
+  grad_accum_steps: 6
+  epochs: 15
+  num_workers: 4
+  lr: 0.0001
+  lora_lr: 0.0001
+  optimizer: adamw
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 1
+  min_lr: 0.00001
+  label_smoothing: 0.1
+  amp: true
+  amp_dtype: bf16
+  ema_enabled: false
+  eval_every_n_epochs: 1
+  eval_ema: false
+  early_stopping_enabled: false
+  save_last_checkpoint: true
+  checkpoint_path: checkpoints/track_b/vitl_fpc16ssv2_16f_lora_r16.pt
+  log_interval_steps: 25
+  tta: true
+  tta_flip: false
+  wandb_enabled: true
+  wandb_project: smth2smth-track-b
+  wandb_name: vitl_fpc16ssv2_16f_lora_r16
+  wandb_group: track_b_vjepa2_hfclf
+  wandb_tags:
+    - track_b
+    - vjepa2
+    - vitl-fpc16-256-ssv2
+    - 16f
+    - lora_r16
+    - frame_duplicate

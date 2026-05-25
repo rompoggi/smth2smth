@@ -1,0 +1,92 @@
+# @package _global_
+# Track B headline experiment from track_b_next_steps.md Cycle 1 / E1
+# ("highest single win"), instantiated with the user-requested knobs:
+#
+#   * Backbone: ``facebook/vjepa2-vitl-fpc16-256-ssv2`` (Meta's SSv2-FT ViT-L
+#     256). Loaded as ``VJEPA2ForVideoClassification`` so we inherit Meta's
+#     4-block attentive pooler (1 cross-attn + 3 self-attn, 16 heads) AND
+#     the 174-class linear head, which we then head-slice to 33 rows
+#     using folder-name -> SSv2 id2label matching.
+#   * Frames: 8 in the tensor (with our 4-real-frames data, each frame is
+#     duplicated ~2x via the dataloader's linspace rounding -- half the
+#     temporal slots see zero motion delta). Even count keeps V-JEPA's
+#     tubelet=2 happy.
+#   * LoRA: r=16, alpha=32 (alpha=2r is the LoRA-paper convention; rsLoRA
+#     suggests alpha~sqrt(r) for very-high rank but r=16 is well inside the
+#     linear-scaling regime). Targets are encoder-only by construction.
+#   * Pooler + sliced classifier are densely trainable from Meta's init.
+#   * AMP bf16, batch 16 (8 frames at 256^2 on a frozen ViT-L + LoRA fits
+#     comfortably on a 24 GB 3090 -- per-clip activations are roughly
+#     half what 16-frame eval needs).
+#   * Direction-aware TTA is left as the dataloader default; the (18, 19)
+#     remap (= SSv2 86/87 = Pulling L->R / R->L) is the only mirror pair
+#     in our 33-class subset, so the existing class-pair flip remap is
+#     still correct (see annotation A in track_b_next_steps.md).
+defaults:
+  - override /model: vjepa2_hf_clf
+  - override /augment: vjepa2_heavy
+
+model:
+  pretrained: true
+  hf_repo: facebook/vjepa2-vitl-fpc16-256-ssv2
+  lora_enabled: true
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  # Regex restricts LoRA to encoder attention linears ONLY (24 layers x
+  # {query,key,value,proj}). The plain suffix-list ["query","key","value","proj"]
+  # would also catch the predictor's 12 attention modules and the patch
+  # embedding's Conv3d named "proj", wasting trainable params on submodules
+  # that aren't on the classification forward path.
+  lora_target_modules: '.*\.encoder\.layer\.\d+\.attention\.(query|key|value|proj)'
+  freeze_backbone: true
+  attn_implementation: sdpa
+
+augment:
+  # SSv2 directionality: random hflip during training corrupts left/right
+  # labels (only paired class in our 33-class subset is Pulling L<->R), so
+  # disable hflip -- mirrors the +3.53 pp observation in the doc.
+  random_horizontal_flip: false
+
+dataset:
+  num_frames: 8
+  image_size: 256
+  use_official_val: true
+
+training:
+  # 24 GB 3090, shared with another user (~8-9 GB) -- ~15 GB available, so
+  # bs=8 (peak ~10 GB) with grad_accum=3 gives effective batch 24 to match
+  # the doc's recipe (~16-32 effective). With a quieter GPU bs=12 also fits.
+  batch_size: 8
+  grad_accum_steps: 3
+  epochs: 15
+  num_workers: 4
+  # Lower than the doc's 5e-4 head LR because here the "head" is Meta's already
+  # pretrained 4-block pooler (49 M params) -- a 5e-4 step would destroy its
+  # SSv2 init within the first warmup epoch. 1e-4 is the floor of Meta's own
+  # probe-sweep LRs and matches the LoRA LR; warmup + cosine handle the rest.
+  lr: 0.0001          # head (pooler + sliced classifier) LR
+  lora_lr: 0.0001     # LoRA adapter LR (same as head -- both load from a
+                      # pretrained init, so symmetry beats over-tuning).
+  optimizer: adamw
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 1
+  min_lr: 0.00001
+  label_smoothing: 0.1
+  amp: true
+  amp_dtype: bf16
+  # EMA off: doubles resident memory for the trainable subgraph (pooler
+  # is ~50 M params) and we evaluate Meta's recipe directly first.
+  ema_enabled: false
+  eval_every_n_epochs: 1
+  eval_ema: false
+  early_stopping_enabled: false
+  save_last_checkpoint: true
+  checkpoint_path: checkpoints/track_b/vitl_fpc16ssv2_8f_lora_r16.pt
+  log_interval_steps: 25
+  # TTA at submit time follows the V-JEPA 2 official protocol (2 segments
+  # x 3 crops, no flip). The class-pair flip remap is preserved for the
+  # rare cases where a directional-pair sample needs explicit handling.
+  tta: true
+  tta_flip: false

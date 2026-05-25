@@ -1,0 +1,27 @@
+# @package _global_
+# Val90 holdout FT from Run 9 best checkpoint: train on train + 90% official
+# val (stratified), evaluate on 10% holdout. LoRA + pooler frozen; classifier only.
+
+defaults:
+  - track_b_vjepa2_hfclf_16f_lora_r16
+
+model:
+  train_classifier_only: true
+
+dataset:
+  use_official_val: true
+  include_val_in_train: false
+  official_val_holdout_ratio: 0.1
+
+training:
+  resume_from: ${hydra:runtime.cwd}/checkpoints/track_b/vitl_fpc16ssv2_16f_lora_r16.pt
+  resume_reset_epoch: true
+  resume_apply_cfg_lr: true
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_b/vitl_fpc16ssv2_16f_lora_r16_val90_holdout_clf.pt
+  epochs: 10
+  warmup_epochs: 1
+  lr: 0.00005
+  lora_lr: 0.00005
+  early_stopping_patience: 4
+  val_eval_tta: true
+  wandb_name: vitl_fpc16ssv2_16f_lora_r16_val90_holdout_clf
