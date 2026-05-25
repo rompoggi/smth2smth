@@ -22,6 +22,7 @@ from pathlib import Path
 
 import hydra
 import torch
+import torch.nn as nn
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader
 
@@ -40,6 +41,7 @@ from smth2smth.shared.models.video_mae_resnet import (
     videomae_resnet_feature_loss,
 )
 from smth2smth.shared.utils import set_seed
+from smth2smth.shared.utils.augment_log import active_augment_summary
 
 
 def _now() -> str:
@@ -53,6 +55,49 @@ def _cosine_mask_ratio(epoch: int, total_epochs: int, start: float, end: float) 
         return float(end)
     progress = float(epoch) / float(total_epochs - 1)
     return float(end + 0.5 * (start - end) * (1.0 + math.cos(math.pi * progress)))
+
+
+def _trunk_state_dict(model: nn.Module, *, use_resnet: bool) -> dict[str, torch.Tensor]:
+    """Encoder-only weights for downstream ``model.init_from``."""
+    if isinstance(model, torch.optim.swa_utils.AveragedModel):
+        prefix = "module.backbone." if use_resnet else "module.encoder."
+        sd = model.state_dict()
+        trunk: dict[str, torch.Tensor] = {}
+        for key, value in sd.items():
+            if not key.startswith(prefix):
+                continue
+            rel = key[len(prefix) :]
+            out_key = rel if use_resnet else f"encoder.{rel}"
+            trunk[out_key] = value
+        if not trunk:
+            raise RuntimeError(
+                f"No tensors with prefix {prefix!r} in AveragedModel state_dict."
+            )
+        return trunk
+    if use_resnet:
+        return {k: v for k, v in model.backbone.state_dict().items()}
+    return {f"encoder.{k}": v for k, v in model.encoder.state_dict().items()}
+
+
+def _save_trunk_checkpoint(
+    path: Path,
+    *,
+    trunk_state_dict: dict[str, torch.Tensor],
+    epoch: int,
+    variant: str,
+    model_name: str,
+) -> None:
+    """Write an encoder-only checkpoint."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "trunk_state_dict": trunk_state_dict,
+            "epoch": epoch,
+            "variant": variant,
+            "architecture": model_name,
+        },
+        path,
+    )
 
 
 def _warmup_cosine_lr(
@@ -93,6 +138,8 @@ def run(cfg: DictConfig) -> Path:
     pcfg = cfg.pretrain
     image_size = int(pcfg.get("image_size", int(cfg.dataset.image_size)))
     num_frames = int(pcfg.get("num_frames", int(cfg.dataset.num_frames)))
+    source_num_frames = int(pcfg.get("source_num_frames", num_frames))
+    temporal_expand_mode = str(pcfg.get("temporal_expand_mode", "interpolation"))
 
     # ── Dataset: unlabeled clips (default train + test; val opt-in) ───────────
     train_dir = Path(cfg.dataset.train_dir)
@@ -111,7 +158,14 @@ def run(cfg: DictConfig) -> Path:
     max_videos = pcfg.get("max_videos")
     if max_videos is not None:
         video_dirs = video_dirs[: int(max_videos)]
-    print(f"[videomae] using {len(video_dirs)} unlabeled clips (T={num_frames}).")
+    if source_num_frames < num_frames:
+        print(
+            f"[videomae] using {len(video_dirs)} unlabeled clips: "
+            f"load T={source_num_frames} -> expand to T={num_frames} "
+            f"({temporal_expand_mode})."
+        )
+    else:
+        print(f"[videomae] using {len(video_dirs)} unlabeled clips (T={num_frames}).")
 
     # No flip augmentation (SSv2 is direction-sensitive)
     augment_cfg = cfg.get("augment") if hasattr(cfg, "get") else None
@@ -125,6 +179,8 @@ def run(cfg: DictConfig) -> Path:
         video_dirs=video_dirs,
         num_frames=num_frames,
         transform=clip_transform,
+        source_num_frames=source_num_frames,
+        temporal_expand_mode=temporal_expand_mode,
     )
     loader = DataLoader(
         dataset,
@@ -225,6 +281,74 @@ def run(cfg: DictConfig) -> Path:
     if amp_enabled:
         print("[videomae] AMP (bfloat16) enabled.")
 
+    max_grad_norm = float(pcfg.get("max_grad_norm", 3.0))
+    if max_grad_norm > 0.0:
+        print(f"[videomae] gradient clipping enabled (max_norm={max_grad_norm:g}).")
+
+    ema_enabled = bool(pcfg.get("ema_enabled", False))
+    ema_decay = float(pcfg.get("ema_decay", 0.9999))
+    ema_model: torch.optim.swa_utils.AveragedModel | None = None
+    if ema_enabled and not use_resnet:
+
+        def _ema_avg_fn(
+            avg_param: torch.Tensor, model_param: torch.Tensor, num_averaged: int
+        ) -> torch.Tensor:
+            return ema_decay * avg_param + (1.0 - ema_decay) * model_param
+
+        ema_model = torch.optim.swa_utils.AveragedModel(
+            model, avg_fn=_ema_avg_fn, use_buffers=True
+        )
+        print(f"[videomae] EMA enabled (decay={ema_decay:g}).")
+
+    milestone_epochs = sorted(
+        {int(e) for e in (pcfg.get("checkpoint_milestones") or []) if int(e) > 0}
+    )
+    if milestone_epochs:
+        print(f"[videomae] milestone encoder checkpoints at epochs: {milestone_epochs}")
+
+    wandb_run = None
+    if bool(pcfg.get("wandb_enabled", False)):
+        try:
+            import wandb
+        except ImportError as exc:
+            raise SystemExit(
+                "pretrain.wandb_enabled=true but wandb is not installed. "
+                "Run: uv add wandb"
+            ) from exc
+        augment_summary = active_augment_summary(
+            augment_cfg if augment_cfg is not None else None
+        )
+        wandb_config = {
+            "experiment": str(cfg.get("experiment", "videomae_pretrain")),
+            "seed": int(cfg.seed),
+            "num_frames": num_frames,
+            "source_num_frames": source_num_frames,
+            "temporal_expand_mode": temporal_expand_mode,
+            "include_val_in_pretrain": include_val,
+            "variant": variant,
+            "epochs": epochs,
+            "batch_size": int(pcfg.batch_size),
+            "grad_accum_steps": int(pcfg.get("grad_accum_steps", 1)),
+            "lr": base_lr,
+            "weight_decay": weight_decay,
+            "warmup_epochs": warmup_epochs,
+            "ema_enabled": ema_enabled,
+            "ema_decay": ema_decay if ema_enabled else None,
+            "max_grad_norm": max_grad_norm,
+            "mask_ratio": float(pcfg.get("mask_ratio", 0.75)),
+            "dual_masking": bool(pcfg.get("dual_masking", False)),
+            "augment": augment_summary,
+        }
+        wandb_run = wandb.init(
+            project=str(pcfg.get("wandb_project", "smth2smth")),
+            entity=pcfg.get("wandb_entity"),
+            name=pcfg.get("wandb_run_name"),
+            group=str(pcfg.get("wandb_group", "track_a_videomae_pretrain")),
+            config=wandb_config,
+            resume="allow",
+        )
+        print(f"[wandb] run {wandb_run.url}")
+
     # ── Checkpoint path ───────────────────────────────────────────────────────
     out_path = Path(pcfg.get("checkpoint_path", "videomae_encoder.pt")).resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -314,13 +438,17 @@ def run(cfg: DictConfig) -> Path:
             if is_accum_step:
                 if scaler is not None:
                     scaler.unscale_(optimizer)
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), 3.0)
+                    if max_grad_norm > 0.0:
+                        torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
                     scaler.step(optimizer)
                     scaler.update()
                 else:
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), 3.0)
+                    if max_grad_norm > 0.0:
+                        torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
                     optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
+                if ema_model is not None:
+                    ema_model.update_parameters(model)
 
             global_step += 1
             loss_val = float(loss.item())
@@ -334,34 +462,47 @@ def run(cfg: DictConfig) -> Path:
                     f"step {batch_idx}/{len(loader)} "
                     f"loss {loss_val:.4f} lr {current_lr:.2e}"
                 )
+                if wandb_run is not None:
+                    wandb_run.log(
+                        {
+                            "train/loss": loss_val,
+                            "train/lr": current_lr,
+                            "train/epoch": epoch + 1,
+                        },
+                        step=global_step,
+                    )
 
         avg_loss = epoch_loss / max(1, n_batches)
         ep = epoch + 1
         print(f"[videomae] {_now()} epoch {ep}/{epochs} avg loss {avg_loss:.4f}")
+        if wandb_run is not None:
+            wandb_run.log({"train/epoch_avg_loss": avg_loss, "train/epoch": ep}, step=global_step)
 
-        if use_resnet:
-            # Plain ResNet+TSM keys — same layout as DINO/V-JEPA SSL trunks.
-            trunk_state_dict = {
-                k: v for k, v in model.backbone.state_dict().items()
-            }
-        else:
-            # ViT encoder keys prefixed with ``encoder.`` for ``video_mae_vit``.
-            trunk_state_dict = {
-                f"encoder.{k}": v for k, v in model.encoder.state_dict().items()
-            }
-        torch.save(
-            {
-                "trunk_state_dict": trunk_state_dict,
-                "epoch": epoch + 1,
-                "variant": variant,
-                "architecture": model_name,
-            },
+        ckpt_module = ema_model if ema_model is not None else model
+        trunk_state_dict = _trunk_state_dict(ckpt_module, use_resnet=use_resnet)  # type: ignore[arg-type]
+        _save_trunk_checkpoint(
             out_path,
+            trunk_state_dict=trunk_state_dict,
+            epoch=ep,
+            variant=variant,
+            model_name=model_name,
         )
+        ckpt_kind = "ema" if ema_model is not None else "live"
         print(
-            f"[videomae] {_now()} wrote trunk checkpoint -> {out_path} "
+            f"[videomae] {_now()} wrote trunk checkpoint ({ckpt_kind}) -> {out_path} "
             f"({len(trunk_state_dict)} tensors)"
         )
+
+        if ep in milestone_epochs:
+            milestone_path = out_path.with_name(f"{out_path.stem}_ep{ep}{out_path.suffix}")
+            _save_trunk_checkpoint(
+                milestone_path,
+                trunk_state_dict=trunk_state_dict,
+                epoch=ep,
+                variant=variant,
+                model_name=model_name,
+            )
+            print(f"[videomae] {_now()} wrote milestone checkpoint -> {milestone_path}")
 
         # Full resume state (skip for the ResNet-feature pretrain variant — its
         # model layout differs and the FT pipelines don't ever resume it).
@@ -379,6 +520,9 @@ def run(cfg: DictConfig) -> Path:
                 state_path,
             )
             print(f"[videomae] {_now()} wrote resume state -> {state_path}")
+
+    if wandb_run is not None:
+        wandb_run.finish()
 
     _free_cuda_memory(reason="videomae-pretrain-end")
     return out_path

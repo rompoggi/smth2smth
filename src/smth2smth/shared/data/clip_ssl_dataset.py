@@ -27,6 +27,7 @@ import torch
 from PIL import Image
 from torch.utils.data import Dataset
 
+from smth2smth.shared.data.temporal_expand import VALID_MODES, expand_temporal_frames
 from smth2smth.shared.data.video_dataset import (
     _FRAME_EXTENSIONS,
     _list_frame_paths,
@@ -82,6 +83,11 @@ class ClipSSLDataset(Dataset):
             offset by ±1 frame. Default ``0.0`` (deterministic). With T=4
             frames available, only ``0.0`` makes sense; the field exists
             for forward-compatibility when more frames are extracted.
+        source_num_frames: Frames sampled from disk before temporal expansion.
+            When ``None``, equals ``num_frames`` (no expansion).
+        temporal_expand_mode: When ``source_num_frames < num_frames``, how to
+            upsample: ``"replication"`` (percolation / repeat each frame) or
+            ``"interpolation"`` (linear blend between neighbours).
     """
 
     def __init__(
@@ -90,6 +96,8 @@ class ClipSSLDataset(Dataset):
         num_frames: int,
         transform: Callable[[Image.Image | Sequence[Image.Image]], torch.Tensor | list[torch.Tensor]],
         temporal_jitter: float = 0.0,
+        source_num_frames: int | None = None,
+        temporal_expand_mode: str = "interpolation",
     ) -> None:
         if len(video_dirs) == 0:
             raise ValueError("video_dirs is empty.")
@@ -101,6 +109,20 @@ class ClipSSLDataset(Dataset):
             )
         self.video_dirs = [Path(p) for p in video_dirs]
         self.num_frames = int(num_frames)
+        self.source_num_frames = int(source_num_frames) if source_num_frames is not None else self.num_frames
+        if self.source_num_frames <= 0:
+            raise ValueError(f"source_num_frames must be > 0, got {self.source_num_frames}.")
+        if self.num_frames < self.source_num_frames:
+            raise ValueError(
+                f"num_frames ({self.num_frames}) must be >= source_num_frames "
+                f"({self.source_num_frames})."
+            )
+        if temporal_expand_mode not in VALID_MODES:
+            raise ValueError(
+                f"temporal_expand_mode must be one of {sorted(VALID_MODES)}, "
+                f"got {temporal_expand_mode!r}."
+            )
+        self.temporal_expand_mode = str(temporal_expand_mode)
         self.transform = transform
         self.temporal_jitter = float(temporal_jitter)
 
@@ -112,9 +134,9 @@ class ClipSSLDataset(Dataset):
         frame_paths = _list_frame_paths(video_dir)
         if len(frame_paths) == 0:
             raise RuntimeError(f"Video folder {video_dir} has no frames.")
-        indices = pick_frame_indices(len(frame_paths), self.num_frames)
+        indices = pick_frame_indices(len(frame_paths), self.source_num_frames)
 
-        if self.temporal_jitter > 0.0 and len(frame_paths) > self.num_frames:
+        if self.temporal_jitter > 0.0 and len(frame_paths) > self.source_num_frames:
             if bool(torch.rand(1).item() < self.temporal_jitter):
                 shift = int(torch.randint(low=-1, high=2, size=(1,)).item())
                 if shift != 0:
@@ -127,6 +149,13 @@ class ClipSSLDataset(Dataset):
             path = frame_paths[frame_index]
             with Image.open(path) as image:
                 raw_frames.append(image.convert("RGB"))
+
+        if self.source_num_frames < self.num_frames:
+            raw_frames = expand_temporal_frames(
+                raw_frames,
+                target_num_frames=self.num_frames,
+                mode=self.temporal_expand_mode,
+            )
 
         try:
             transformed = self.transform(raw_frames)

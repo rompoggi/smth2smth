@@ -1,0 +1,47 @@
+# @package _global_
+# E8 (espadon) — ViT-B VideoMAEv2 pretrain 250 ep, train+val+test frames.
+# Pair with track_a_ssl_finetune_e8.
+defaults:
+  - override /model: video_mae_vit
+  - override /pretrain: videomae
+
+model:
+  variant: vit_b
+  tube_t: 1
+  patch_size: 16
+  mlp_ratio: 4.0
+  gradient_checkpointing: true
+
+augment:
+  random_crop: true
+  crop_padding: 32
+  random_horizontal_flip: false
+
+seed: 42
+
+dataset:
+  num_frames: 4
+
+pretrain:
+  epochs: 250
+  warmup_epochs: 15
+  batch_size: 8
+  grad_accum_steps: 2
+  num_frames: 4
+  lr: 0.00015
+  weight_decay: 0.05
+  mask_ratio: 0.75
+  norm_pix: true
+  drop_path_rate: 0.0
+  dual_masking: true
+  decoder_keep_ratio: 0.50
+  decoder_cell_h: 2
+  decoder_cell_w: 2
+  include_val_in_pretrain: true
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/espadon_encoder.pt
+
+training:
+  num_workers: 4
+  device: cuda
+  amp: true
+  batch_size: 8

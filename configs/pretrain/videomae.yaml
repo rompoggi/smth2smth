@@ -52,3 +52,24 @@ pretrain:
 
   # Gradient accumulation during MAE pretrain (``1`` = every step).
   grad_accum_steps: 1
+
+  # Load ``source_num_frames`` from disk, expand to ``num_frames`` (e.g. 4 -> 16).
+  source_num_frames: null   # null => same as num_frames (no expansion)
+  temporal_expand_mode: interpolation  # replication | interpolation
+
+  # Global grad L2 clip after backward (0 = disabled). Default 3 matches legacy runs.
+  max_grad_norm: 3.0
+
+  # EMA of full pretrain model; milestone/final encoder exports use EMA weights.
+  ema_enabled: false
+  ema_decay: 0.9999
+
+  # Save extra encoder checkpoints at these 1-based epoch indices.
+  checkpoint_milestones: []
+
+  # Weights & Biases (optional).
+  wandb_enabled: false
+  wandb_project: smth2smth
+  wandb_entity: null
+  wandb_run_name: null
+  wandb_group: track_a_videomae_pretrain
