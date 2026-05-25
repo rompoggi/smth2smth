@@ -4,6 +4,19 @@ Machine-local experiment log. Other hosts/users have their own files under `repo
 
 ---
 
+## mae450-ft-f4 champion TTA submit | Track A | 2026-05-25 03:32
+
+- **Status:** DONE
+- **Run:** mae450-ft-f4-submit-champion
+- **Experiment:** [`results_tta_ensembling`](../../experiments/results_tta_ensembling.md)
+- **Hydra:** `experiment=track_a_videomae_submit_champion`
+- **Log:** [`mae450-ft-f4_submit_tta_champion_20260525.log`](../../logs/track_a/mae450-ft-f4_submit_tta_champion_20260525.log)
+- **Ckpt:** `checkpoints/track_a/videomaev2+ft/mae450-ft-f4.pt`
+- **Submit:** `submissions/track_a_mae450_ft_f4_champion_tta_20260525.csv` → LB **53.10%**
+- **Metrics:** val top1=0.5349 (ep46); LB 53.10% champion TTA (scales3_flip)
+
+---
+
 ## mae450-ft-f4 official SSv2 FT (ep450 SSL, T=4) | Track A | 2026-05-25 02:42
 
 - **Status:** DONE
