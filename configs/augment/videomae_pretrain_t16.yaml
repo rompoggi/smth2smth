@@ -1,0 +1,7 @@
+# @package _global_
+# VideoMAE SSL pretrain (T=16): only augments that are enabled.
+augment:
+  name: videomae_pretrain_t16
+  random_crop: true
+  crop_padding: 32
+  random_horizontal_flip: false

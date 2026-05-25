@@ -1,0 +1,7 @@
+# @package _global_
+# E7 MAE pretrain — resume from ``e7_encoder.pt`` after interrupt.
+defaults:
+  - track_a_ssl_pretrain_e7
+
+pretrain:
+  resume_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/e7_encoder.pt

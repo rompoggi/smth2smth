@@ -79,6 +79,21 @@ class TestClipSSLDataset:
         ds = self._make(tmp_path)
         assert len(ds) == 2
 
+    def test_temporal_expand_interpolation(self, tmp_path: Path) -> None:
+        train = tmp_path / "train"
+        _make_split_with_classes(train, n_classes=1, n_videos=1, n_frames=8)
+        dirs = collect_all_video_dirs([train])
+        transform = T.Compose([T.Resize((16, 16)), T.ToTensor()])
+        ds = ClipSSLDataset(
+            video_dirs=dirs,
+            num_frames=16,
+            source_num_frames=4,
+            temporal_expand_mode="interpolation",
+            transform=transform,
+        )
+        sample = ds[0]
+        assert sample.shape == (16, 3, 16, 16)
+
     def test_temporal_jitter_keeps_shape(self, tmp_path: Path) -> None:
         train = tmp_path / "train"
         _make_split_with_classes(train, n_classes=1, n_videos=1, n_frames=10)

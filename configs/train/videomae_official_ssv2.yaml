@@ -25,7 +25,11 @@ training:
   early_stopping_patience: 15
   early_stopping_min_delta: 0.001
   num_workers: 4
-  log_interval_steps: 100
+  log_interval_steps: 25
+  batch_size: 8
+  grad_accum_steps: 8
+  resume_from: null
+  save_last_checkpoint: true
   device: cuda
   wandb:
     enabled: true
