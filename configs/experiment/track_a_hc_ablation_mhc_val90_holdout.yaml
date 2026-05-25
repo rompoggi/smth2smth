@@ -1,6 +1,7 @@
 # @package _global_
-# mHC ablation — train on train + 90% official val (stratified), evaluate on 10% holdout.
-# Short low-LR continuation from the honest-FT best checkpoint.
+# mHC (seed 43) continuation: train on train + 90% of official val (stratified),
+# evaluate on 10% holdout. 10 epochs, low LR, 2-epoch warmup.
+# Resume from honest FT best (EMA val top1 on full official val).
 
 defaults:
   - track_a_hc_ablation_mhc
@@ -12,6 +13,8 @@ dataset:
   use_official_val: true
   include_val_in_train: false
   official_val_holdout_ratio: 0.1
+
+seed: 43
 
 training:
   resume_from: ${hydra:runtime.cwd}/checkpoints/track_a/hc/mhc_n4_sk3_s${seed}_ft.pt
