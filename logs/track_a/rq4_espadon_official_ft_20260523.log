@@ -9,7 +9,7 @@ model:
   dropout: 0.0
   head: mean
   head_num_heads: 4
-  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/espadon_t16_encoder_e25.pt
+  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/espadon_t16_encoder_ep25.pt
   interpolate_pos_embed: false
   interpolate_src_image_size: 224
   interpolate_src_num_frames: 16
@@ -20,7 +20,7 @@ model:
   hc_sk_iters: 3
   hc_sk_tau: 1.0
 dataset:
-  root: /Data/thomas.turkieh/smth2smth/data
+  root: ${hydra:runtime.cwd}/data
   train_dir: ${dataset.root}/train
   val_dir: ${dataset.root}/val
   test_dir: ${dataset.root}/test
@@ -35,7 +35,7 @@ dataset:
   seed: ${seed}
   use_extra: false
   train_extra_dir: ${dataset.root}/train_extra
-  max_samples: 64
+  max_samples: null
   max_samples_per_class: null
   image_size: 224
   time_reversal_prob: 0.0
@@ -45,9 +45,8 @@ dataset:
   class_boosting:
     enabled: false
 training:
-  batch_size: 2
-  grad_accum_steps: 1
-  epochs: 1
+  batch_size: 8
+  epochs: 40
   optimizer: adamw
   lr: 0.0005
   layer_decay: 0.75
@@ -71,27 +70,28 @@ training:
   early_stopping_enabled: false
   early_stopping_patience: 25
   early_stopping_min_delta: 0.001
-  num_workers: 2
+  num_workers: 4
   log_interval_steps: 100
   device: cuda
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/videomaev2+ft/espadon_official_rq4.pt
   tta: true
   tta_flip: true
   tta_scales:
   - 0.875
   - 1.0
   - 1.125
+  grad_accum_steps: 8
   wandb:
     enabled: true
     project: smth2smth-track-a
     entity: null
-    name: espadon_official_dryrun_20260523_050041
+    name: espadon_official_rq4
     tags:
-    - dry-run
     - rq4
     - espadon
+    - official-recipe
     mode: online
     log_interval_epochs: 1
-  checkpoint_path: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/_dryrun_espadon_official.pt
 augment:
   name: official_videomae_ssv2
   random_horizontal_flip: false
@@ -138,67 +138,38 @@ pretrain:
   teacher_momentum_base: 0.996
   teacher_momentum_final: 1.0
 test:
-  num_segment: 1
-  num_crop: 1
+  num_segment: 2
+  num_crop: 3
   flip_tta: false
 track:
   name: a
   description: 'Closed-world track: train from scratch.'
-seed: 42
 num_classes: 33
+seed: 42
 
-wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from WANDB_API_KEY.
+[cuda] cache emptied (run-start). Free: 19.29 / 23.54 GiB
+wandb: [wandb.login()] Using explicit session credentials for https://api.wandb.ai.
+wandb: Appending key for api.wandb.ai to your netrc file: /users/eleves-a/2021/romain.poggi/.netrc
 wandb: Currently logged in as: romain-poggi (romain-poggi-ecole-polytechnique) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
-wandb: setting up run rmnj9f1e
 wandb: Tracking run with wandb version 0.27.0
-wandb: Run data is saved locally in /Data/romain.poggi/smth2smth/wandb/run-20260523_050044-rmnj9f1e
+wandb: Run data is saved locally in /Data/romain.poggi/smth2smth/wandb/run-20260523_121115-ropybsns
 wandb: Run `wandb offline` to turn off syncing.
-wandb: Syncing run espadon_official_dryrun_20260523_050041
+wandb: Syncing run espadon_official_rq4
 wandb: ⭐️ View project at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-track-a
-wandb: 🚀 View run at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-track-a/runs/rmnj9f1e
-[cuda] cache emptied (run-start). Free: 7.79 / 23.54 GiB
-[data] use_official_val=true: train=64 (train_dir=64), val=64 (from /Data/thomas.turkieh/smth2smth/data/val)
+wandb: 🚀 View run at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-track-a/runs/ropybsns
+[data] use_official_val=true: train=44993 (train_dir=44993), val=6745 (from /Data/romain.poggi/smth2smth/data/val)
 [data] repeated_aug=2: each clip drawn up to 2x per epoch with independent augmentations.
-[init_from] loaded 149 encoder tensors from /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/espadon_t16_encoder_e25.pt. encoder-missing=0, unexpected=0
+[init_from] loaded 149 encoder tensors from /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/espadon_t16_encoder_ep25.pt. encoder-missing=0, unexpected=0
 [optim] LLRD: layer_decay=0.75, depth=12, 28 param groups.
 [optim] trainable 88,080,417 / total 88,080,417 params (100.00%)
 [amp] mixed-precision (torch.bfloat16 + GradScaler) enabled.
+[train] grad_accum_steps=8 (effective batch scales up).
 [ema] enabled (decay=0.9999); will eval both live and EMA each epoch.
-    [05:01:01] step 32/32 | avg train loss 0.3548 top1 0.9688 top5 0.9688
-[2026-05-23T05:01:06] Epoch 1/1 | train loss 0.3548 top1 0.9688 | val loss 0.0004 top1 1.0000 top5 1.0000 | ema val top1 1.0000 top5 1.0000
-  Saved new best checkpoint (live): /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/_dryrun_espadon_official.pt (val top1=1.0000)
-wandb: updating run metadata
-wandb: uploading output.log; uploading wandb-summary.json; uploading config.yaml
-wandb: 
-wandb: Run history:
-wandb: best/val_top1 ▁
-wandb:         epoch ▁
-wandb:            lr ▁
-wandb:    train/loss ▁
-wandb:    train/top1 ▁
-wandb:    train/top5 ▁
-wandb:  val/ema_top1 ▁
-wandb:  val/ema_top5 ▁
-wandb:      val/loss ▁
-wandb:      val/top1 ▁
-wandb:            +1 ...
-wandb: 
-wandb: Run summary:
-wandb: best/val_top1 1
-wandb:         epoch 1
-wandb:            lr 0.0
-wandb:    train/loss 0.35483
-wandb:    train/top1 0.96875
-wandb:    train/top5 0.96875
-wandb:  val/ema_top1 1
-wandb:  val/ema_top5 1
-wandb:      val/loss 0.00035
-wandb:      val/top1 1
-wandb:            +1 ...
-wandb: 
-wandb: 🚀 View run espadon_official_dryrun_20260523_050041 at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-track-a/runs/rmnj9f1e
-wandb: ⭐️ View project at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-track-a
-wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
-wandb: Find logs at: ./wandb/run-20260523_050044-rmnj9f1e/logs
-[cuda] cache emptied (run-end). Free: 5.79 / 23.54 GiB
-Done. Best val top1: 1.0000. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/_dryrun_espadon_official.pt
+    [12:13:40] step 100/5625 | avg train loss 3.4196 top1 0.0500 top5 0.2612
+    [12:16:01] step 200/5625 | avg train loss 3.3811 top1 0.0650 top5 0.2844
+    [12:18:20] step 300/5625 | avg train loss 3.3708 top1 0.0654 top5 0.2821
+    [12:20:58] step 400/5625 | avg train loss 3.3814 top1 0.0619 top5 0.2716
+    [12:24:28] step 500/5625 | avg train loss 3.3618 top1 0.0683 top5 0.2863
+    [12:27:58] step 600/5625 | avg train loss 3.3639 top1 0.0692 top5 0.2831
+    [12:32:24] step 700/5625 | avg train loss 3.3692 top1 0.0657 top5 0.2755
+3.3692 top1 0.0657 top5 0.2759
