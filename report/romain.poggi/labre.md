@@ -4,17 +4,29 @@ Machine-local experiment log. Other hosts/users have their own files under `repo
 
 ---
 
-## mae500-ft-f4-val90-holdout FT (ep500 SSL, val90 train) | Track A | 2026-05-25 02:53
+## mae500-ft-f4-val90-holdout champion TTA submit (ep50 best) | Track A | 2026-05-25 16:40
 
-- **Status:** RUNNING
+- **Status:** DONE
 - **Run:** mae500-ft-f4-val90-holdout
-- **Experiment:** [`new_ideas_tracka`](../../experiments/new_ideas_tracka.md) — val90 + 10% stratified holdout eval (no dedicated experiments/*.md)
-- **Hydra:** `experiment=track_a_videomae_official_ssv2_ft`, `dataset.official_val_holdout_ratio=0.1`, `T=4`, `tube_t=1`, SSL `videomaev2_t4native_encoder_ep500.pt`, `E=50`, eff. `bs=64`
-- **Log:** [`mae500-ft-f4-val90-holdout_20260525_resume.log`](../../logs/mae500-ft-f4-val90-holdout_20260525_resume.log) (resume after VM restart; initial segment [`mae500-ft-f4-val90-holdout_20260524.log`](../../logs/mae500-ft-f4-val90-holdout_20260524.log) stopped ep21)
-- **W&B:** [run](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/j2qgdef2) (resume; pre-crash [`wios0acf`](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/wios0acf))
-- **PID:** [`mae500-ft-f4-val90-holdout_20260525_resume.pid`](../../logs/mae500-ft-f4-val90-holdout_20260525_resume.pid)
-- **Ckpt:** `checkpoints/track_a/videomaev2+ft/mae500-ft-f4-val90-holdout.pt` (best on holdout)
-- **Metrics:** train 51,062 + holdout 676; best **holdout** val top1=**0.6006** (ep24 live); interim ep29 holdout 0.5962 / ema 0.5858; ep25–27 holdout below ep24 (not overfitting on holdout yet). **Holdout ≫ Kaggle** — see ep24 submit below.
+- **Experiment:** [`results_tta_ensembling`](../../experiments/results_tta_ensembling.md)
+- **Hydra:** `experiment=track_a_videomae_official_ssv2_ft`, champion TTA `scales3_flip` (`[0.857,1,1.143]` + flip); not official 2×3
+- **Log:** [`mae500-ft-f4-val90-holdout_submit_tta3flip_20260525.log`](../../logs/track_a/mae500-ft-f4-val90-holdout_submit_tta3flip_20260525.log)
+- **Ckpt:** `checkpoints/track_a/videomaev2+ft/mae500-ft-f4-val90-holdout_best_ep50.pt` (best holdout **62.28%** live)
+- **Metrics:** holdout 62.28% vs public LB — val90 holdout still optimistic but LB tracks test better than mid-train ep24 submit
+- **Submit:** `submissions/track_a_mae500-ft-f4-val90-holdout_best_tta3flip_20260525.csv` → LB **55.13%** (+2.13 pt vs `mae250-ft-f4` **53.0%**; +2.78 pt vs ep24-mid submit **52.35%**)
+
+---
+
+## mae500-ft-f4-val90-holdout FT (ep500 SSL, val90 train) | Track A | 2026-05-25 08:30
+
+- **Status:** DONE
+- **Run:** mae500-ft-f4-val90-holdout
+- **Experiment:** [`new_ideas_tracka`](../../experiments/new_ideas_tracka.md)
+- **Hydra:** `experiment=track_a_videomae_official_ssv2_ft`, `dataset.official_val_holdout_ratio=0.1`, `E=50`, eff. `bs=64`
+- **Log:** [`mae500-ft-f4-val90-holdout_20260525_resume.log`](../../logs/track_a/mae500-ft-f4-val90-holdout_20260525_resume.log)
+- **W&B:** [run](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/j2qgdef2)
+- **Ckpt:** `checkpoints/track_a/videomaev2+ft/mae500-ft-f4-val90-holdout.pt`
+- **Metrics:** best holdout val top1=**0.6228** (live); final ep50 holdout 0.6124 / ema 0.6095. Final champion submit → LB **55.13%** (best Track-A single in this frame ablation so far).
 
 ---
 
@@ -24,7 +36,7 @@ Machine-local experiment log. Other hosts/users have their own files under `repo
 - **Run:** mae500-ft-f4-val90-holdout (ep24 checkpoint)
 - **Experiment:** [`results_tta_ensembling`](../../experiments/results_tta_ensembling.md)
 - **Hydra:** `experiment=track_a_videomae_official_ssv2_ft`, champion TTA `[0.857,1,1.143]` + flip
-- **Log:** [`mae500-ft-f4-val90-holdout_submit_20260525.log`](../../logs/mae500-ft-f4-val90-holdout_submit_20260525.log)
+- **Log:** [`mae500-ft-f4-val90-holdout_submit_20260525.log`](../../logs/track_a/mae500-ft-f4-val90-holdout_submit_20260525.log)
 - **Ckpt:** `checkpoints/track_a/videomaev2+ft/mae500-ft-f4-val90-holdout_ep24_best.pt` (snapshot of ep24 best)
 - **Metrics:** holdout val top1=**0.6006** (ep24, live) vs public LB — large optimistic gap because 90% of official val is in training
 - **Submit:** `submissions/track_a_mae500-ft-f4-val90-holdout_ep24best_tta3flip_20260525.csv` → LB **52.35%**
