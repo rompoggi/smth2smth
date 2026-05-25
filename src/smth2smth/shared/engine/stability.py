@@ -71,6 +71,22 @@ class StabilityLogger:
         # Persist any HC variant for later mHC-only header decisions.
         self._has_mhc = any(r.is_mhc for _, r in self._hc_routers)
 
+        resume_step = 0
+        if self.csv_path.is_file() and self.csv_path.stat().st_size > 0:
+            try:
+                with self.csv_path.open(newline="") as fh:
+                    reader = csv.reader(fh)
+                    header_row = next(reader, None)
+                    if header_row and header_row[0] == "step":
+                        for row in reader:
+                            if row and row[0].strip().isdigit():
+                                resume_step = max(resume_step, int(row[0]))
+            except OSError:
+                resume_step = 0
+        self._step = int(resume_step)
+        if self._step > 0:
+            print(f"[stability] resume: continuing step counter at {self._step}")
+
         self._fh = self.csv_path.open("a", newline="")
         self._writer = csv.writer(self._fh)
         if self.csv_path.stat().st_size == 0:

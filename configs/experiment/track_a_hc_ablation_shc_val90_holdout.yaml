@@ -14,10 +14,10 @@ dataset:
   official_val_holdout_ratio: 0.1
 
 training:
-  resume_from: ${hydra:runtime.cwd}/checkpoints/track_a/hc/shc_n4_s42_ft.pt
+  resume_from: ${hydra:runtime.cwd}/checkpoints/track_a/hc/shc_n4_s${seed}_ft.pt
   resume_reset_epoch: true
   resume_apply_cfg_lr: true
-  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/hc/shc_n4_s42_ft_val90_holdout.pt
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/hc/shc_n4_s${seed}_ft_val90_holdout.pt
   epochs: 10
   warmup_epochs: 2
   lr: 0.00005
@@ -27,4 +27,4 @@ training:
   tta: true
   tta_flip: true
   tta_scales: [0.857, 1.0, 1.143]
-  stability_log_path: ${hydra:runtime.cwd}/logs/hc/shc_n4_s42_val90_holdout_stability.csv
+  stability_log_path: ${hydra:runtime.cwd}/logs/hc/shc_n4_s${seed}_val90_holdout_stability.csv

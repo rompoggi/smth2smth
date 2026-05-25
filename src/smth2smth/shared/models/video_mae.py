@@ -420,6 +420,10 @@ class VideoMAEEncoder(nn.Module):
         self.embed_dim = embed_dim
         self.residual_variant = residual_variant
         self.hc_n = int(hc_n) if residual_variant != "prenorm" else 1
+        self.num_frames = int(num_frames)
+        self.img_size = int(img_size)
+        self.tube_t = int(tube_t)
+        self.patch_size = int(patch_size)
         self.patch_embed = PatchEmbed3D(num_frames, img_size, tube_t, patch_size, embed_dim)
         self.num_tokens = self.patch_embed.num_tokens
         self.gradient_checkpointing = bool(gradient_checkpointing)
@@ -464,6 +468,26 @@ class VideoMAEEncoder(nn.Module):
                 nn.init.ones_(m.weight)
                 nn.init.zeros_(m.bias)
 
+    def _pos_embed_for_input(self, x: torch.Tensor) -> torch.Tensor:
+        """Return ``pos_embed`` resized to match the spatial grid of ``x``."""
+        _, _, _, h, _w = x.shape
+        n_tokens = (
+            (self.num_frames // self.tube_t)
+            * (h // self.patch_size)
+            * (_w // self.patch_size)
+        )
+        if n_tokens == self.pos_embed.shape[1]:
+            return self.pos_embed
+        return interpolate_pos_embed(
+            self.pos_embed,
+            src_num_frames=self.num_frames,
+            src_img_size=self.img_size,
+            dst_num_frames=self.num_frames,
+            dst_img_size=int(h),
+            tube_t=self.tube_t,
+            patch_size=self.patch_size,
+        )
+
     def forward(
         self,
         x: torch.Tensor,
@@ -476,7 +500,7 @@ class VideoMAEEncoder(nn.Module):
         Returns:
             (B, n_visible, embed_dim) — normalized encoder output.
         """
-        tokens = self.patch_embed(x) + self.pos_embed  # (B, N, D)
+        tokens = self.patch_embed(x) + self._pos_embed_for_input(x)  # (B, N, D)
 
         if ids_keep is not None:
             tokens = torch.gather(
