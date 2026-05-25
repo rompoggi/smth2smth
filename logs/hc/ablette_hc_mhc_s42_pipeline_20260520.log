@@ -1,0 +1,147 @@
+[pipeline 2026-05-20T18:14:00+02:00] ========== ablette mHC s42 post-train pipeline start ==========
+[pipeline 2026-05-20T18:14:00+02:00] pipeline pid=249373 (written to logs/hc/ablette_hc_mhc_s42_pipeline_20260520.pid)
+[pipeline 2026-05-20T18:14:00+02:00] Waiting for honest FT to finish (pid file: logs/hc/ablette_hc_mhc_s42_20260518.pid)
+[pipeline 2026-05-21T00:27:32+02:00] PID 11538 from pid file exited.
+[pipeline 2026-05-21T00:27:32+02:00] Train log shows completion.
+[pipeline 2026-05-21T00:27:32+02:00] Honest FT done. Best ckpt: /Data/romain.poggi/smth2smth/checkpoints/track_a/hc/mhc_n4_sk3_s42_ft.pt
+[pipeline 2026-05-21T00:27:32+02:00] Submit (ft, best TTA): 3 scales + flip [0.857,1.0,1.143] -> submissions/track_a_hc_mhc_n4_sk3_s42_tta.csv
+model:
+  name: cnn_baseline
+  pretrained: true
+  num_classes: ${num_classes}
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: submissions/track_a_hc_mhc_n4_sk3_s42_tta.csv
+  num_frames: 8
+  val_ratio: 0.2
+  use_official_val: false
+  include_val_in_train: false
+  official_val_holdout_ratio: 0.0
+  seed: ${seed}
+  max_samples: null
+  max_samples_per_class: null
+  image_size: 224
+  time_reversal_prob: 0.0
+  temporal_reversal_augment:
+    enabled: false
+    prob: 0.5
+  class_boosting:
+    enabled: false
+training:
+  batch_size: 8
+  lr: 0.0001
+  epochs: 5
+  num_workers: 2
+  checkpoint_path: /Data/romain.poggi/smth2smth/checkpoints/track_a/hc/mhc_n4_sk3_s42_ft.pt
+  resume_from: null
+  lora_lr: null
+  lora_lr_ratio: 0.25
+  motion_lr: null
+  motion_lr_ratio: null
+  resume_apply_cfg_lr: false
+  amp: false
+  device: cuda
+  optimizer: adam
+  momentum: 0.9
+  nesterov: false
+  weight_decay: 0.0
+  scheduler_cosine: false
+  warmup_epochs: 0
+  min_lr: 0.0
+  label_smoothing: 0.0
+  videomix_alpha: 0.0
+  videomix_prob: 1.0
+  videomix_mode: cube_cutmix
+  videomix_mixup_alpha: null
+  videomix_cutmix_alpha: null
+  videomix_switch_prob: 0.5
+  layer_decay: null
+  repeated_aug: 1
+  grad_accum_steps: 1
+  amp_dtype: float16
+  scheduler: none
+  sgdr_T0: 30
+  sgdr_save_snapshots: false
+  early_stopping_enabled: false
+  early_stopping_patience: 10
+  early_stopping_min_delta: 0.0
+  log_interval_steps: 0
+  ema_enabled: false
+  ema_decay: 0.999
+  eval_every_n_epochs: 1
+  eval_ema: true
+  save_last_checkpoint: true
+  last_checkpoint_path: null
+  resume_reset_scheduler: false
+  continuation_warmup_epochs: 0
+  continuation_rewarm_lr: false
+  continuation_peak_lr_ratio: 0.4
+  tta: true
+  tta_flip: true
+  tta_temporal_shift: 0
+  tta_scales:
+  - 0.857
+  - 1.0
+  - 1.143
+  tta_logit_adjust: 0.0
+  class_balance_sampler: none
+  class_balance_loss: none
+  class_balance_beta: 0.999
+augment:
+  name: none
+  random_horizontal_flip: true
+  random_crop: false
+  crop_padding: 0
+  color_jitter: false
+  color_jitter_brightness: 0.0
+  color_jitter_contrast: 0.0
+  color_jitter_saturation: 0.0
+  color_jitter_hue: 0.0
+  random_grayscale: false
+  random_grayscale_prob: 0.0
+  gaussian_blur: false
+  gaussian_blur_prob: 0.0
+  gaussian_blur_radius_min: 0.1
+  gaussian_blur_radius_max: 2.0
+pretrain:
+  epochs: 100
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 50
+  checkpoint_path: ${hydra:runtime.cwd}/ssl_trunk.pt
+  max_frames: null
+  image_size: 224
+  local_image_size: 96
+  num_local_views: 6
+  out_dim: 4096
+  hidden_dim: 2048
+  bottleneck_dim: 256
+  n_layers: 3
+  teacher_temp: 0.04
+  student_temp: 0.1
+  center_momentum: 0.9
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
+test:
+  num_segment: 1
+  num_crop: 1
+  flip_tta: false
+track:
+  name: a
+  description: 'Closed-world track: train from scratch.'
+num_classes: 33
+seed: 42
+
+Indexing video folders under: /Data/romain.poggi/smth2smth/data/test
+Found 6913 test videos.
+[submit] masking 1 never-trained class index/indices: [27]
+[tta] flip-pair remap: [(18, 19)] (others identity).
+[tta] ViT scale 0.857 -> 192x192 (patch_size=16)
+[tta] ViT scale 1 -> 224x224 (patch_size=16)
+[tta] ViT scale 1.143 -> 256x256 (patch_size=16)
