@@ -4,17 +4,16 @@ Machine-local experiment log. Other hosts/users have their own files under `repo
 
 ---
 
-## mae400-ft-f4 official SSv2 FT (ep400 SSL, T=4) | Track A | 2026-05-25 04:09
+## mae400-ft-f4 official SSv2 FT (ep400 SSL, T=4) | Track A | 2026-05-25 09:49
 
-- **Status:** RUNNING
+- **Status:** DONE
 - **Run:** mae400-ft-f4
 - **Experiment:** [`videomaev2_t4_native_300e_pretrain`](../../experiments/videomaev2_t4_native_300e_pretrain.md)
 - **Hydra:** `experiment=track_a_videomae_official_ssv2_ft`
 - **Log:** [`mae400-ft-f4_20260524.log`](../../logs/mae400-ft-f4_20260524.log)
-- **W&B:** [run (resume)](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/dd9u4zar) — [initial](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/faa2wnk9)
-- **PID:** [`mae400-ft-f4_20260524.pid`](../../logs/mae400-ft-f4_20260524.pid)
-- **Ckpt:** `checkpoints/track_a/videomaev2+ft/mae400-ft-f4.pt` (from `mae400-ft-f4.last.pt`)
-- **Metrics:** ep26/50 done; best **live** val top1=**0.4962** (ep26), best **EMA** val top1=**0.4922** (ep26); resumed 2026-05-25 from ep12 after VM restart (interrupted mid-ep13)
+- **W&B:** [run](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/dd9u4zar)
+- **Ckpt:** `checkpoints/track_a/videomaev2+ft/mae400-ft-f4.pt`
+- **Metrics:** **E=50** complete; best val top1=**0.5305** (EMA, ep48); final ep50 live val **0.5226**, EMA **0.5288**; resumed twice after VM restarts (ep12, ep37)
 
 ---
 
