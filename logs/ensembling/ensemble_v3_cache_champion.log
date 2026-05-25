@@ -1,0 +1,18 @@
+[cache] val=/Data/thomas.turkieh/smth2smth/data/val train=/Data/thomas.turkieh/smth2smth/data/train test=/Data/thomas.turkieh/smth2smth/data/test
+[cache] holdout N=676 split_seed=42
+[cache] copied logits_s42_none.npy from videomaev2_3seed
+[cache] copied logits_s42_champion.npy from videomaev2_3seed
+[cache] copied logits_test_s42_champion.npy from videomaev2_3seed
+[cache] copied logits_s43_none.npy from videomaev2_3seed
+[cache] copied logits_s43_champion.npy from videomaev2_3seed
+[cache] copied logits_test_s43_champion.npy from videomaev2_3seed
+[cache] copied logits_s44_none.npy from videomaev2_3seed
+[cache] copied logits_s44_champion.npy from videomaev2_3seed
+[cache] copied logits_test_s44_champion.npy from videomaev2_3seed
+[cache] test N=6913
+[cache] skip holdout seed=42 (exists)
+[cache] skip test seed=42 (exists)
+[cache] skip holdout seed=43 (exists)
+[cache] skip test seed=43 (exists)
+[cache] skip holdout seed=44 (exists)
+[cache] skip test seed=44 (exists)

@@ -1,0 +1,146 @@
+{
+  "meta": {
+    "title": "Attention Is All You Need — Transformer (Figure 1)",
+    "source": "Vaswani et al., NeurIPS 2017",
+    "diagram_type": "encoder_decoder_seq2seq",
+    "layout": "three_column_encoder_decoder_output",
+    "norm_style": "post_norm"
+  },
+  "palette": {
+    "embedding": "#F2C9D8",
+    "positional_encoding": "#F2C9D8",
+    "multi_head_attention": "#F5C4A0",
+    "feed_forward": "#B8D4F0",
+    "add_norm": "#F5E6A8",
+    "linear": "#D4C4F0",
+    "softmax": "#C8E6C9",
+    "encoder_decoder_frame": "#E8E8E8",
+    "residual_add": "#FFFFFF",
+    "arrow": "#333333"
+  },
+  "encoder": {
+    "side": "left",
+    "frame_label": "Encoder",
+    "repeat": {
+      "symbol": "N×",
+      "position": "top_left_of_stack"
+    },
+    "inputs": [
+      {
+        "id": "inputs",
+        "kind": "input",
+        "label": "Inputs"
+      },
+      {
+        "id": "input_embedding",
+        "kind": "embedding",
+        "label": "Input Embedding",
+        "color_key": "embedding"
+      },
+      {
+        "id": "positional_encoding_enc",
+        "kind": "positional_encoding",
+        "label": "Positional Encoding",
+        "symbol": "sinusoid_wave_icon",
+        "merge": "add"
+      }
+    ],
+    "stack_layers": [
+      {
+        "order": 1,
+        "sublayers": [
+          {"kind": "multi_head_attention", "label": "Multi-Head Attention", "color_key": "multi_head_attention", "attention_type": "self"},
+          {"kind": "add_norm", "label": "Add & Norm", "color_key": "add_norm", "residual": true}
+        ]
+      },
+      {
+        "order": 2,
+        "sublayers": [
+          {"kind": "feed_forward", "label": "Feed Forward", "color_key": "feed_forward"},
+          {"kind": "add_norm", "label": "Add & Norm", "color_key": "add_norm", "residual": true}
+        ]
+      }
+    ],
+    "output": {
+      "id": "encoder_output",
+      "label": "Encoder memory",
+      "feeds": ["decoder_cross_attention"]
+    }
+  },
+  "decoder": {
+    "side": "right",
+    "frame_label": "Decoder",
+    "repeat": {
+      "symbol": "N×",
+      "position": "top_left_of_stack"
+    },
+    "inputs": [
+      {
+        "id": "outputs_shifted",
+        "kind": "input",
+        "label": "Outputs (shifted right)"
+      },
+      {
+        "id": "output_embedding",
+        "kind": "embedding",
+        "label": "Output Embedding",
+        "color_key": "embedding"
+      },
+      {
+        "id": "positional_encoding_dec",
+        "kind": "positional_encoding",
+        "label": "Positional Encoding",
+        "symbol": "sinusoid_wave_icon",
+        "merge": "add"
+      }
+    ],
+    "stack_layers": [
+      {
+        "order": 1,
+        "sublayers": [
+          {"kind": "multi_head_attention", "label": "Masked Multi-Head Attention", "color_key": "multi_head_attention", "attention_type": "masked_self"},
+          {"kind": "add_norm", "label": "Add & Norm", "color_key": "add_norm", "residual": true}
+        ]
+      },
+      {
+        "order": 2,
+        "sublayers": [
+          {"kind": "multi_head_attention", "label": "Multi-Head Attention", "color_key": "multi_head_attention", "attention_type": "cross", "kv_from": "encoder"},
+          {"kind": "add_norm", "label": "Add & Norm", "color_key": "add_norm", "residual": true}
+        ]
+      },
+      {
+        "order": 3,
+        "sublayers": [
+          {"kind": "feed_forward", "label": "Feed Forward", "color_key": "feed_forward"},
+          {"kind": "add_norm", "label": "Add & Norm", "color_key": "add_norm", "residual": true}
+        ]
+      }
+    ]
+  },
+  "output_head": {
+    "position": "top_center",
+    "components": [
+      {"kind": "linear", "label": "Linear", "color_key": "linear"},
+      {"kind": "softmax", "label": "Softmax", "color_key": "softmax"},
+      {"kind": "output", "label": "Output Probabilities"}
+    ],
+    "edges": [
+      ["decoder_stack_top", "linear"],
+      ["linear", "softmax"],
+      ["softmax", "output_probabilities"]
+    ]
+  },
+  "cross_connections": [
+    {
+      "from": "encoder_stack",
+      "to": "decoder_cross_attention",
+      "description": "Encoder outputs provide K and V to decoder second attention"
+    }
+  ],
+  "notes": [
+    "Post-Norm: Add & Norm after each sub-layer (norm after residual add)",
+    "Decoder has three sub-layers per block vs encoder two",
+    "Masked self-attention prevents attending to future positions"
+  ]
+}

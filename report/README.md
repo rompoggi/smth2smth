@@ -25,7 +25,12 @@ Two teammates on the same host still get **separate files** (different `whoami`)
 3. Each log entry is a new section (separator `---`) with title, track (`A` / `B` / `A+B`), timestamp, and a **short results summary**.
 4. Reference the run spec with a **markdown link into `experiments/`**, e.g. [`experiment_16052026`](../experiments/experiment_16052026.md) — **no line numbers**; treat **`experiments/**` as read-only** when logging. Hydra preset name (`experiment=...`) is plain text, not a link to `configs/experiment/`.
 
-Agent enforcement: `.cursor/rules/distributed-run-log.mdc` and `.claude/rules/distributed-run-log.md`.
+Agent enforcement:
+
+- **Outcomes / status:** `.cursor/rules/distributed-run-log.mdc`, `.claude/rules/distributed-run-log.md`
+- **Launch / resume / logs:** `.cursor/rules/start-resume-runs.mdc`, `.claude/rules/start-resume-runs.md`
+
+Training logs live under `logs/track_a/`, `logs/track_b/`, or study dirs (e.g. `logs/hc/`). Names look like `mae150-ft-f4_20260525.log`, not `e1_host.log`.
 
 ## Consolidation
 

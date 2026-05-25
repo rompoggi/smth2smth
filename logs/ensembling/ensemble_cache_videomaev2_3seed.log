@@ -1,0 +1,20 @@
+[cache] holdout N=676 split_seed=42
+[cache] skip existing logits_s42_none.npy
+[cache] s42_ft_val90_holdout.pt mode=champion ...
+[submit] masking 1 never-trained class index/indices: [27]
+[tta] flip-pair remap: [(18, 19)] (others identity).
+[cache] wrote logits_s42_champion.npy shape=(676, 33)
+[cache] s43_ft_val90_holdout.pt mode=none ...
+[submit] masking 1 never-trained class index/indices: [27]
+[cache] wrote logits_s43_none.npy shape=(676, 33)
+[cache] s43_ft_val90_holdout.pt mode=champion ...
+[submit] masking 1 never-trained class index/indices: [27]
+[tta] flip-pair remap: [(18, 19)] (others identity).
+[cache] wrote logits_s43_champion.npy shape=(676, 33)
+[cache] s44_ft_val90_holdout.pt mode=none ...
+[submit] masking 1 never-trained class index/indices: [27]
+[cache] wrote logits_s44_none.npy shape=(676, 33)
+[cache] s44_ft_val90_holdout.pt mode=champion ...
+[submit] masking 1 never-trained class index/indices: [27]
+[tta] flip-pair remap: [(18, 19)] (others identity).
+[cache] wrote logits_s44_champion.npy shape=(676, 33)

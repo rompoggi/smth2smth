@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1580 1480" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#374151"/>
+    </marker>
+    <filter id="sh" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#64748b" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <rect width="1580" height="1480" fill="#fafbfc"/>
+
+  <text x="790" y="42" text-anchor="middle" font-size="22" font-weight="700" fill="#111827">mae350-ft-f4 | VideoMAE ViT-B (ViT Figure-1 layout)</text>
+  <text x="790" y="68" text-anchor="middle" font-size="13" fill="#6b7280">SSL ep350 (86.25M) &#8594; FT (86.27M) | T=4 | tube_t=1 | N=784 tokens | pre-norm | head=mean | NO [CLS]</text>
+
+  <g transform="translate(40,88)">
+    <rect width="1500" height="36" rx="8" fill="#ffffff" stroke="#e5e7eb"/>
+    <circle cx="24" cy="18" r="7" fill="#FFD6E8"/><text x="36" y="22" font-size="11" fill="#374151">input</text>
+    <circle cx="110" cy="18" r="7" fill="#FFC9DE"/><text x="122" y="22" font-size="11" fill="#374151">PatchEmbed3D</text>
+    <circle cx="230" cy="18" r="7" fill="#E8D4FF"/><text x="242" y="22" font-size="11" fill="#374151">pos_embed</text>
+    <circle cx="330" cy="18" r="7" fill="#E8EEF4"/><text x="342" y="22" font-size="11" fill="#374151">encoder&#215;12</text>
+    <circle cx="430" cy="18" r="7" fill="#FFF3B0"/><text x="442" y="22" font-size="11" fill="#374151">LN</text>
+    <circle cx="490" cy="18" r="7" fill="#B8EBD4"/><text x="502" y="22" font-size="11" fill="#374151">MHA&#215;12</text>
+    <circle cx="580" cy="18" r="7" fill="#B8D8FF"/><text x="592" y="22" font-size="11" fill="#374151">MLP&#215;12</text>
+    <circle cx="670" cy="18" r="7" fill="#C4F0C2"/><text x="682" y="22" font-size="11" fill="#374151">mean pool</text>
+    <circle cx="770" cy="18" r="7" fill="#FFD4A8"/><text x="782" y="22" font-size="11" fill="#374151">Linear&#215;33</text>
+  </g>
+
+  <text x="280" y="148" text-anchor="middle" font-size="14" font-weight="600" fill="#374151">LEFT: end-to-end (bottom &#8594; top)</text>
+  <text x="1080" y="148" text-anchor="middle" font-size="14" font-weight="600" fill="#374151">RIGHT: one TransformerBlock (12&#215;)</text>
+  <line x1="620" y1="130" x2="620" y2="1180" stroke="#9ca3af" stroke-width="2" stroke-dasharray="10,8"/>
+
+  <!-- LEFT PIPELINE -->
+  <g filter="url(#sh)" transform="translate(120,1020)">
+    <rect width="200" height="72" rx="6" fill="#FFD6E8" stroke="#f9a8d4" stroke-width="1.5"/>
+    <text x="100" y="28" text-anchor="middle" font-size="13" font-weight="600" fill="#831843">Input clip</text>
+    <text x="100" y="48" text-anchor="middle" font-size="11" fill="#9d174d">(B, T=4, C=3, 224, 224)</text>
+    <rect x="28" y="54" width="32" height="12" fill="#fbcfe8" stroke="#db2777" stroke-width="0.5"/>
+    <rect x="64" y="54" width="32" height="12" fill="#fbcfe8" stroke="#db2777" stroke-width="0.5"/>
+    <rect x="100" y="54" width="32" height="12" fill="#fbcfe8" stroke="#db2777" stroke-width="0.5"/>
+    <rect x="136" y="54" width="32" height="12" fill="#fbcfe8" stroke="#db2777" stroke-width="0.5"/>
+    <text x="44" y="64" font-size="7" fill="#831843">t0</text>
+    <text x="116" y="64" font-size="7" fill="#831843">t3</text>
+  </g>
+  <line x1="220" y1="1020" x2="220" y2="1000" stroke="#374151" stroke-width="2" marker-end="url(#arr)"/>
+
+  <g filter="url(#sh)" transform="translate(95,900)">
+    <rect width="250" height="88" rx="6" fill="#FFC9DE" stroke="#f472b6"/>
+    <text x="125" y="26" text-anchor="middle" font-size="13" font-weight="600" fill="#831843">PatchEmbed3D</text>
+    <text x="125" y="44" text-anchor="middle" font-size="11" fill="#9d174d">Conv3d kernel (1, 16, 16) | tube_t=1</text>
+    <text x="125" y="60" text-anchor="middle" font-size="11" fill="#9d174d">N = 4&#215;14&#215;14 = 784 tokens | D = 768</text>
+    <text x="125" y="76" text-anchor="middle" font-size="10" fill="#be185d">COUNT: 1 Conv3d</text>
+  </g>
+  <line x1="220" y1="900" x2="220" y2="878" stroke="#374151" stroke-width="2" marker-end="url(#arr)"/>
+
+  <g filter="url(#sh)" transform="translate(110,810)">
+    <rect width="220" height="56" rx="6" fill="#E8D4FF" stroke="#c4b5fd"/>
+    <text x="110" y="24" text-anchor="middle" font-size="12" font-weight="600" fill="#5b21b6">+ pos_embed (1, 784, 768)</text>
+    <text x="110" y="42" text-anchor="middle" font-size="10" fill="#6d28d9">COUNT: 1 learnable tensor | NO [CLS] token</text>
+  </g>
+  <line x1="220" y1="810" x2="220" y2="788" stroke="#374151" stroke-width="2" marker-end="url(#arr)"/>
+
+  <g transform="translate(60,700)">
+    <text x="160" y="16" text-anchor="middle" font-size="11" font-weight="600" fill="#4b5563">784 spatiotemporal tokens (no class token)</text>
+    <g transform="translate(0,24)">
+      <text x="0" y="10" font-size="9" fill="#6b7280">t=0</text>
+      <rect x="0" y="14" width="70" height="50" fill="none" stroke="#94a3b8"/>
+      <g fill="#ddd6fe" stroke="#8b5cf6" stroke-width="0.4">
+        <rect x="2" y="16" width="8" height="8"/><rect x="12" y="16" width="8" height="8"/><rect x="22" y="16" width="8" height="8"/>
+        <rect x="2" y="26" width="8" height="8"/><rect x="12" y="26" width="8" height="8"/><rect x="22" y="26" width="8" height="8"/>
+        <text x="38" y="42" font-size="7" fill="#6b7280">14&#215;14</text>
+      </g>
+      <text x="90" y="10" font-size="9" fill="#6b7280">t=1</text>
+      <rect x="90" y="14" width="70" height="50" fill="none" stroke="#94a3b8"/>
+      <g transform="translate(92,16)" fill="#ddd6fe" stroke="#8b5cf6" stroke-width="0.4">
+        <rect width="8" height="8"/><rect x="10" width="8" height="8"/><rect x="20" width="8" height="8"/>
+        <rect y="10" width="8" height="8"/><rect x="10" y="10" width="8" height="8"/>
+      </g>
+      <text x="180" y="10" font-size="9" fill="#6b7280">t=2</text>
+      <rect x="180" y="14" width="70" height="50" fill="none" stroke="#94a3b8"/>
+      <g transform="translate(182,16)" fill="#ddd6fe" stroke="#8b5cf6" stroke-width="0.4">
+        <rect width="8" height="8"/><rect x="10" width="8" height="8"/>
+        <rect y="10" width="8" height="8"/><rect x="10" y="10" width="8" height="8"/>
+      </g>
+      <text x="270" y="10" font-size="9" fill="#6b7280">t=3</text>
+      <rect x="270" y="14" width="70" height="50" fill="none" stroke="#94a3b8"/>
+      <g transform="translate(272,16)" fill="#ddd6fe" stroke="#8b5cf6" stroke-width="0.4">
+        <rect width="8" height="8"/><rect x="10" width="8" height="8"/>
+        <rect y="10" width="8" height="8"/><rect x="10" y="10" width="8" height="8"/>
+      </g>
+    </g>
+  </g>
+  <line x1="220" y1="700" x2="220" y2="678" stroke="#374151" stroke-width="2" marker-end="url(#arr)"/>
+
+  <g filter="url(#sh)" transform="translate(130,480)">
+    <rect width="180" height="188" rx="6" fill="#E8EEF4" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="90" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a5f">VideoMAEEncoder</text>
+    <rect x="30" y="42" width="120" height="120" rx="4" fill="#f1f5f9" stroke="#cbd5e1"/>
+    <text x="90" y="72" text-anchor="middle" font-size="28" font-weight="700" fill="#475569">12&#215;</text>
+    <text x="90" y="98" text-anchor="middle" font-size="11" fill="#64748b">TransformerBlock</text>
+    <text x="90" y="116" text-anchor="middle" font-size="10" fill="#64748b">pre-norm | ViT-B</text>
+    <text x="90" y="134" text-anchor="middle" font-size="10" fill="#64748b">drop_path 0.2</text>
+    <text x="90" y="150" text-anchor="middle" font-size="10" fill="#64748b">grad_ckpt ON</text>
+    <text x="90" y="168" text-anchor="middle" font-size="9" fill="#94a3b8">HC: OFF (inert)</text>
+  </g>
+  <line x1="220" y1="480" x2="220" y2="458" stroke="#374151" stroke-width="2" marker-end="url(#arr)"/>
+
+  <g filter="url(#sh)" transform="translate(155,400)">
+    <rect width="130" height="44" rx="6" fill="#FFF3B0" stroke="#fcd34d"/>
+    <text x="65" y="28" text-anchor="middle" font-size="12" font-weight="600" fill="#92400e">LayerNorm</text>
+  </g>
+  <line x1="220" y1="400" x2="220" y2="378" stroke="#374151" stroke-width="2" marker-end="url(#arr)"/>
+
+  <g filter="url(#sh)" transform="translate(125,310)">
+    <rect width="190" height="56" rx="6" fill="#C4F0C2" stroke="#86efac"/>
+    <text x="95" y="24" text-anchor="middle" font-size="12" font-weight="600" fill="#166534">Mean pool over N=784</text>
+    <text x="95" y="42" text-anchor="middle" font-size="10" fill="#15803d">COUNT: 1 op | (B,768) | NOT [CLS]</text>
+  </g>
+  <line x1="220" y1="310" x2="220" y2="288" stroke="#374151" stroke-width="2" marker-end="url(#arr)"/>
+
+  <g filter="url(#sh)" transform="translate(125,220)">
+    <rect width="190" height="56" rx="6" fill="#FFD4A8" stroke="#fdba74"/>
+    <text x="95" y="24" text-anchor="middle" font-size="12" font-weight="600" fill="#9a3412">Linear (768 &#8594; 33)</text>
+    <text x="95" y="42" text-anchor="middle" font-size="10" fill="#c2410c">COUNT: 1 layer | 25,377 params</text>
+  </g>
+  <line x1="220" y1="220" x2="220" y2="198" stroke="#374151" stroke-width="2" marker-end="url(#arr)"/>
+
+  <g filter="url(#sh)" transform="translate(115,160)">
+    <rect width="210" height="48" rx="24" fill="#ffffff" stroke="#374151" stroke-width="1.5"/>
+    <text x="105" y="30" text-anchor="middle" font-size="12" font-weight="600" fill="#111827">logits (B, 33)</text>
+  </g>
+
+  <!-- RIGHT: PRE-NORM BLOCK -->
+  <g transform="translate(680,170)">
+    <text x="20" y="24" font-size="18" font-weight="700" fill="#475569">12&#215;</text>
+    <rect x="60" y="40" width="380" height="520" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+
+    <rect x="140" y="500" width="220" height="40" rx="6" fill="#E8D4FF" stroke="#a78bfa"/>
+    <text x="250" y="526" text-anchor="middle" font-size="12" font-weight="600" fill="#5b21b6">Embedded tokens (784, D)</text>
+
+    <line x1="250" y1="500" x2="250" y2="60" stroke="#374151" stroke-width="2"/>
+
+    <path d="M 100 480 C 60 480, 40 420, 40 380" fill="none" stroke="#374151" stroke-width="1.5"/>
+    <path d="M 40 380 L 40 340 L 120 340" fill="none" stroke="#374151" stroke-width="1.5"/>
+    <rect x="120" y="318" width="70" height="44" rx="6" fill="#FFF3B0" stroke="#fbbf24"/>
+    <text x="155" y="346" text-anchor="middle" font-size="11" font-weight="600" fill="#92400e">LN</text>
+    <rect x="210" y="318" width="130" height="44" rx="6" fill="#B8EBD4" stroke="#34d399"/>
+    <text x="275" y="338" text-anchor="middle" font-size="11" font-weight="600" fill="#065f46">Multi-Head</text>
+    <text x="275" y="354" text-anchor="middle" font-size="10" fill="#047857">Attention | 12 heads</text>
+
+    <circle cx="250" cy="290" r="16" fill="#ffffff" stroke="#374151" stroke-width="1.5"/>
+    <text x="250" y="296" text-anchor="middle" font-size="18" font-weight="600" fill="#374151">+</text>
+    <line x1="250" y1="318" x2="250" y2="306" stroke="#374151" stroke-width="1.5"/>
+    <line x1="200" y1="340" x2="234" y2="290" stroke="#374151" stroke-width="1.5"/>
+
+    <path d="M 100 270 C 60 270, 40 210, 40 170" fill="none" stroke="#374151" stroke-width="1.5"/>
+    <path d="M 40 170 L 40 130 L 120 130" fill="none" stroke="#374151" stroke-width="1.5"/>
+    <rect x="120" y="108" width="70" height="44" rx="6" fill="#FFF3B0" stroke="#fbbf24"/>
+    <text x="155" y="136" text-anchor="middle" font-size="11" font-weight="600" fill="#92400e">LN</text>
+    <rect x="210" y="108" width="130" height="44" rx="6" fill="#B8D8FF" stroke="#60a5fa"/>
+    <text x="275" y="128" text-anchor="middle" font-size="11" font-weight="600" fill="#1e40af">MLP</text>
+    <text x="275" y="144" text-anchor="middle" font-size="10" fill="#1d4ed8">ratio=4 | 3072 hidden</text>
+
+    <circle cx="250" cy="80" r="16" fill="#ffffff" stroke="#374151" stroke-width="1.5"/>
+    <text x="250" y="86" text-anchor="middle" font-size="18" font-weight="600" fill="#374151">+</text>
+    <line x1="250" y1="108" x2="250" y2="96" stroke="#374151" stroke-width="1.5"/>
+    <line x1="200" y1="130" x2="234" y2="80" stroke="#374151" stroke-width="1.5"/>
+
+    <line x1="250" y1="64" x2="250" y2="48" stroke="#374151" stroke-width="2" marker-end="url(#arr)"/>
+    <text x="250" y="36" text-anchor="middle" font-size="11" fill="#6b7280">block output &#8594; next block</text>
+  </g>
+
+  <g transform="translate(660,720)">
+    <rect width="420" height="200" rx="8" fill="#ffffff" stroke="#e5e7eb"/>
+    <text x="210" y="24" text-anchor="middle" font-size="13" font-weight="700" fill="#374151">Block counts (precise)</text>
+    <text x="20" y="48" font-size="11" fill="#374151">TransformerBlock</text><text x="280" y="48" font-size="11" font-weight="600" fill="#111827">12</text>
+    <text x="20" y="66" font-size="11" fill="#374151">MultiHeadAttention (12 heads each)</text><text x="280" y="66" font-size="11" font-weight="600" fill="#111827">12</text>
+    <text x="20" y="84" font-size="11" fill="#374151">LayerNorm (inside blocks)</text><text x="280" y="84" font-size="11" font-weight="600" fill="#111827">24</text>
+    <text x="20" y="102" font-size="11" fill="#374151">MLP (hidden 3072)</text><text x="280" y="102" font-size="11" font-weight="600" fill="#111827">12</text>
+    <text x="20" y="120" font-size="11" fill="#374151">Residual add (+)</text><text x="280" y="120" font-size="11" font-weight="600" fill="#111827">24</text>
+    <text x="20" y="138" font-size="11" fill="#374151">DropPath</text><text x="280" y="138" font-size="11" font-weight="600" fill="#111827">12</text>
+    <text x="20" y="156" font-size="11" fill="#374151">Final encoder LN + mean pool + classifier</text><text x="280" y="156" font-size="11" font-weight="600" fill="#111827">1 + 1 + 1</text>
+    <text x="20" y="178" font-size="10" fill="#6b7280">Inert: hc_n=4, head_num_heads=4 | NO attentive probe</text>
+  </g>
+
+  <g transform="translate(40,940)">
+    <rect width="720" height="88" rx="8" fill="#f0fdf4" stroke="#86efac"/>
+    <text x="16" y="22" font-size="12" font-weight="700" fill="#166534">vs ViT paper</text>
+    <text x="16" y="40" font-size="10" fill="#15803d">3D cube embed (not 2D patches) | 784 tokens, no [CLS] at 0 | mean pool + Linear (not MLP on token 0)</text>
+    <text x="16" y="56" font-size="12" font-weight="700" fill="#1e40af">vs Transformer 2017</text>
+    <text x="16" y="74" font-size="10" fill="#1d4ed8">Encoder-only | pre-norm (not post Add&amp;Norm) | self-attn only (no cross-attn, no decoder)</text>
+  </g>
+
+  <g transform="translate(780,940)">
+    <rect width="760" height="88" rx="8" fill="#fff7ed" stroke="#fdba74"/>
+    <text x="16" y="22" font-size="12" font-weight="700" fill="#9a3412">Inference | champion TTA</text>
+    <text x="16" y="40" font-size="10" fill="#c2410c">scales [0.857, 1.0, 1.143] | 192&#178; / 224&#178; / 256&#178; | flip + remap 18&#8596;19 | 6 views | softmax avg</text>
+    <text x="16" y="58" font-size="10" fill="#7c2d12">bad TTA (official 2&#215;3, no flip): ~32.7% LB</text>
+    <text x="400" y="58" font-size="10" fill="#166534" font-weight="600">good TTA (champion): ~53.7% LB</text>
+  </g>
+
+  <text x="790" y="1460" text-anchor="middle" font-size="10" fill="#9ca3af">docs/diagrams/mae350_ft_f4_architecture.svg | from mae350_ft_f4_architecture_ascii.txt</text>
+</svg>

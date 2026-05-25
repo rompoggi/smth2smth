@@ -1,0 +1,15 @@
+[submit] computing test logits seed=42 mode=champion ...
+[submit] masking 1 never-trained class index/indices: [27]
+[tta] flip-pair remap: [(18, 19)] (others identity).
+[submit] wrote logits_test_s42_champion.npy
+[submit] computing test logits seed=43 mode=champion ...
+[submit] masking 1 never-trained class index/indices: [27]
+[tta] flip-pair remap: [(18, 19)] (others identity).
+[submit] wrote logits_test_s43_champion.npy
+[submit] computing test logits seed=44 mode=champion ...
+[submit] masking 1 never-trained class index/indices: [27]
+[tta] flip-pair remap: [(18, 19)] (others identity).
+[submit] wrote logits_test_s44_champion.npy
+[submit] masking 1 never-trained class index/indices: [27]
+[submit] ensemble P3 -> /Data/romain.poggi/smth2smth/submissions/track_a_ensemble_P3.csv (6913 rows)
+[submit] weights seed order [42, 43, 44]: [1.33242368e-06 7.95506158e-01 2.04492509e-01]

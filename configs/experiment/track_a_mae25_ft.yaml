@@ -1,0 +1,70 @@
+# @package _global_
+# RQ4 official VideoMAE SSv2 FT — espadon SSL encoder @ epoch 25 (T=16, tube_t=1).
+#
+#   PYTHONPATH=src uv run python -m smth2smth.pipelines.train experiment=track_a_mae25_ft
+#
+#   nohup env PYTHONUNBUFFERED=1 PYTHONPATH=src uv run python -u -m smth2smth.pipelines.train \
+#       experiment=track_a_mae25_ft \
+#       > logs/mae25_ft_$(date +%Y%m%d).log 2>&1 &
+#   echo $! > logs/mae25_ft_$(date +%Y%m%d).pid
+
+defaults:
+  - override /model: video_mae_vit
+  - override /augment: official_videomae_ssv2
+  - override /train: champion_videomae
+  - override /test: videomae_official_2x3
+
+model:
+  variant: vit_b
+  num_classes: ${num_classes}
+  tube_t: 1
+  patch_size: 16
+  mlp_ratio: 4.0
+  drop_path_rate: 0.2
+  dropout: 0.0
+  head: mean
+  head_num_heads: 4
+  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/espadon_t16_encoder_ep25.pt
+  interpolate_pos_embed: false
+  interpolate_src_image_size: 224
+  interpolate_src_num_frames: 16
+  gradient_checkpointing: true
+  freeze_backbone: false
+
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  num_frames: 16
+  use_official_val: true
+  include_val_in_train: false
+  time_reversal_prob: 0.0
+  temporal_reversal_augment:
+    enabled: false
+
+training:
+  batch_size: 8
+  grad_accum_steps: 8
+  epochs: 40
+  warmup_epochs: 5
+  early_stopping_enabled: true
+  early_stopping_patience: 15
+  early_stopping_min_delta: 0.001
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/videomaev2+ft/mae25-ft.pt
+  tta_flip: false
+  tta_scales: null
+  wandb:
+    enabled: true
+    project: smth2smth-frame-ablation
+    entity: null
+    name: mae25-ft-f16
+    tags:
+      - rq4
+      - espadon
+      - mae25
+      - f16
+      - official-recipe
+    mode: online
+    log_interval_epochs: 1
+    log_interval_steps: 100

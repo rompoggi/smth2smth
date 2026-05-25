@@ -1,0 +1,136 @@
+{
+  "meta": {
+    "title": "An Image is Worth 16x16 Words — Vision Transformer (Figure 1 style)",
+    "source": "Dosovitskiy et al., ICLR 2021",
+    "diagram_type": "encoder_pipeline_plus_block_detail",
+    "layout": "two_column",
+    "norm_style": "pre_norm"
+  },
+  "palette": {
+    "patch_embedding": "#F2C9D8",
+    "position_embedding": "#F2C9D8",
+    "class_token": "#C9B8E8",
+    "encoder_stack": "#E8E8E8",
+    "norm": "#F5E6A8",
+    "multi_head_attention": "#B8E0C8",
+    "mlp": "#B8D4F0",
+    "mlp_head": "#F5C4A0",
+    "residual_add": "#FFFFFF",
+    "arrow": "#333333",
+    "dashed_separator": "#888888"
+  },
+  "left_column": {
+    "name": "ViT end_to_end",
+    "flow_direction": "bottom_to_top",
+    "components": [
+      {
+        "id": "input_image",
+        "kind": "input",
+        "label": "Input image",
+        "shape": "grid_3x3_patches",
+        "description": "Image split into fixed-size 2D patches (example shows 9 patches)"
+      },
+      {
+        "id": "linear_projection",
+        "kind": "linear",
+        "label": "Linear Projection of Flattened Patches",
+        "color_key": "patch_embedding",
+        "description": "Each patch flattened and projected to embedding dimension D"
+      },
+      {
+        "id": "class_token",
+        "kind": "learnable_token",
+        "label": "Extra learnable [class] embedding",
+        "symbol": "0*",
+        "color_key": "class_token",
+        "position": "prepended",
+        "count": 1
+      },
+      {
+        "id": "patch_position_embeddings",
+        "kind": "sequence",
+        "label": "Patch + Position Embeddings",
+        "color_key": "position_embedding",
+        "token_count_example": 9,
+        "token_indices": ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+        "note": "Class token 0* prepended before patch tokens 1..9"
+      },
+      {
+        "id": "transformer_encoder",
+        "kind": "stack",
+        "label": "Transformer Encoder",
+        "color_key": "encoder_stack",
+        "repeat": {
+          "symbol": "L",
+          "meaning": "depth_L_layers"
+        }
+      },
+      {
+        "id": "mlp_head",
+        "kind": "classifier",
+        "label": "MLP Head",
+        "color_key": "mlp_head",
+        "input_selection": "encoder_output_index_0_only",
+        "description": "Classification head reads only the class token representation"
+      },
+      {
+        "id": "output_classes",
+        "kind": "output",
+        "label": "Class: Bird, Ball, Car, ...",
+        "description": "Softmax / linear classifier over classes"
+      }
+    ],
+    "edges": [
+      ["input_image", "linear_projection"],
+      ["linear_projection", "patch_position_embeddings"],
+      ["class_token", "patch_position_embeddings"],
+      ["patch_position_embeddings", "transformer_encoder"],
+      ["transformer_encoder", "mlp_head"],
+      ["mlp_head", "output_classes"]
+    ]
+  },
+  "right_column": {
+    "name": "Transformer_encoder_block_detail",
+    "repeat_badge": {
+      "symbol": "L×",
+      "meaning": "same block repeated L times"
+    },
+    "flow_direction": "bottom_to_top",
+    "residual_style": "pre_norm_with_skip_add",
+    "block": {
+      "id": "encoder_layer",
+      "label": "Encoder layer",
+      "sublayers": [
+        {
+          "order": 1,
+          "path": "attention_branch",
+          "steps": [
+            {"kind": "input", "label": "Embedded Patches"},
+            {"kind": "norm", "label": "Norm", "color_key": "norm"},
+            {"kind": "multi_head_attention", "label": "Multi-Head Attention", "color_key": "multi_head_attention"},
+            {"kind": "residual_add", "label": "+", "skip_from": "before_norm_1"}
+          ]
+        },
+        {
+          "order": 2,
+          "path": "mlp_branch",
+          "steps": [
+            {"kind": "norm", "label": "Norm", "color_key": "norm"},
+            {"kind": "mlp", "label": "MLP", "color_key": "mlp"},
+            {"kind": "residual_add", "label": "+", "skip_from": "before_norm_2"}
+          ]
+        }
+      ]
+    },
+    "notes": [
+      "Pre-Norm: LayerNorm before attention and before MLP",
+      "Two residual connections per layer",
+      "No cross-attention; self-attention only"
+    ]
+  },
+  "key_differences_from_nlp_transformer": [
+    "2D patch sequence instead of token sequence",
+    "Learnable class token prepended (ViT-specific)",
+    "MLP head uses index-0 token only, not sequence pooling"
+  ]
+}

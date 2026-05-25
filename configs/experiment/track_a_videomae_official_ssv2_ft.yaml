@@ -68,3 +68,4 @@ training:
       - videomae_official_ssv2
       - rq4
     log_interval_epochs: 1
+    log_interval_steps: 25

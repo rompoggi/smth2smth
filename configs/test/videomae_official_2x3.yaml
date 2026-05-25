@@ -1,0 +1,6 @@
+# @package _global_
+# VideoMAE SSv2 eval TTA: 2 temporal segments x 3 spatial crops (no flip on SSv2).
+test:
+  num_segment: 2
+  num_crop: 3
+  flip_tta: false

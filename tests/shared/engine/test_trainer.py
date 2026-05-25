@@ -215,3 +215,28 @@ def test_train_one_epoch_supports_each_videomix_mode() -> None:
         )
         assert isinstance(stats, EpochStats), f"mode={mode!r} returned {type(stats)}"
         assert stats.loss >= 0.0, f"mode={mode!r} produced negative loss"
+
+
+def test_train_one_epoch_metrics_logger_receives_steps() -> None:
+    loader, model = _build()
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    logged: list[tuple[int, dict[str, float]]] = []
+
+    def _logger(step: int, metrics: dict[str, float]) -> None:
+        logged.append((step, metrics))
+
+    train_one_epoch(
+        model,
+        loader,
+        loss_fn,
+        optimizer,
+        torch.device("cpu"),
+        epoch=2,
+        metrics_logger=_logger,
+        metrics_log_interval_steps=1,
+    )
+    assert len(logged) == len(loader)
+    assert logged[0][0] == 2 * len(loader) + 1
+    assert "train/loss" in logged[-1][1]
+    assert "train/top1" in logged[-1][1]

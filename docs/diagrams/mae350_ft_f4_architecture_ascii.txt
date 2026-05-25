@@ -1,0 +1,92 @@
+================================================================================
+  mae350-ft-f4  |  VideoMAE ViT-B  |  ViT-paper layout  |  pre-norm encoder
+  SSL: videomaev2_t4native_encoder_ep350.pt (86.25M)  ->  FT: mae350-ft-f4.pt (86.27M)
+================================================================================
+  PASTEL LEGEND (for SVG / slides)
+    [#FFD6E8] video input     [#FFC9DE] PatchEmbed3D    [#E8D4FF] pos_embed
+    [#E8EEF4] encoder x12      [#FFF3B0] LayerNorm       [#B8EBD4] MHA x12
+    [#B8D8FF] MLP x12          [#C4F0C2] mean pool       [#FFD4A8] Linear 33-way
+================================================================================
+
+  LEFT: END-TO-END (bottom -> top)                    RIGHT: ONE ENCODER BLOCK (12x)
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+              +------------------+                              +-------- 12x -------+
+              | logits (B, 33)   |                              |                     |
+              +--------+---------+                              |   block output      |
+                       ^                                        |        ^            |
+              +--------+---------+                              |        |            |
+              | Linear 768->33   |  [#FFD4A8]                   |   +----+----+       |
+              |  params: 25,377  |  1 layer                     |   |    +    |       |
+              +--------+---------+                              |   +----+----+       |
+                       ^                                        |        ^            |
+              +--------+---------+                              |   +----+----+       |
+              | Mean pool        |  [#C4F0C2]                   |   | LN |MHA|  x12   |
+              | over N=784 tok   |  1 op (no params)            |   +----+----+       |
+              +--------+---------+                              |        ^            |
+                       ^                                        |   +----+----+       |
+              +--------+---------+                              |   |    +    |       |
+              | LayerNorm        |  [#FFF3B0]                   |   +----+----+       |
+              +--------+---------+                              |        ^            |
+                       ^                                        |   +----+----+       |
+              +--------+---------+                              |   | LN |MLP|  x12   |
+              | Transformer      |  [#E8EEF4]                   |   +----+----+       |
+              | Encoder          |                              |        ^            |
+              |                  |                              |   +----+----+       |
+              |  +------------+  |                              |   |Embedded|       |
+              |  | 12 blocks  |  |  COUNT: 12                  |   | 784,D  |       |
+              |  | pre-norm   |  |  TransformerBlock             |   +----------+       |
+              |  | MHA+MLP    |  |  per block:                   |                     |
+              |  +------------+  |    - LN x2                    +---------------------+
+              |  drop_path 0.2 |    - MHA x1 (12 heads)
+              |  grad_ckpt ON  |    - MLP x1 (3072 hidden)
+              +--------+---------+    - residual (+) x2
+                       ^              HC: OFF (hc_n=4 inert)
+              +--------+---------+
+              | + pos_embed      |  [#E8D4FF]  COUNT: 1 tensor (1,784,768)
+              |   (1,784,768)    |
+              +--------+---------+
+                       ^
+              +--------+---------+
+              | PatchEmbed3D     |  [#FFC9DE]  COUNT: 1 Conv3d
+              | Conv3d k=(1,16,16)|  tube_t=1
+              | 784 tokens       |  grid: 4 x 14 x 14
+              |  D=768           |  N = n_t*n_h*n_w = 4*14*14
+              +--------+---------+
+                       ^
+              +--------+---------+
+              | Input clip       |  [#FFD6E8]
+              | (B,4,3,224,224)  |  T=4 frames
+              +------------------+
+
+  TOKEN GRID (784 = 4 temporal x 14x14 spatial)          BLOCK COUNTS (precise)
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    t=0 [14x14]  t=1 [14x14]  t=2 [14x14]  t=3 [14x14]     TransformerBlock     : 12
+    +----------+ +----------+ +----------+ +----------+     MultiHeadAttention   : 12
+    |[][][][][] | |[][][][][] | |[][][][][] | |[][][][][] |     (12 heads each)      : --
+    |[][][][][] | |[][][][][] | |[][][][][] | |[][][][][] |     LayerNorm (in block) : 24
+    |  ...      | |  ...      | |  ...      | |  ...      |     MLP (4x expand)      : 12
+    +----------+ +----------+ +----------+ +----------+     Residual add (+)       : 24
+                                                           DropPath (stochastic)  : 12
+  NO class token (unlike ViT 0*)                            Final encoder LayerNorm  : 1
+  NO attentive probe (head=mean)                           Mean pool                : 1
+  head_num_heads=4 unused                                  Classifier Linear        : 1
+
+  vs ViT paper                          vs Transformer 2017
+  --------------------------------      -------------------------------------------
+  3D cube embed, not 2D patches         Encoder-only (no decoder)
+  784 tokens, no [CLS] at index 0         Pre-norm, not post Add&Norm
+  mean pool + Linear, not MLP on token 0  Self-attn only (no cross-attn)
+
+  INFERENCE (submit) — champion TTA [#B8EBD4 tint on forward passes]
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    3 scales [0.857, 1.0, 1.143]  ->  192^2 / 224^2 / 256^2  (pos_embed interpolate)
+    x 2 flip states (class 18 <-> 19 remap)
+    = 6 views / clip  ->  softmax avg  ->  argmax
+
+    bad TTA (official 2x3, no flip): 6 views but ~32.7% LB  |  good TTA: ~53.7% LB
+
+================================================================================
+  JSON source: docs/diagrams/mae350_ft_f4_architecture.json
+================================================================================

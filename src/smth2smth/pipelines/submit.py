@@ -40,6 +40,7 @@ from smth2smth.shared.io.submission import (
     write_submission_csv,
 )
 from smth2smth.shared.models import build_model
+from smth2smth.shared.models.video_mae import interpolate_pos_embed
 from smth2smth.shared.utils import class_counts, set_seed
 
 
@@ -199,6 +200,7 @@ def run(cfg: DictConfig) -> Path:
             num_crop=num_crop,
             flip_tta=flip_tta,
             micro_batch=int(cfg.training.batch_size),
+            patch_size=patch_size,
         )
     else:
         sample_list = [(p, 0) for p in video_dirs]
@@ -403,6 +405,7 @@ def _predict_dense_tta(
     num_crop: int,
     flip_tta: bool,
     micro_batch: int,
+    patch_size: int | None = None,
 ) -> list[int]:
     """Softmax-average predictions over segment × crop × optional flip views."""
     normalize = _eval_normalize(use_imagenet_norm)
@@ -432,6 +435,7 @@ def _predict_dense_tta(
                 untrained_mask,
                 logit_adjust=logit_adjust,
                 amp_infer=amp_infer,
+                patch_size=patch_size,
             )
             batch_probs = torch.softmax(logits, dim=1)
             for local_i, probs in enumerate(batch_probs):
@@ -451,6 +455,68 @@ def _predict_dense_tta(
     return predictions
 
 
+def _is_videomae_vit(model: nn.Module) -> bool:
+    """True when ``model`` is a :class:`~smth2smth.shared.models.video_mae.VideoMAEViT`."""
+    encoder = getattr(model, "encoder", None)
+    return encoder is not None and hasattr(encoder, "pos_embed")
+
+
+@torch.no_grad()
+def _videomae_encoder_features(encoder: nn.Module, x: torch.Tensor) -> torch.Tensor:
+    """Run ``VideoMAEEncoder`` with ``pos_embed`` resized to match ``x`` (TTA scales)."""
+    patch_embed = encoder.patch_embed
+    patch_size = int(patch_embed.proj.kernel_size[2])
+    tube_t = int(patch_embed.proj.kernel_size[0])
+    src_frames = int(patch_embed.n_t * tube_t)
+    src_img = int(patch_embed.n_h * patch_size)
+    _b, t, _c, h, w = x.shape
+    tokens = patch_embed(x)
+    pe = encoder.pos_embed
+    if tokens.shape[1] != pe.shape[1]:
+        pe = interpolate_pos_embed(
+            pe,
+            src_num_frames=src_frames,
+            src_img_size=src_img,
+            dst_num_frames=int(t),
+            dst_img_size=int(h),
+            tube_t=tube_t,
+            patch_size=patch_size,
+        )
+    tokens = tokens + pe.to(dtype=tokens.dtype)
+    if encoder.residual_variant == "prenorm":
+        for block in encoder.blocks:
+            tokens = block(tokens)
+        return encoder.norm(tokens)
+    h_state = tokens.unsqueeze(1).expand(-1, encoder.hc_n, -1, -1).contiguous()
+    for block in encoder.blocks:
+        h_state = block(h_state)
+    alpha_out = encoder.alpha_out.to(h_state.dtype)
+    collapsed = torch.einsum("n,bntd->btd", alpha_out, h_state)
+    return encoder.norm(collapsed)
+
+
+@torch.no_grad()
+def _videomae_logits_batch(
+    model: nn.Module,
+    video_batch: torch.Tensor,
+    *,
+    untrained_mask: torch.Tensor | None,
+    logit_adjust: torch.Tensor | None,
+) -> torch.Tensor:
+    """Classifier logits for VideoMAE with spatial size implied by ``video_batch``."""
+    features = _videomae_encoder_features(model.encoder, video_batch)
+    if model.attn_pool is not None:
+        pooled = model.attn_pool(features)
+    else:
+        pooled = features.mean(dim=1)
+    logits = model.classifier(model.dropout(pooled))
+    if untrained_mask is not None:
+        logits = logits + untrained_mask
+    if logit_adjust is not None:
+        logits = logits + logit_adjust
+    return logits
+
+
 @torch.no_grad()
 def _logits_for_batch(
     model: nn.Module,
@@ -459,7 +525,23 @@ def _logits_for_batch(
     logit_adjust: torch.Tensor | None = None,
     *,
     amp_infer: bool = False,
+    patch_size: int | None = None,
 ) -> torch.Tensor:
+    if patch_size is not None and _is_videomae_vit(model):
+        if amp_infer and video_batch.is_cuda:
+            with torch.autocast(device_type="cuda", dtype=torch.float16):
+                return _videomae_logits_batch(
+                    model,
+                    video_batch,
+                    untrained_mask=untrained_mask,
+                    logit_adjust=logit_adjust,
+                )
+        return _videomae_logits_batch(
+            model,
+            video_batch,
+            untrained_mask=untrained_mask,
+            logit_adjust=logit_adjust,
+        )
     if amp_infer:
         with torch.autocast(device_type="cuda", dtype=torch.float16):
             logits = model(video_batch)
@@ -549,6 +631,7 @@ def _predict(
                 untrained_mask,
                 logit_adjust=logit_adjust,
                 amp_infer=amp_infer,
+                patch_size=patch_size,
             )
             predictions.extend(int(p) for p in logits.argmax(dim=1).cpu().tolist())
             continue
@@ -563,6 +646,7 @@ def _predict(
                 untrained_mask,
                 logit_adjust=logit_adjust,
                 amp_infer=amp_infer,
+                patch_size=patch_size,
             )
             scaled_probs = torch.softmax(scaled_logits, dim=1)
             probs_total = scaled_probs if probs_total is None else probs_total + scaled_probs
@@ -575,6 +659,7 @@ def _predict(
                     untrained_mask,
                     logit_adjust=logit_adjust,
                     amp_infer=amp_infer,
+                    patch_size=patch_size,
                 )
                 flipped_probs = torch.softmax(flipped_logits, dim=1)
                 if flip_perm is not None:

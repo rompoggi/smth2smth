@@ -1,0 +1,16 @@
+# @package _global_
+# VideoMAE ViT-B Kaggle submit: champion TTA (NOT official 2×3).
+# See experiments/results_tta_ensembling.md — official_2x3 ≈ 0.33 LB on these ckpts;
+# champion scales3_flip ≈ 0.46–0.47 single-model LB.
+
+defaults:
+  - override /test: default
+
+training:
+  amp: true
+  amp_dtype: bf16
+  batch_size: 8
+  num_workers: 4
+  tta: true
+  tta_flip: true
+  tta_scales: [0.857, 1.0, 1.143]

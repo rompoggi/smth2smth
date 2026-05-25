@@ -101,14 +101,35 @@ echo "log / pid      : ${LOG} / ${PIDFILE}"
 echo "Hydra          : ${HYDRA_ARGS[*]}"
 echo ""
 
-run_train() {
-  "${UV_BIN}" run python -m smth2smth.pipelines.train "${HYDRA_ARGS[@]}"
-}
+TRAIN_CMD=(
+  "${UV_BIN}" run python -u -m smth2smth.pipelines.train "${HYDRA_ARGS[@]}"
+)
 
 if [[ "${NOHUP}" == "1" ]]; then
-  nohup run_train >"${LOG}" 2>&1 &
-  echo $! >"${PIDFILE}"
-  echo "Started PID $(cat "${PIDFILE}") — tail -f ${LOG}"
+  nohup "${TRAIN_CMD[@]}" >"${LOG}" 2>&1 &
+  NOHUP_PID=$!
+  PYTHON_PID=""
+  for _ in $(seq 1 20); do
+    # Prefer the CUDA trainer (.venv/bin/python3), not the uv wrapper.
+    PYTHON_PID="$(
+      pgrep -f "\.venv/bin/python3.*smth2smth.pipelines.train.*${EXPERIMENT}" 2>/dev/null | head -1 || true
+    )"
+    if [[ -z "${PYTHON_PID}" ]]; then
+      PYTHON_PID="$(
+        pgrep -f "smth2smth.pipelines.train.*${EXPERIMENT}" 2>/dev/null | head -1 || true
+      )"
+    fi
+    if [[ -n "${PYTHON_PID}" ]]; then
+      break
+    fi
+    sleep 2
+  done
+  if [[ -z "${PYTHON_PID}" ]]; then
+    PYTHON_PID="${NOHUP_PID}"
+    echo "warn: could not find python trainer PID; pidfile has nohup parent ${NOHUP_PID}" >&2
+  fi
+  echo "${PYTHON_PID}" >"${PIDFILE}"
+  echo "Started trainer PID ${PYTHON_PID} (nohup parent ${NOHUP_PID}) — tail -f ${LOG}"
 else
-  run_train 2>&1 | tee "${LOG}"
+  "${TRAIN_CMD[@]}" 2>&1 | tee "${LOG}"
 fi

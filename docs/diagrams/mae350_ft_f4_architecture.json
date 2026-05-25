@@ -1,0 +1,204 @@
+{
+  "meta": {
+    "title": "mae350-ft-f4 — VideoMAE ViT-B production model",
+    "repo": "smth2smth",
+    "diagram_type": "encoder_pipeline_plus_block_detail",
+    "layout": "two_column",
+    "style_reference": "vit_paper_architecture.json",
+    "norm_style": "pre_norm",
+    "checkpoint_ft": "checkpoints/track_a/videomaev2+ft/mae350-ft-f4.pt",
+    "checkpoint_ssl": "checkpoints/track_a/ssl/videomaev2_t4native_encoder_ep350.pt"
+  },
+  "palette": {
+    "video_input": "#FFD6E8",
+    "patch_embed_3d": "#FFC9DE",
+    "pos_embed": "#E8D4FF",
+    "encoder_stack": "#E8EEF4",
+    "norm": "#FFF3B0",
+    "multi_head_attention": "#B8EBD4",
+    "mlp": "#B8D8FF",
+    "mean_pool": "#C4F0C2",
+    "classifier": "#FFD4A8",
+    "dropout": "#F0F0F0",
+    "ssl_trunk": "#D4C4FF",
+    "residual_add": "#FFFFFF"
+  },
+  "counts": {
+    "parameters_total_ft": 86274081,
+    "parameters_encoder": 86248704,
+    "parameters_classifier": 25377,
+    "parameters_ssl_trunk": 86248704,
+    "num_frames_T": 4,
+    "tube_t": 1,
+    "image_size": 224,
+    "patch_size": 16,
+    "grid_n_t": 4,
+    "grid_n_h": 14,
+    "grid_n_w": 14,
+    "num_tokens_N": 784,
+    "embed_dim_D": 768,
+    "encoder_depth_L": 12,
+    "encoder_num_heads": 12,
+    "mlp_hidden": 3072,
+    "num_classes": 33,
+    "classifier_in": 768,
+    "classifier_out": 33,
+    "transformer_blocks": 12,
+    "attention_sublayers_per_block": 1,
+    "mlp_sublayers_per_block": 1,
+    "residual_connections_per_block": 2,
+    "head_type": "mean",
+    "attentive_probe_heads": 0,
+    "hc_streams": 0,
+    "inference_tta_scales": 3,
+    "inference_tta_flips": 2,
+    "inference_views_per_clip": 6
+  },
+  "left_column": {
+    "name": "VideoMAE_supervised_pipeline",
+    "flow_direction": "bottom_to_top",
+    "components": [
+      {
+        "id": "input_clip",
+        "kind": "input",
+        "label": "Video clip",
+        "shape": "(B, T=4, C=3, H=224, W=224)",
+        "color_key": "video_input"
+      },
+      {
+        "id": "patch_embed_3d",
+        "kind": "conv3d_cube",
+        "label": "PatchEmbed3D",
+        "color_key": "patch_embed_3d",
+        "kernel": [1, 16, 16],
+        "tube_t": 1,
+        "output_shape": "(B, N=784, D=768)"
+      },
+      {
+        "id": "pos_embed",
+        "kind": "learnable_parameter",
+        "label": "pos_embed",
+        "color_key": "pos_embed",
+        "shape": "(1, 784, 768)",
+        "operation": "add_to_tokens"
+      },
+      {
+        "id": "token_sequence",
+        "kind": "sequence",
+        "label": "784 spatiotemporal tokens",
+        "layout": "4_frames_x_14x14_grid",
+        "no_class_token": true
+      },
+      {
+        "id": "transformer_encoder",
+        "kind": "stack",
+        "label": "VideoMAEEncoder",
+        "color_key": "encoder_stack",
+        "repeat": {
+          "count": 12,
+          "symbol": "12×",
+          "block_type": "TransformerBlock_prenorm"
+        },
+        "variant": "vit_b",
+        "residual_variant": "prenorm",
+        "hc_active": false
+      },
+      {
+        "id": "encoder_norm",
+        "kind": "layer_norm",
+        "label": "LayerNorm",
+        "color_key": "norm"
+      },
+      {
+        "id": "mean_pool",
+        "kind": "pooling",
+        "label": "Mean pool over N=784",
+        "color_key": "mean_pool",
+        "output_shape": "(B, 768)",
+        "note": "head=mean; NOT class token; NOT attentive probe"
+      },
+      {
+        "id": "classifier",
+        "kind": "linear",
+        "label": "Linear(768 → 33)",
+        "color_key": "classifier",
+        "params": 25377
+      },
+      {
+        "id": "output_logits",
+        "kind": "output",
+        "label": "logits (B, 33)",
+        "training": "label_smoothing_0.1, mixup_cutmix_switch"
+      }
+    ],
+    "edges": [
+      ["input_clip", "patch_embed_3d"],
+      ["patch_embed_3d", "pos_embed"],
+      ["pos_embed", "token_sequence"],
+      ["token_sequence", "transformer_encoder"],
+      ["transformer_encoder", "encoder_norm"],
+      ["encoder_norm", "mean_pool"],
+      ["mean_pool", "classifier"],
+      ["classifier", "output_logits"]
+    ],
+    "ssl_init": {
+      "from": "videomaev2_t4native_encoder_ep350.pt",
+      "loads": "encoder.* only",
+      "params_loaded": 86248704
+    }
+  },
+  "right_column": {
+    "name": "TransformerBlock_detail",
+    "repeat_badge": {
+      "symbol": "12×",
+      "count": 12,
+      "meaning": "identical prenorm blocks"
+    },
+    "block": {
+      "id": "transformer_block",
+      "residual_variant": "prenorm",
+      "sublayers": [
+        {
+          "order": 1,
+          "steps": [
+            {"kind": "norm", "label": "LN", "color_key": "norm"},
+            {"kind": "multi_head_attention", "label": "MHA (12 heads)", "color_key": "multi_head_attention", "heads": 12, "dim": 768},
+            {"kind": "residual_add", "label": "+", "skip_from": "block_input"}
+          ]
+        },
+        {
+          "order": 2,
+          "steps": [
+            {"kind": "norm", "label": "LN", "color_key": "norm"},
+            {"kind": "mlp", "label": "MLP (ratio=4 → 3072)", "color_key": "mlp"},
+            {"kind": "residual_add", "label": "+", "skip_from": "post_attn"}
+          ]
+        }
+      ],
+      "drop_path": "rate=0.2 linear across 12 layers",
+      "not_used": ["HCTransformerBlock", "HCRouter", "mHC", "SHC"]
+    },
+    "inert_config_keys": [
+      "hc_n=4",
+      "hc_sk_iters=3",
+      "hc_sk_tau=1.0",
+      "head_num_heads=4"
+    ]
+  },
+  "inference_sidebar": {
+    "champion_tta": {
+      "scales": [0.857, 1.0, 1.143],
+      "sizes_px": [192, 224, 256],
+      "flip": true,
+      "flip_remap_pairs": [[18, 19]],
+      "views": 6,
+      "kaggle_lb_approx": 0.5371
+    },
+    "bad_tta_official_2x3": {
+      "num_segment": 2,
+      "num_crop": 3,
+      "flip": false,
+      "kaggle_lb_approx": 0.3271
+    }
+  }
+}
