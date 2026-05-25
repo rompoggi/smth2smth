@@ -1,0 +1,10 @@
+# @package _global_
+# Stabilization deltas — use via experiment YAML ``training:`` merge, not as a
+# standalone ``override /train:`` (that would drop the base videomae recipe).
+#
+# Reference keys (copy into experiment *_stab.yaml):
+#   new_module_lr: 1.0e-4
+#   new_module_warmup_epochs: 10
+#   max_grad_norm: 1.0
+#   new_module_max_grad_norm: 0.5
+#   stop_on_mlp_activity_ratio: 10.0

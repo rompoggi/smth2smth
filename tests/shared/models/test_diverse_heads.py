@@ -20,6 +20,7 @@ import torch
 
 from smth2smth.pipelines.train import (
     _build_llrd_param_groups,
+    _build_llrd_stabilized_param_groups,
     _is_new_temporal_param,
     _videomae_layer_id,
 )
@@ -184,6 +185,43 @@ def test_new_temporal_params_route_to_top_lr() -> None:
         lr_of[id(p)] for n, p in model.named_parameters() if n.startswith("encoder.blocks.0.")
     )
     assert block0_lr < base_lr
+
+
+def test_stabilized_llrd_lowers_new_module_lr() -> None:
+    model = _make_model(
+        head="perceiver",
+        head_num_heads=HEADS,
+        head_queries=16,
+        temporal_mode="divided_st",
+        temporal_layers=2,
+    )
+    base_lr = 5e-4
+    new_lr = 1e-4
+    groups = _build_llrd_stabilized_param_groups(
+        model,
+        base_lr=base_lr,
+        new_module_lr=new_lr,
+        weight_decay=0.05,
+        layer_decay=0.75,
+        depth=DEPTH,
+        backbone_warmup_epochs=5,
+        new_module_warmup_epochs=10,
+    )
+    lr_of: dict[int, float] = {}
+    warm_of: dict[int, int] = {}
+    for g in groups:
+        for p in g["params"]:
+            lr_of[id(p)] = g["lr"]
+            warm_of[id(p)] = int(g.get("warmup_epochs", 0))
+    for name, param in model.named_parameters():
+        if name.startswith(("pool_head.", "classifier.")) or _is_new_temporal_param(name):
+            assert lr_of[id(param)] == pytest.approx(new_lr), name
+            assert warm_of[id(param)] == 10, name
+    block0_lr = next(
+        lr_of[id(p)] for n, p in model.named_parameters() if n.startswith("encoder.blocks.0.")
+    )
+    assert block0_lr < base_lr
+    assert block0_lr > new_lr
 
 
 def test_is_new_temporal_param_name_matching() -> None:

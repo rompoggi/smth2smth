@@ -1,0 +1,30 @@
+# @package _global_
+# Arch 3 K=6 — stabilized (pool_head + temporal blocks at new_module_lr).
+#
+#   PYTHONPATH=src uv run python -u -m smth2smth.pipelines.train \
+#     experiment=track_a_diverse_arch3_divided_st_stab
+#
+# K=3 on baudroie: same preset + `model.temporal_layers=3`
+defaults:
+  - track_a_diverse_arch3_divided_st
+
+model:
+  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/videomaev2_t4native_encoder_ep500.pt
+
+dataset:
+  official_val_holdout_ratio: 0.1
+
+training:
+  new_module_lr: 1.0e-4
+  new_module_warmup_epochs: 10
+  max_grad_norm: 1.0
+  new_module_max_grad_norm: 0.5
+  stop_on_mlp_activity_ratio: 10.0
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/videomaev2+ft/arch3-divided-st-k6-stab.pt
+  wandb:
+    name: arch3-divided-st-k6-stab
+    tags:
+      - track_a
+      - diverse_heads
+      - arch3_divided_st
+      - stab

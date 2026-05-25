@@ -375,6 +375,97 @@ def _build_llrd_param_groups(
     return [groups[k] for k in sorted(groups)]
 
 
+def _is_new_module_param(name: str) -> bool:
+    """Random-init head + temporal modules for stabilized fine-tuning (Round 2).
+
+    These parameters use ``training.new_module_lr`` and a longer warmup instead
+    of sharing the full base LR with the LLRD top group.
+    """
+    return (
+        name.startswith("pool_head.")
+        or name.startswith("classifier.")
+        or _is_new_temporal_param(name)
+    )
+
+
+def _backbone_llrd_layer_id(name: str, depth: int) -> int:
+    """Layer index for pretrained backbone tensors only (excludes pool_head)."""
+    if _is_hc_scalar(name):
+        return depth + 1
+    if name.startswith("encoder.patch_embed") or name == "encoder.pos_embed":
+        return 0
+    if name.startswith("encoder.blocks."):
+        try:
+            return int(name.split(".")[2]) + 1
+        except (IndexError, ValueError):
+            return depth + 1
+    if name.startswith("encoder.norm"):
+        return depth + 1
+    return depth + 1
+
+
+def _build_llrd_stabilized_param_groups(
+    model: nn.Module,
+    *,
+    base_lr: float,
+    new_module_lr: float,
+    weight_decay: float,
+    layer_decay: float,
+    depth: int,
+    backbone_warmup_epochs: int,
+    new_module_warmup_epochs: int,
+) -> list[dict[str, Any]]:
+    """LLRD on the pretrained backbone; lower LR + longer warmup on new modules."""
+    n_top = depth + 1
+    groups: dict[tuple[str, int, bool], dict[str, Any]] = {}
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+        no_decay = (
+            param.ndim <= 1
+            or name.endswith(".bias")
+            or _is_hc_scalar(name)
+        )
+        if _is_new_module_param(name):
+            kind = "new"
+            layer_key = 0
+            lr = new_module_lr
+            warm = new_module_warmup_epochs
+            gname = f"new_module{'_nd' if no_decay else ''}"
+        else:
+            kind = "bb"
+            layer_key = _backbone_llrd_layer_id(name, depth)
+            lr = base_lr * (layer_decay ** (n_top - layer_key))
+            warm = backbone_warmup_epochs
+            gname = f"llrd_l{layer_key}{'_nd' if no_decay else ''}"
+        key = (kind, layer_key, no_decay)
+        if key not in groups:
+            groups[key] = {
+                "params": [],
+                "lr": lr,
+                "weight_decay": 0.0 if no_decay else weight_decay,
+                "warmup_lr_max": lr,
+                "warmup_epochs": warm,
+                "name": gname,
+            }
+        groups[key]["params"].append(param)
+    if not groups:
+        raise RuntimeError(
+            "Stabilized LLRD produced 0 trainable groups; check freeze_backbone."
+        )
+    return [groups[k] for k in sorted(groups, key=lambda x: (x[0], x[1], x[2]))]
+
+
+def _new_module_param_ids(param_groups: list[dict[str, Any]]) -> set[int]:
+    """Parameter ids in optimizer groups tagged ``new_module*``."""
+    out: set[int] = set()
+    for g in param_groups:
+        if str(g.get("name", "")).startswith("new_module"):
+            for p in g["params"]:
+                out.add(id(p))
+    return out
+
+
 def _log_diverse_arch_init_diagnostics(model: nn.Module) -> None:
     """One-time init-time sanity print for the diverse-head / temporal archs.
 
@@ -533,6 +624,8 @@ def run(cfg: DictConfig) -> Path | None:
     use_official_val = bool(cfg.dataset.get("use_official_val", False))
     include_val_in_train = bool(cfg.dataset.get("include_val_in_train", False))
     val_holdout_ratio = float(cfg.dataset.get("official_val_holdout_ratio", 0.0) or 0.0)
+    use_val_holdout = use_official_val and val_holdout_ratio > 0.0
+    val_samples_all: list[tuple[Path, int]] | None = None
     if use_official_val:
         # Validate on the official held-out folder. The internal 80/20 split is
         # bypassed: training uses *all* of ``train_dir``, validation uses
@@ -747,6 +840,26 @@ def run(cfg: DictConfig) -> Path | None:
         num_workers=int(cfg.training.num_workers),
         pin_memory=pin_memory,
     )
+    val_honest_loader: DataLoader | None = None
+    if use_val_holdout and val_samples_all is not None:
+        val_honest_dataset = VideoFrameDataset(
+            root_dir=train_dir,
+            num_frames=num_frames,
+            transform=eval_transform,
+            sample_list=val_samples_all,
+        )
+        val_honest_loader = DataLoader(
+            val_honest_dataset,
+            batch_size=int(cfg.training.batch_size),
+            shuffle=False,
+            num_workers=int(cfg.training.num_workers),
+            pin_memory=pin_memory,
+        )
+        print(
+            f"[data] dual val eval each epoch: holdout n={len(val_samples)} "
+            f"(checkpoint/early-stop), honest n={len(val_samples_all)} (full official val; "
+            f"includes clips also used in training)"
+        )
 
     model = build_model(cfg).to(device)
 
@@ -905,6 +1018,7 @@ def run(cfg: DictConfig) -> Path | None:
             "using a single LR group."
         )
 
+    warmup_epochs = int(cfg.training.get("warmup_epochs", 0))
     layer_decay_raw = cfg.training.get("layer_decay")
     model_name_for_llrd = str(cfg.model.get("name", "")) if hasattr(cfg, "model") else ""
     use_llrd = (
@@ -913,8 +1027,41 @@ def run(cfg: DictConfig) -> Path | None:
         and not use_dual_stream_groups
         and not use_lora_group
     )
+    new_module_lr_raw = cfg.training.get("new_module_lr") if hasattr(cfg, "training") else None
+    new_module_warmup_epochs = int(
+        cfg.training.get("new_module_warmup_epochs", 10) if hasattr(cfg, "training") else 10
+    )
+    use_stabilized_llrd = (
+        use_llrd
+        and new_module_lr_raw is not None
+        and float(new_module_lr_raw) > 0.0
+    )
+    new_module_param_ids: set[int] = set()
 
-    if use_llrd:
+    if use_stabilized_llrd:
+        variant = str(cfg.model.get("variant", "vit_b"))
+        if variant not in _VIT_VARIANTS:
+            raise SystemExit(f"Unknown ViT variant {variant!r} for LLRD.")
+        depth = int(_VIT_VARIANTS[variant]["depth"])
+        new_module_lr = float(new_module_lr_raw)
+        param_groups = _build_llrd_stabilized_param_groups(
+            model,
+            base_lr=head_lr,
+            new_module_lr=new_module_lr,
+            weight_decay=weight_decay,
+            layer_decay=float(layer_decay_raw),
+            depth=depth,
+            backbone_warmup_epochs=warmup_epochs,
+            new_module_warmup_epochs=new_module_warmup_epochs,
+        )
+        new_module_param_ids = _new_module_param_ids(param_groups)
+        print(
+            f"[optim] stabilized LLRD: backbone lr={head_lr:g} (warmup {warmup_epochs} ep), "
+            f"new_module lr={new_module_lr:g} (warmup {new_module_warmup_epochs} ep), "
+            f"layer_decay={float(layer_decay_raw):g}, depth={depth}, "
+            f"{len(param_groups)} param groups."
+        )
+    elif use_llrd:
         variant = str(cfg.model.get("variant", "vit_b"))
         if variant not in _VIT_VARIANTS:
             raise SystemExit(f"Unknown ViT variant {variant!r} for LLRD.")
@@ -1032,7 +1179,11 @@ def run(cfg: DictConfig) -> Path | None:
 
     use_cosine = bool(cfg.training.get("scheduler_cosine", False))
     scheduler_name = str(cfg.training.get("scheduler", "cosine" if use_cosine else "none")).lower()
-    warmup_epochs = int(cfg.training.get("warmup_epochs", 0))
+    cosine_start_epoch = (
+        max(warmup_epochs, new_module_warmup_epochs)
+        if use_stabilized_llrd
+        else warmup_epochs
+    )
     cosine_scheduler: torch.optim.lr_scheduler.LRScheduler | None = None
     sgdr_T0 = int(cfg.training.get("sgdr_T0", 30))
     sgdr_save_snapshots = bool(cfg.training.get("sgdr_save_snapshots", False))
@@ -1048,7 +1199,7 @@ def run(cfg: DictConfig) -> Path | None:
             f"eta_min={float(cfg.training.get('min_lr', 0.0)):g}"
         )
     elif use_cosine or scheduler_name == "cosine":
-        cosine_tmax = max(1, int(cfg.training.epochs) - warmup_epochs)
+        cosine_tmax = max(1, int(cfg.training.epochs) - cosine_start_epoch)
         cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer,
             T_max=cosine_tmax,
@@ -1073,6 +1224,22 @@ def run(cfg: DictConfig) -> Path | None:
     early_stopping_enabled = bool(cfg.training.get("early_stopping_enabled", False))
     early_stopping_patience = int(cfg.training.get("early_stopping_patience", 10))
     early_stopping_min_delta = float(cfg.training.get("early_stopping_min_delta", 0.0))
+    stop_on_mlp_activity_raw = cfg.training.get("stop_on_mlp_activity_ratio")
+    stop_on_mlp_activity_ratio: float | None = (
+        float(stop_on_mlp_activity_raw)
+        if stop_on_mlp_activity_raw is not None
+        else None
+    )
+    max_grad_norm_raw = cfg.training.get("max_grad_norm")
+    max_grad_norm: float | None = (
+        float(max_grad_norm_raw) if max_grad_norm_raw is not None else None
+    )
+    new_module_max_grad_norm_raw = cfg.training.get("new_module_max_grad_norm")
+    new_module_max_grad_norm: float | None = (
+        float(new_module_max_grad_norm_raw)
+        if new_module_max_grad_norm_raw is not None
+        else None
+    )
 
     amp_enabled = bool(cfg.training.get("amp", False)) and device.type == "cuda"
     amp_dtype_str = str(cfg.training.get("amp_dtype", "float16")).lower()
@@ -1088,6 +1255,18 @@ def run(cfg: DictConfig) -> Path | None:
         print(f"[amp] mixed-precision ({amp_dtype} + GradScaler) enabled.")
     if grad_accum_steps > 1:
         print(f"[train] grad_accum_steps={grad_accum_steps} (effective batch scales up).")
+    if max_grad_norm is not None and max_grad_norm > 0.0:
+        print(f"[train] gradient clipping enabled (max_norm={max_grad_norm:g}).")
+    if new_module_max_grad_norm is not None and new_module_max_grad_norm > 0.0:
+        print(
+            f"[train] new-module gradient clipping "
+            f"(max_norm={new_module_max_grad_norm:g}, n_params={len(new_module_param_ids)})."
+        )
+    if stop_on_mlp_activity_ratio is not None:
+        print(
+            f"[train] will stop if head mlp_activity_ratio > "
+            f"{stop_on_mlp_activity_ratio:g} at epoch end."
+        )
 
     # EMA (Exponential Moving Average) of model weights, à la PyTorch's
     # ``AveragedModel(use_buffers=True)``. When enabled, every optimizer step
@@ -1223,7 +1402,7 @@ def run(cfg: DictConfig) -> Path | None:
                 sched_state = None
 
         if cosine_scheduler is not None and sched_state is None:
-            ff_steps = max(0, start_epoch - warmup_epochs)
+            ff_steps = max(0, start_epoch - cosine_start_epoch)
             for _ in range(ff_steps):
                 cosine_scheduler.step()
             if ff_steps > 0:
@@ -1279,15 +1458,13 @@ def run(cfg: DictConfig) -> Path | None:
             step_metrics_cb = build_step_metrics_callback(
                 wandb_tracker, step_offset=epoch_step_offset
             )
-            if (
-                scheduler_name != "sgdr"
-                and warmup_epochs > 0
-                and epoch < warmup_epochs
-            ):
-                warm_scale = float(epoch + 1) / float(warmup_epochs)
+            if scheduler_name != "sgdr":
                 for group in optimizer.param_groups:
-                    max_lr = float(group.get("warmup_lr_max", group["lr"]))
-                    group["lr"] = max_lr * warm_scale
+                    g_warm = int(group.get("warmup_epochs", warmup_epochs))
+                    if g_warm > 0 and epoch < g_warm:
+                        warm_scale = float(epoch + 1) / float(g_warm)
+                        max_lr = float(group.get("warmup_lr_max", group["lr"]))
+                        group["lr"] = max_lr * warm_scale
             if stability_logger is not None:
                 stability_logger.set_epoch(epoch)
             train_stats: EpochStats = train_one_epoch(
@@ -1312,6 +1489,9 @@ def run(cfg: DictConfig) -> Path | None:
                 class_weights=class_weights,
                 stability_logger=stability_logger,
                 step_metrics_callback=step_metrics_cb,
+                max_grad_norm=max_grad_norm,
+                new_module_param_ids=new_module_param_ids or None,
+                new_module_max_grad_norm=new_module_max_grad_norm,
             )
             eval_every_n_epochs = max(1, int(cfg.training.get("eval_every_n_epochs", 1)))
             eval_ema = bool(cfg.training.get("eval_ema", True))
@@ -1325,7 +1505,7 @@ def run(cfg: DictConfig) -> Path | None:
                     f"train loss {train_stats.loss:.4f} top1 {train_stats.top1:.4f} | "
                     f"val skipped (eval_every_n_epochs={eval_every_n_epochs})"
                 )
-                if cosine_scheduler is not None and epoch >= warmup_epochs:
+                if cosine_scheduler is not None and epoch >= cosine_start_epoch:
                     cosine_scheduler.step()
                 if wandb_tracker.should_log_epoch(epoch + 1, int(cfg.training.epochs)):
                     log_epoch_summary(
@@ -1333,14 +1513,15 @@ def run(cfg: DictConfig) -> Path | None:
                         epoch_one_indexed=epoch + 1,
                         steps_per_epoch=steps_per_epoch,
                         train_stats=train_stats,
-                        val_stats=None,
                         lr=float(optimizer.param_groups[0]["lr"]),
                         best_top1=best_top1,
+                        optimizer=optimizer,
+                        use_val_holdout=use_val_holdout,
                     )
                 _save_last_checkpoint(epoch_done=epoch + 1, latest_val_top1=None)
                 continue
 
-            val_stats: EpochStats = evaluate_epoch(
+            holdout_stats: EpochStats = evaluate_epoch(
                 model,
                 val_loader,
                 loss_fn,
@@ -1348,9 +1529,9 @@ def run(cfg: DictConfig) -> Path | None:
                 amp_enabled=amp_enabled,
                 amp_dtype=amp_dtype,
             )
-            ema_stats: EpochStats | None = None
+            ema_holdout_stats: EpochStats | None = None
             if ema_model is not None and eval_ema:
-                ema_stats = evaluate_epoch(
+                ema_holdout_stats = evaluate_epoch(
                     ema_model,
                     val_loader,
                     loss_fn,
@@ -1358,23 +1539,65 @@ def run(cfg: DictConfig) -> Path | None:
                     amp_enabled=amp_enabled,
                     amp_dtype=amp_dtype,
                 )
+            honest_stats: EpochStats | None = None
+            ema_honest_stats: EpochStats | None = None
+            if val_honest_loader is not None:
+                honest_stats = evaluate_epoch(
+                    model,
+                    val_honest_loader,
+                    loss_fn,
+                    device,
+                    amp_enabled=amp_enabled,
+                    amp_dtype=amp_dtype,
+                )
+                if ema_model is not None and eval_ema:
+                    ema_honest_stats = evaluate_epoch(
+                        ema_model,
+                        val_honest_loader,
+                        loss_fn,
+                        device,
+                        amp_enabled=amp_enabled,
+                        amp_dtype=amp_dtype,
+                    )
+
             et = int(cfg.training.epochs)
             pfx = _epoch_progress_stamp(epoch + 1, et)
-            if ema_stats is not None:
+            if use_val_holdout:
+                val_line = (
+                    f"val holdout loss {holdout_stats.loss:.4f} top1 {holdout_stats.top1:.4f} "
+                    f"top5 {holdout_stats.top5:.4f}"
+                )
+                if honest_stats is not None:
+                    val_line += (
+                        f" | val honest top1 {honest_stats.top1:.4f} "
+                        f"top5 {honest_stats.top5:.4f}"
+                    )
+            else:
+                val_line = (
+                    f"val loss {holdout_stats.loss:.4f} top1 {holdout_stats.top1:.4f} "
+                    f"top5 {holdout_stats.top5:.4f}"
+                )
+            if ema_holdout_stats is not None:
+                ema_line = (
+                    f"ema holdout top1 {ema_holdout_stats.top1:.4f} "
+                    f"top5 {ema_holdout_stats.top5:.4f}"
+                )
+                if ema_honest_stats is not None:
+                    ema_line += (
+                        f" | ema honest top1 {ema_honest_stats.top1:.4f} "
+                        f"top5 {ema_honest_stats.top5:.4f}"
+                    )
                 print(
                     f"{pfx}Epoch {epoch + 1}/{et} | "
                     f"train loss {train_stats.loss:.4f} top1 {train_stats.top1:.4f} | "
-                    f"val loss {val_stats.loss:.4f} top1 {val_stats.top1:.4f} "
-                    f"top5 {val_stats.top5:.4f} | "
-                    f"ema val top1 {ema_stats.top1:.4f} top5 {ema_stats.top5:.4f}"
+                    f"{val_line} | {ema_line}"
                 )
             else:
                 ema_tag = " | ema eval skipped" if (ema_model is not None and not eval_ema) else ""
                 print(
                     f"{pfx}Epoch {epoch + 1}/{et} | "
                     f"train loss {train_stats.loss:.4f} top1 {train_stats.top1:.4f} | "
-                    f"val loss {val_stats.loss:.4f} top1 {val_stats.top1:.4f} "
-                    f"top5 {val_stats.top5:.4f}{ema_tag}"
+                    f"{val_line}{ema_tag}"
                 )
 
             # Diverse-head failure-mode probes (Arch 1 MLP liveness / Arch 2
@@ -1388,14 +1611,26 @@ def run(cfg: DictConfig) -> Path | None:
             if head_diag:
                 diag_str = ", ".join(f"{k.split('/')[-1]}={v:.4f}" for k, v in head_diag.items())
                 print(f"  [head-diag] {diag_str}")
+                mlp_ratio = head_diag.get("head/mlp_activity_ratio")
+                if (
+                    stop_on_mlp_activity_ratio is not None
+                    and mlp_ratio is not None
+                    and float(mlp_ratio) > stop_on_mlp_activity_ratio
+                ):
+                    print(
+                        "Stopping: head mlp_activity_ratio "
+                        f"{float(mlp_ratio):.4f} > {stop_on_mlp_activity_ratio:g} "
+                        "(activation runaway guard)."
+                    )
+                    break
 
             # Pick the better of (live, EMA) for checkpointing. The chosen
             # state_dict is saved as ``model_state_dict`` so ``submit.py`` /
             # ``evaluate.py`` keep working without any "is this EMA?" branching.
-            if ema_stats is not None and ema_stats.top1 > val_stats.top1:
-                ckpt_stats, ckpt_module, ckpt_kind = ema_stats, ema_model, "ema"
+            if ema_holdout_stats is not None and ema_holdout_stats.top1 > holdout_stats.top1:
+                ckpt_stats, ckpt_module, ckpt_kind = ema_holdout_stats, ema_model, "ema"
             else:
-                ckpt_stats, ckpt_module, ckpt_kind = val_stats, model, "live"
+                ckpt_stats, ckpt_module, ckpt_kind = holdout_stats, model, "live"
 
             if ckpt_stats.top1 > (best_top1 + early_stopping_min_delta):
                 best_top1 = ckpt_stats.top1
@@ -1409,6 +1644,11 @@ def run(cfg: DictConfig) -> Path | None:
                     "trained_class_indices": trained_class_indices,
                     "checkpoint_kind": ckpt_kind,
                 }
+                if honest_stats is not None:
+                    ckpt_extra["val_honest_top1"] = float(honest_stats.top1)
+                    ckpt_extra["val_honest_top5"] = float(honest_stats.top5)
+                if ema_honest_stats is not None:
+                    ckpt_extra["val_ema_honest_top1"] = float(ema_honest_stats.top1)
                 if cosine_scheduler is not None:
                     ckpt_extra["scheduler_state_dict"] = cosine_scheduler.state_dict()
                 if scaler is not None:
@@ -1450,13 +1690,18 @@ def run(cfg: DictConfig) -> Path | None:
                     epoch_one_indexed=epoch + 1,
                     steps_per_epoch=steps_per_epoch,
                     train_stats=train_stats,
-                    val_stats=val_stats,
-                    ema_val_stats=ema_stats,
+                    val_holdout_stats=holdout_stats,
+                    ema_holdout_stats=ema_holdout_stats,
+                    val_honest_stats=honest_stats,
+                    ema_honest_stats=ema_honest_stats,
                     lr=float(optimizer.param_groups[0]["lr"]),
                     best_top1=best_top1,
+                    head_diag=head_diag if head_diag else None,
+                    optimizer=optimizer,
+                    use_val_holdout=use_val_holdout,
                 )
             if cosine_scheduler is not None and (
-                scheduler_name == "sgdr" or epoch >= warmup_epochs
+                scheduler_name == "sgdr" or epoch >= cosine_start_epoch
             ):
                 cosine_scheduler.step()
 
@@ -1496,7 +1741,10 @@ def run(cfg: DictConfig) -> Path | None:
     if best_path is None:
         print("Training finished without producing a checkpoint.")
     else:
-        print(f"Done. Best val top1: {best_top1:.4f}. Checkpoint: {best_path}")
+        val_label = "holdout" if use_val_holdout else "honest"
+        print(
+            f"Done. Best val {val_label} top1: {best_top1:.4f}. Checkpoint: {best_path}"
+        )
     return best_path
 
 

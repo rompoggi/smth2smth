@@ -123,20 +123,61 @@ def build_step_metrics_callback(
     return _callback
 
 
+def optimizer_group_metrics(optimizer: Any) -> dict[str, float]:
+    """Per-param-group LR and warmup metadata for W&B (stabilized / LLRD runs)."""
+    out: dict[str, float] = {}
+    for i, group in enumerate(optimizer.param_groups):
+        name = str(group.get("name", f"group{i}"))
+        out[f"optim/lr/{name}"] = float(group["lr"])
+        if "warmup_lr_max" in group:
+            out[f"optim/warmup_lr_max/{name}"] = float(group["warmup_lr_max"])
+        if "warmup_epochs" in group:
+            out[f"optim/warmup_epochs/{name}"] = float(group["warmup_epochs"])
+    return out
+
+
+def _val_metric_block(prefix: str, stats: Any, *, ema_stats: Any | None = None) -> dict[str, float]:
+    """Build W&B keys for one validation split (holdout or honest)."""
+    p = f"val/{prefix}" if prefix else "val/"
+    out: dict[str, float] = {
+        f"{p}loss": float(stats.loss),
+        f"{p}top1": float(stats.top1),
+        f"{p}top5": float(stats.top5),
+    }
+    if ema_stats is not None:
+        ema_p = f"val/ema_{prefix}" if prefix else "val/ema_"
+        out[f"{ema_p}top1"] = float(ema_stats.top1)
+        out[f"{ema_p}top5"] = float(ema_stats.top5)
+    return out
+
+
 def log_epoch_summary(
     tracker: WandbTracker,
     *,
     epoch_one_indexed: int,
     steps_per_epoch: int,
     train_stats: Any,
-    val_stats: Any | None = None,
-    ema_val_stats: Any | None = None,
+    val_holdout_stats: Any | None = None,
+    ema_holdout_stats: Any | None = None,
+    val_honest_stats: Any | None = None,
+    ema_honest_stats: Any | None = None,
     lr: float,
     best_top1: float,
+    head_diag: dict[str, float] | None = None,
+    optimizer: Any | None = None,
+    use_val_holdout: bool = False,
+    # Deprecated aliases (call sites still migrating).
+    val_stats: Any | None = None,
+    ema_val_stats: Any | None = None,
 ) -> None:
     """Log end-of-epoch train / val scalars at the epoch boundary step."""
     if not tracker.enabled:
         return
+
+    if val_stats is not None and val_holdout_stats is None:
+        val_holdout_stats = val_stats
+    if ema_val_stats is not None and ema_holdout_stats is None:
+        ema_holdout_stats = ema_val_stats
 
     metrics: dict[str, float] = {
         "epoch": float(epoch_one_indexed),
@@ -146,19 +187,31 @@ def log_epoch_summary(
         "lr": float(lr),
         "val/best_top1": float(best_top1),
     }
-    if val_stats is not None:
+    if val_holdout_stats is not None:
+        if use_val_holdout:
+            metrics.update(
+                _val_metric_block("holdout_", val_holdout_stats, ema_stats=ema_holdout_stats)
+            )
+            # Backward-compatible aliases (checkpoint selection metric).
+            metrics["val/loss"] = float(val_holdout_stats.loss)
+            metrics["val/top1"] = float(val_holdout_stats.top1)
+            metrics["val/top5"] = float(val_holdout_stats.top5)
+            if ema_holdout_stats is not None:
+                metrics["val/ema_top1"] = float(ema_holdout_stats.top1)
+                metrics["val/ema_top5"] = float(ema_holdout_stats.top5)
+        else:
+            metrics.update(_val_metric_block("", val_holdout_stats, ema_stats=ema_holdout_stats))
+            metrics.update(
+                _val_metric_block("honest_", val_holdout_stats, ema_stats=ema_holdout_stats)
+            )
+    if val_honest_stats is not None:
         metrics.update(
-            {
-                "val/loss": float(val_stats.loss),
-                "val/top1": float(val_stats.top1),
-                "val/top5": float(val_stats.top5),
-            }
+            _val_metric_block("honest_", val_honest_stats, ema_stats=ema_honest_stats)
         )
-    if ema_val_stats is not None:
-        metrics.update(
-            {
-                "val/ema_top1": float(ema_val_stats.top1),
-                "val/ema_top5": float(ema_val_stats.top5),
-            }
-        )
+    if head_diag:
+        for key, value in head_diag.items():
+            if value == value:  # skip NaN
+                metrics[key] = float(value)
+    if optimizer is not None:
+        metrics.update(optimizer_group_metrics(optimizer))
     tracker.log(metrics, step=epoch_one_indexed * steps_per_epoch)

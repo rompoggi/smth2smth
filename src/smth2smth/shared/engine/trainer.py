@@ -50,6 +50,9 @@ def train_one_epoch(
     class_weights: torch.Tensor | None = None,
     stability_logger: Callable[..., None] | None = None,
     step_metrics_callback: Callable[[dict[str, float], int], None] | None = None,
+    max_grad_norm: float | None = None,
+    new_module_param_ids: set[int] | None = None,
+    new_module_max_grad_norm: float | None = None,
 ) -> EpochStats:
     """Run one training epoch and return aggregated metrics.
 
@@ -153,6 +156,20 @@ def train_one_epoch(
                     scaler=scaler if use_amp else None,
                     loss_value=float(loss.item()),
                 )
+            if use_amp:
+                scaler.unscale_(optimizer)
+            if max_grad_norm is not None and max_grad_norm > 0.0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+            if (
+                new_module_max_grad_norm is not None
+                and new_module_max_grad_norm > 0.0
+                and new_module_param_ids
+            ):
+                nm_params = [
+                    p for p in model.parameters() if id(p) in new_module_param_ids
+                ]
+                if nm_params:
+                    torch.nn.utils.clip_grad_norm_(nm_params, new_module_max_grad_norm)
             if use_amp:
                 scaler.step(optimizer)
                 scaler.update()

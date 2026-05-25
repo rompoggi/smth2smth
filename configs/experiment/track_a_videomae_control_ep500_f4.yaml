@@ -1,0 +1,51 @@
+# @package _global_
+# Mean-pool control on ep500 SSL, T=4 (fair geometry vs diverse-head runs).
+# No new_module_lr — classifier is tiny; standard LLRD only.
+#
+#   PYTHONPATH=src uv run python -u -m smth2smth.pipelines.train \
+#     experiment=track_a_videomae_control_ep500_f4
+defaults:
+  - override /model: video_mae_vit
+  - override /augment: official_videomae_ssv2
+  - override /train: videomae_official_ssv2
+  - override /test: vjepa2_official_2x3
+
+model:
+  variant: vit_b
+  num_classes: ${num_classes}
+  tube_t: 1
+  drop_path_rate: 0.2
+  dropout: 0.0
+  head: mean
+  gradient_checkpointing: true
+  init_from: ${hydra:runtime.cwd}/checkpoints/track_a/ssl/videomaev2_t4native_encoder_ep500.pt
+  interpolate_src_num_frames: ${dataset.num_frames}
+
+dataset:
+  num_frames: 4
+  image_size: 224
+  use_official_val: true
+  include_val_in_train: false
+
+seed: 42
+
+training:
+  batch_size: 8
+  grad_accum_steps: 8
+  log_interval_steps: 25
+  epochs: 50
+  early_stopping_enabled: true
+  early_stopping_patience: 15
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/videomaev2+ft/control-meanpool-ep500.pt
+  tta: true
+  tta_flip: false
+  tta_scales: null
+  wandb:
+    enabled: true
+    project: smth2smth-diverse-heads
+    mode: online
+    name: control-meanpool-ep500
+    tags:
+      - track_a
+      - diverse_heads
+      - control_meanpool

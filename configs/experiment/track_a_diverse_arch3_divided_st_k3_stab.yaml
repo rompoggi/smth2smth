@@ -1,0 +1,12 @@
+# @package _global_
+# Arch 3 K=3 — stabilized (baudroie). Same recipe as k6 stab, fewer temporal blocks.
+defaults:
+  - track_a_diverse_arch3_divided_st_stab
+
+model:
+  temporal_layers: 3
+
+training:
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/videomaev2+ft/arch3-divided-st-k3-stab.pt
+  wandb:
+    name: arch3-divided-st-k3-stab

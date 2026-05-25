@@ -1,0 +1,18 @@
+# @package _global_
+# Arch 2 Q=16 stabilized — seed replica for ensemble (brochet).
+defaults:
+  - track_a_diverse_arch2_perceiver_stab
+  - _self_
+
+seed: 123
+
+training:
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/videomaev2+ft/arch2-perceiver-q16-stab-s42.pt
+  wandb:
+    name: arch2-perceiver-q16-stab-s42
+    tags:
+      - track_a
+      - diverse_heads
+      - arch2_perceiver
+      - stab
+      - seed_replica
