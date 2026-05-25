@@ -4,17 +4,16 @@ Machine-local experiment log. Other hosts/users have their own files under `repo
 
 ---
 
-## mae200-ft-f4 official SSv2 FT (ep200, T=4) | Track A | 2026-05-25 03:57
+## mae200-ft-f4 official SSv2 FT (ep200, T=4) | Track A | 2026-05-25 12:34
 
-- **Status:** RUNNING
+- **Status:** DONE
 - **Run:** mae200-ft-f4
 - **Experiment:** [`new_ideas_tracka`](../../experiments/new_ideas_tracka.md)
-- **Hydra:** `experiment=track_a_videomae_official_ssv2_ft`
-- **Log:** [`mae200-ft-f4_20260524.log`](../../logs/mae200-ft-f4_20260524.log)
-- **W&B:** [run](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/it1tp21b)
-- **PID:** [`1453950`](../../logs/mae200-ft-f4_20260524.pid)
-- **Ckpt:** `checkpoints/track_a/videomaev2+ft/mae200-ft-f4.pt` (target); resume `mae200-ft-f4.last.pt`
-- **Metrics:** ep15/50; best ema val top1=0.4360; VM resume 2026-05-25
+- **Hydra:** `experiment=track_a_videomae_official_ssv2_ft` (SSL `videomaev2_t4native_encoder_ep200.pt`; `T=4`, `tube_t=1`, `E=50`, eff. `bs=64`)
+- **Log:** [`mae200-ft-f4_20260524.log`](../../logs/track_a/mae200-ft-f4_20260524.log)
+- **W&B:** [run](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/5lgie5ko)
+- **Ckpt:** `checkpoints/track_a/videomaev2+ft/mae200-ft-f4.pt`
+- **Metrics:** 50/50 ep; best val top1=**0.5081** (EMA, ep42); final ep50 live val top1=0.5076, EMA=0.5079; two VM resumes (ep8, ep25)
 
 ---
 
