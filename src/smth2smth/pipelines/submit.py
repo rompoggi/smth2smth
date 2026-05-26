@@ -517,6 +517,8 @@ def _videomae_logits_batch(
     features = _videomae_encoder_features(model.encoder, video_batch)
     if model.attn_pool is not None:
         pooled = model.attn_pool(features)
+    elif getattr(model, "pool_head", None) is not None:
+        pooled = model.pool_head(features)
     else:
         pooled = features.mean(dim=1)
     logits = model.classifier(model.dropout(pooled))

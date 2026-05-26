@@ -17,7 +17,10 @@ from torch.utils.data import DataLoader, Dataset
 from smth2smth.pipelines.submit import (
     _build_flip_class_permutation,
     _predict,
+    _videomae_logits_batch,
 )
+from smth2smth.shared.models import build_model
+from omegaconf import OmegaConf
 
 
 class _ConstLogitsModel(nn.Module):
@@ -51,6 +54,38 @@ class _OneSampleDataset(Dataset):
 
     def __getitem__(self, _idx: int) -> tuple[torch.Tensor, int]:
         return self.video, 0
+
+
+class TestVideomaePerceiverSubmitPath:
+    """Regression: ViT TTA submit must route through pool_head, not mean-pool."""
+
+    def test_videomae_logits_batch_matches_forward_for_perceiver(self) -> None:
+        cfg = OmegaConf.create(
+            {
+                "model": {
+                    "name": "video_mae_vit",
+                    "variant": "vit_b",
+                    "num_classes": 33,
+                    "tube_t": 1,
+                    "patch_size": 16,
+                    "head": "perceiver",
+                    "head_queries": 16,
+                    "head_num_heads": 12,
+                    "head_mlp_ratio": 4.0,
+                    "drop_path_rate": 0.0,
+                    "dropout": 0.0,
+                    "gradient_checkpointing": False,
+                    "hc_n": 4,
+                },
+                "dataset": {"num_frames": 4, "image_size": 224},
+            }
+        )
+        model = build_model(cfg).eval()
+        x = torch.randn(2, 4, 3, 224, 224)
+        with torch.no_grad():
+            ref = model(x)
+            got = _videomae_logits_batch(model, x, untrained_mask=None, logit_adjust=None)
+        assert torch.allclose(ref, got, atol=1e-4, rtol=1e-4)
 
 
 class TestFlipClassPermutation:
