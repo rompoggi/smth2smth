@@ -7,9 +7,9 @@
 #
 # Shared by r1_b07–b11; each child preset overrides LR / Q / head_type only.
 defaults:
+  - track_b_r1_data
   - override /model: vjepa2
   - override /augment: vjepa2_heavy
-  - track_b_r1_data
 
 augment:
   random_horizontal_flip: false

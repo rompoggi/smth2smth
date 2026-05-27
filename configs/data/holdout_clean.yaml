@@ -7,7 +7,8 @@
 #
 # Training:  train_dir + (val \\ holdout) when official_val_holdout_ratio > 0.
 # Metrics:  val_holdout clips only (honest selection / early stop).
-defaults: []
+defaults:
+  - default
 
 dataset:
   use_official_val: true
