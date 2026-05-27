@@ -785,8 +785,12 @@ class VJEPA2SSv2FTProbe(nn.Module):
 
 
 @register_model("vjepa2_ssv2ft")
+@register_model("vjepa2_hf_clf")
 def build_vjepa2_ssv2ft(cfg: DictConfig) -> nn.Module:
-    """Builder for :class:`VJEPA2SSv2FTProbe` (SSv2-FT checkpoint + head-slice + LoRA)."""
+    """Builder for :class:`VJEPA2SSv2FTProbe` (SSv2-FT checkpoint + head-slice + LoRA).
+
+    Registered twice: ``vjepa2_ssv2ft`` and ``vjepa2_hf_clf`` (Hydra model preset name).
+    """
     model_cfg = cfg.model
     lora_tm = _resolve_lora_target_modules(model_cfg.get("lora_target_modules"))
 

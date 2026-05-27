@@ -1,0 +1,17 @@
+# @package _global_
+# Frozen official-val holdout (seed 42, 15% stratified per class).
+#
+# Build once: ``PYTHONPATH=src uv run python scripts/build_holdout_clean.py``
+# Writes ``data/holdout_clean.json``. All machines must use the same file after
+# ``git pull`` so checkpoint selection and experiment comparison are comparable.
+#
+# Training:  train_dir + (val \\ holdout) when official_val_holdout_ratio > 0.
+# Metrics:  val_holdout clips only (honest selection / early stop).
+defaults: []
+
+dataset:
+  use_official_val: true
+  official_val_holdout_ratio: 0.15
+  official_val_holdout_split_seed: 42
+  holdout_manifest: ${dataset.root}/holdout_clean.json
+  include_val_in_train: false

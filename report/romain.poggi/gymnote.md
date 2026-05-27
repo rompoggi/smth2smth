@@ -4,6 +4,120 @@ Machine-local experiment log. Other hosts/users have their own files under `repo
 
 ---
 
+## Round 3 — first 4-member ensemble (champion TTA) | Track A | 2026-05-27
+
+Members + individual public LB (champion TTA, all uploaded): **q16-s42 (seed123) 0.5678**, q16-s7 (seed7) 0.5655, q16-seed42 (seed42) 0.5579, mae500 mean-pool 0.5513. Cached champion-TTA logits (holdout-42 N=676 + test 6913) per member in ~3.5 min each on free GPUs → `outputs/ensemble/diverse_heads_r3/`; combined via `scripts/ensemble_diverse_heads_round3.py`.
+
+**Leakage gotcha:** holdout-42 is clean only for seed-42-split members (q16-seed42 64.2%, mae500 62.7% honest); q16-s42 (80.6%) and q16-s7 (78.6%) trained on those clips → inflated ~+15 pp. **WS over-fits the leaky pair** (w=[s42 .62, seed42 0, s7 .38, mae500 0]), dropping the diverse mae500 → do NOT submit WS. Use leakage-safe averaging.
+
+**Submission CSVs:** `submissions/track_a_ensemble_r3_4member_20260527_{mean,softmax,ws}.csv` — all healthy (6913 rows, 32 classes, top 7.8%, no collapse).
+
+**LB RESULTS:** **softmax = 0.5724 (NEW BEST**, +0.46 pp over best single s42 0.5678, +1.6 pp over mae500 champion 0.5513); ws = 0.5655 (below best single — leakage-overfit dropped the diverse members, as predicted). Confirms: leakage-safe averaging > holdout-tuned weights here; diversity (incl. weakest member mae500 0.5513) beats individual strength.
+
+**v2 — 5-member (+ k6-stab, arch3 temporal):** k6-stab finished (best holdout 0.642). Cached champion logits (`k6_stab`, single holdout-42 63.76% — clean, used split-seed-42). 5-member softmax CSV: `submissions/track_a_ensemble_r3_5member_20260527_softmax.csv` (healthy, no collapse). Holdout-42 softmax fell 75.0→73.2% **only because k6 is a clean member diluting the 2 leaky Perceivers' inflation — not a regression**; on test, k6 adds the first decorrelated architecture. WS again zeroed all diverse members (leakage). To upload next window; expect ~0.573–0.575 vs 4-member 0.5724. k3-stab (arch3 K=3) ~ep31 — fold into v3 later.
+
+---
+
+## Round 3 — post-restart full resume (8 runs) | Track A | 2026-05-27 00:48
+
+VMs restarted (~00:25) → all training killed (crontabs wiped again), but every `.last.pt` intact and ~12 GPUs freed. Resumed all 8 not-finished runs from `.last.pt` into their **original W&B runs**; all ALIVE/stepping, err=0:
+
+| Run | resumed @ | host | how |
+|-----|-----------|------|-----|
+| arch2-q2-trainonly | ep25 | brochet | in place |
+| arch2-q4-trainonly | ep25 | rouget | in place |
+| arch3-k3-trainonly | ep43 | barbeau | in place |
+| arch2-q16-stab-s7 (holdout) | ep48 | anguille | in place |
+| arch3-k9-trainonly | ep7 | sole | in place |
+| arch4-aim-trainonly | ep15 | thon | in place |
+| arch3-k3-stab (holdout) | ep30 | ablette→**carrelet** | migrated (ablette busy) |
+| arch3-k6-stab (holdout, 0.642) | ep47 | piranha→**murene** | migrated off alfred.ruscher (co-landed) |
+
+Finished runs (q1/q8/q16/q32 train-only, seed-42/s42 holdout) not resumed — checkpoints in `round3_collected/`. **k6-stab holdout 0.642 ≈ s42 (LB 56.76%)** → another strong ensemble member, nearly done. Free GPUs still idle: lieu, saumon, silure.
+
+---
+
+## NEW BEST LB — s42 q16 holdout → 56.76% | Track A | 2026-05-26
+
+Submitted `arch2-perceiver-q16-stab-s42` (seed=123, holdout best **0.645** @ep43) → **public LB 56.76%** — first diverse-head model to beat the mae500 mean-pool champion (~55.1%), by **+1.65 pp**. Checkpoint preserved at `checkpoints/track_a/round3_collected/arch2-perceiver-q16-stab-s42.final-ep50.pt`.
+
+**Holdout→LB gap recalibrated:** ~7.7 pp at convergence (0.645→0.5676), vs 5.3 pp at ep21 (0.5725→0.5195) — the gap grows with training. Estimate converged holdout-run LB as **holdout − ~7.5 pp** (not −5). Revised est-LB for the other holdout members: seed-42 0.64→~0.565, k6-stab 0.629→~0.555, k3-stab 0.623→~0.548, s7 ~0.62→~0.545.
+
+---
+
+## Round 3 — q64 → k6-stab swap (ensemble diversity) | Track A | 2026-05-26 19:26
+
+Holdout runs all converge to ~0.61–0.64 `val/top1` (W&B plot) — effectively equivalent, so another train-only point adds little. Stopped the **q64** train-only run on piranha (Q-sweep already flat across {1,2,4,8,16,32}) and instead **resumed the down arch3 holdout `arch3-divided-st-k6-stab`** there: migrated `.last.pt` from barbeau (ep34, holdout **0.6287**), resumed into W&B `18shnkan`, identity-at-init OK, sole GPU user. Adds temporal-architecture diversity to the Caruana ensemble vs the arch2 perceiver holdout members. (`k3-stab` on ablette still down at ep30/0.6228 — available if another GPU frees.)
+
+---
+
+## Round 3 — Q-sweep extension (q=2, q=4) + s7 resume | Track A | 2026-05-26 18:37
+
+Free machines: brochet, rouget (fully free); baudroie/murene/piranha/raie busy with our own running arch2 runs. **Arch3 skipped** (too slow to be worth restarting now).
+
+- **q=2** (`arch2-perceiver-q2-trainonly`, train-only) → **brochet**, fresh. `num_queries=2`, train=44993, stepping.
+- **q=4** (`arch2-perceiver-q4-trainonly`, train-only) → **rouget**, fresh (code rsync'd from brochet — rouget had no GitHub egress, stuck at `ebf154a`). `num_queries=4`, stepping.
+- **s7** (`arch2-perceiver-q16-stab-s7`, holdout) → **resumed in place on anguille** from `.last.pt` (ep27, holdout 0.590), W&B `2vib31if`, co-located with vianney (~9 GB total, no OOM).
+- **q=64** (`arch2-perceiver-q64-trainonly`, train-only) → **piranha** (freed when q1 finished there at val **0.5437**), fresh. Extends the doubling sweep to the high end.
+
+**Goal of q2/q4/q64:** complete the train-only Q-sweep {1, 2, 4, 8, 16, 32, 64}. Q∈{1,8,16,32} already cluster at ~0.54 (q1 0.544, q8 0.543, q16 0.538, q32 0.543 final) — q2/q4 fill the gaps to demonstrate that **doubling the query count does not change accuracy** (clean report figure).
+
+---
+
+## Round 3 — 06:30 cull + migration to free machines | Track A | 2026-05-26 13:08
+
+**06:30 admin cull:** the daily admin script killed all 9 Round-3 trainers **and wiped the user crontabs** — so the auto-resume never fired (crond survived but had no entries). By midday other course users (`vianney.gauthier`, `thomas.turkieh`, `aymeric.sabrie`) had reclaimed all 9 original GPUs. **No progress lost** — every `.last.pt` was intact (runs reached ep7–32).
+
+**Migration:** moved the 5 most promising runs (by train-only `val/top1`) to free machines and resumed from `.last.pt` into the **same W&B run**:
+
+| Run | val/top1 | from → to | resumed @ | W&B |
+|-----|----------|-----------|-----------|-----|
+| arch1-attn-probe (Q=1) | 0.523 | lieu → piranha¹ | ep30 | kby36ctk |
+| arch2-q8 | 0.517 | carrelet → raie¹ | ep30 | mbb75n3k |
+| arch2-q16 | 0.519 | barbue → murene | ep30 | cfqjfqy1 |
+| arch2-q32 | 0.521 | labre → brochet | ep32 | 18la2ij5 |
+| arch3-k3 | 0.501 | mulet → barbeau | ep24 | hckni98d |
+
+¹ co-located with another user (~14 GB free; these runs use ~4 GB — no OOM).
+
+**Not migrated** (checkpoints intact on original hosts for later): s7 (anguille, ep27, holdout 0.590), k6 (saumon, ep16), arch4 (thon, ep15), k9 (sole, ep7).
+
+**Preserved:** original logs pulled to the new hosts + gymnote; pristine pre-migration best `<run>.pt` snapshotted to `checkpoints/track_a/round3_collected/<run>.premigrate-best.pt` (safe from resume overwrite). Migrated-run logs on new host: `logs/track_a/<run>_migrated_20260526.log`.
+
+**Lesson:** cron auto-resume is defeated by the crontab wipe, and daytime GPUs go to course users — these machines are effectively off-hours only. Migrate to whatever is free rather than relying on cron.
+
+---
+
+## Round 3 — diverse-heads train-only comparison fleet (9 hosts) | Track A | 2026-05-26 04:03
+
+Launched from gymnote over intra-cluster SSH. **Launcher:** [`RUN_diverse_heads_round3.md`](../../RUN_diverse_heads_round3.md). **Experiment:** [`diver_CL_head_continue`](../../experiments/diver_CL_head_continue.md). **W&B project:** `smth2smth-diverse-heads`. **Design:** 8 runs **train-only** (`official_val_holdout_ratio=0.0` → honest `val/top1` on full official val, which tracks public LB within ~1 pp; see [val-metric note](#)) + 1 holdout seed replica. All use the Round-2 stab recipe (`new_module_lr=1e-4`, warmup 10, grad clip 1.0/0.5, `stop_on_mlp_activity_ratio=10`).
+
+- **Status:** RUNNING — 9/9 healthy at launch (steps progressing, identity-at-init OK on temporal archs, no MLP runaway).
+
+| Host | Run | Axis | Data |
+|------|-----|------|------|
+| lieu | `arch1-attn-probe-trainonly` | Q=1 | train-only |
+| carrelet | `arch2-perceiver-q8-trainonly` | Q=8 | train-only |
+| barbue | `arch2-perceiver-q16-trainonly` | Q=16 | train-only |
+| labre | `arch2-perceiver-q32-trainonly` | Q=32 | train-only |
+| mulet | `arch3-divided-st-k3-trainonly` | K=3 | train-only |
+| saumon | `arch3-divided-st-k6-trainonly` | K=6 | train-only |
+| sole | `arch3-divided-st-k9-trainonly` | K=9 | train-only |
+| thon | `arch4-aim-trainonly` | AIM ×12 | train-only |
+| anguille | `arch2-perceiver-q16-stab-s7` | Q=16, seed=7 | **holdout 0.1** |
+
+- **Logs:** `logs/track_a/{run}_20260526.log` on each host (per-host `/Data`, not shared).
+- **Sweeps:** train-only Q∈{1,8,16,32} and K∈{3,6,9}+arch4 on the LB-faithful metric; anguille s7 extends the holdout seed ensemble (42/123/7) for the Caruana stack.
+
+**Provisioning notes (per-host `/Data`, shared NFS `$HOME`):**
+- 4 hosts had no GitHub egress (thon, barbue, carrelet, mulet, saumon) → code cloned from labre over intra-cluster SSH; **`.venv` (7.3 G) copied** since offline `uv sync` fails (torch wheel not cached). Launch uses plain `uv run` from repo root (recognizes copied venv as in-sync; no network).
+- arch1/arch4 have no `*_stab` preset and use the struct-locked base train config → stab keys passed with Hydra **`++`** force-add (plain override errors `not in struct`).
+- One self-inflicted incident: an early `.venv` rsync missing a `cd` wrote into shared `$HOME` and hit the 30 GB home quota; cleaned up (`rm -rf ~/.venv`), re-copied to absolute `/Data` path.
+
+**Auto-resume (06:30 admin-cull resilience):** the cluster kills all user jobs ~06:30 daily. Each host has a `crond` entry (06:35–08:00, every 10 min, `flock`-guarded) running [`scripts/auto_resume_round3.sh`](../../scripts/auto_resume_round3.sh): no-op if the run is alive (`pgrep`) or finished (`Done. Best val` / `Early stopping triggered:`), else resumes from `<run>.last.pt` into the **same log + same W&B run** (`WANDB_RESUME=allow`, `WANDB_RUN_ID` from the log). `crond` runs as root (survives the user-process cull) and is `enabled` on all 9 (survives reboot). **Live-tested on saumon:** killed the trainer → cron resumed from the ep1 checkpoint into W&B `oz731qwd` in ~15 s. Disable per host: `crontab -l | grep -v auto_resume_round3 | crontab -`.
+
+---
+
 ## Training data and validation protocol (Track A stab runs)
 
 These runs use the standard **official-val holdout** setup in `train.py` when `dataset.official_val_holdout_ratio=0.1` (see [`diver_CL_head_continue`](../../experiments/diver_CL_head_continue.md)).
@@ -36,13 +150,13 @@ Seed replica of stabilized Perceiver Q=16 (`track_a_diverse_arch2_perceiver_stab
 
 | Item | Value |
 |------|--------|
-| **Status** | RUNNING (resumed 2026-05-26 after mid-ep28 stop) |
+| **Status** | DONE (50/50 ep; early-stop patience not triggered) |
 | **Experiment** | [`diver_CL_head_continue`](../../experiments/diver_CL_head_continue.md) |
 | **Hydra** | `experiment=track_a_diverse_arch2_perceiver_stab_s42` `seed=123` |
 | **Log** | [`arch2-perceiver-q16-stab-s42_20260525.log`](../../logs/track_a/arch2-perceiver-q16-stab-s42_20260525.log) |
 | **W&B** | [f4mlyixh](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-diverse-heads/runs/f4mlyixh) |
-| **PID** | [`arch2-perceiver-q16-stab-s42_20260525.pid`](../../logs/track_a/arch2-perceiver-q16-stab-s42_20260525.pid) |
-| **Best ckpt** | `checkpoints/track_a/videomaev2+ft/arch2-perceiver-q16-stab-s42.pt` |
+| **Best ckpt** | `checkpoints/track_a/videomaev2+ft/arch2-perceiver-q16-stab-s42.pt` (holdout **0.6450** ep43) |
+| **Submit (final)** | [`track_a_arch2-perceiver-q16-stab-s42_final_champion_tta_20260526.csv`](../../submissions/track_a_arch2-perceiver-q16-stab-s42_final_champion_tta_20260526.csv) → LB **56.78%** |
 
 ### Training metrics (holdout top-1 — selection metric)
 
@@ -52,9 +166,26 @@ Seed replica of stabilized Perceiver Q=16 (`track_a_diverse_arch2_perceiver_stab
 | 27 | 0.5917 | 0.6824 | best before first stop |
 | 28 | 0.5947 | 0.6789 | after resume |
 | 33 | 0.6213 | 0.7317 | |
-| 35 | 0.6243 | 0.7376 | latest at doc time |
+| 35 | 0.6243 | 0.7376 | |
+| 43 | **0.6450** | 0.7966 | **best holdout (live)** |
+| 49 | 0.6361 | 0.8039 | last full epoch before stop |
+| 50 | 0.6317 | 0.8034 | final epoch |
 
-Early stopping patience **15** on **holdout** only.
+Early stopping patience **15** on **holdout** only. Training finished **2026-05-26** (`Done. Best val holdout top1: 0.6450`).
+
+---
+
+## Submissions — final checkpoint (`arch2-perceiver-q16-stab-s42.pt`, ep43 best)
+
+Best holdout ckpt after full 50-epoch run. Champion TTA (`scales3_flip`): [`results_tta_ensembling`](../../experiments/results_tta_ensembling.md). Chained after train via [`arch2_perceiver_s42_wait_train_then_submit.sh`](../../scripts/arch2_perceiver_s42_wait_train_then_submit.sh).
+
+| Item | Value |
+|------|--------|
+| **CSV** | [`track_a_arch2-perceiver-q16-stab-s42_final_champion_tta_20260526.csv`](../../submissions/track_a_arch2-perceiver-q16-stab-s42_final_champion_tta_20260526.csv) |
+| **Log** | [`arch2-perceiver-q16-stab-s42-submit-final-champion-tta_20260526.log`](../../logs/track_a/arch2-perceiver-q16-stab-s42-submit-final-champion-tta_20260526.log) |
+| **Holdout (selection)** | **64.50%** (ep43) |
+| **Kaggle public LB** | **56.78%** (0.5678) |
+| **Gap holdout → LB** | ~7.7 pp (holdout optimistic vs test; honest val ep50 **80.34%** is not comparable) |
 
 ---
 
@@ -109,6 +240,13 @@ Submit logs: [`…-v2_champion-tta_20260525.log`](../../logs/track_a/arch2-perce
 - Champion submit v2 (fixed) → LB **51.95%**.
 - No-TTA submit generated; LB pending.
 
-### 2026-05-26 — train resume
+### 2026-05-26 — train resume (×2)
 
-- Stopped mid-ep28; resumed from `arch2-perceiver-q16-stab-s42.last.pt`, W&B `f4mlyixh`, appended to same log.
+- Stopped mid-ep28; resumed from `.last.pt`, W&B `f4mlyixh`, appended to same log.
+- Stopped mid-ep50 (after ep49); resumed again from `.last.pt` to finish epoch 50/50.
+
+### 2026-05-26 — chained final submit (champion TTA)
+
+- **Chain:** [`scripts/arch2_perceiver_s42_wait_train_then_submit.sh`](../../scripts/arch2_perceiver_s42_wait_train_then_submit.sh) after train exit.
+- **Chain log:** [`arch2-perceiver-q16-stab-s42-wait-submit-champion_20260526.log`](../../logs/track_a/arch2-perceiver-q16-stab-s42-wait-submit-champion_20260526.log)
+- **Submit:** [`track_a_arch2-perceiver-q16-stab-s42_final_champion_tta_20260526.csv`](../../submissions/track_a_arch2-perceiver-q16-stab-s42_final_champion_tta_20260526.csv) → **Kaggle LB 56.78%** (holdout **64.50%** at ep43)

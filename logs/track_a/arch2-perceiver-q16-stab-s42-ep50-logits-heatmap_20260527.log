@@ -1,0 +1,13 @@
+# run: arch2-perceiver-q16-stab-s42-ep50-logits-heatmap
+# started: 2026-05-27T00:48:43+02:00
+# track: a
+# experiment_doc: (viz — checkpoint infer)
+# hydra: n/a
+# checkpoint: checkpoints/track_a/round3_collected/arch2-perceiver-q16-stab-s42.final-ep50.pt
+env: ‘uv’: No such file or directory
+
+# retry started: 2026-05-27T00:49:41+02:00
+[submit] masking 1 never-trained class index/indices: [27]
+[save] logits (6913, 33) -> /Data/romain.poggi/smth2smth/outputs/logits_heatmap/arch2-perceiver-q16-stab-s42.final-ep50_test_champion.npy
+[plot] (6913, 33) -> scaled (6913, 33) -> /Data/romain.poggi/smth2smth/report/figures/submission_logits_heatmap/arch2-perceiver-q16-stab-s42.final-ep50_heatmap.png
+[plot] also wrote /Data/romain.poggi/smth2smth/report/figures/submission_logits_heatmap/arch2-perceiver-q16-stab-s42.final-ep50_heatmap.pdf

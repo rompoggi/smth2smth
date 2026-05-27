@@ -1,0 +1,30 @@
+Local variant clips: 6992  |  extras: 11242
+/Data/romain.poggi/smth2smth/scripts/analyze_variant_class_confusion.py:276: UserWarning: 'where' used without 'out', expect unitialized memory in output. If this is intentional, use out=None.
+  norm = np.divide(cm, rs, where=rs > 0)
+/Data/romain.poggi/smth2smth/scripts/analyze_variant_class_confusion.py:116: UserWarning: 'where' used without 'out', expect unitialized memory in output. If this is intentional, use out=None.
+  display = np.divide(cm, row_sums, where=row_sums > 0)
+/Data/romain.poggi/smth2smth/scripts/analyze_variant_class_confusion.py:116: UserWarning: 'where' used without 'out', expect unitialized memory in output. If this is intentional, use out=None.
+  display = np.divide(cm, row_sums, where=row_sums > 0)
+
+4-class top1  local=0.7755  extras=0.4032
+JS divergence (row-recall 4×4): 0.0168  (0=identical, >0.1=quite different)
+
+Per-class:
+  05 local 74.2% (n=1656)  extras 34.1% (n=6291)
+  12 local 82.8% (n=1151)  extras 84.1% (n=289)
+  24 local 67.9% (n=1747)  extras 35.5% (n=400)
+  29 local 84.2% (n=2438)  extras 47.0% (n=4262)
+
+Extras by SSv2 template (top1):
+  005_Holding_ | Holding sth in front of sth [variant]: n=2020 acc=51.5%
+  005_Holding_ | Holding sth next to sth [variant]: n=1614 acc=21.1%
+  005_Holding_ | Holding sth over sth [variant]: n=1514 acc=30.2%
+  005_Holding_ | Holding sth behind sth [variant]: n=1143 acc=26.7%
+  012_Pouring_ | Pouring sth into sth until it overflows [variant]: n=289 acc=84.1%
+  024_Putting_ | Putting sth onto [something else that cannot support it… [variant]: n=400 acc=35.5%
+  029_Throwing | Throwing sth against sth [variant]: n=1352 acc=49.6%
+  029_Throwing | Throwing sth in the air and catching it [variant]: n=1052 acc=31.5%
+  029_Throwing | Throwing sth onto a surface [variant]: n=957 acc=56.5%
+  029_Throwing | Throwing sth in the air and letting it fall [variant]: n=901 acc=51.4%
+
+Wrote figures and /Data/romain.poggi/smth2smth/outputs/ssv2_extended/variant_class_cm/variant_class_confusion_report.json

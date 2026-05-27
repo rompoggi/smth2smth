@@ -4,6 +4,42 @@ Machine-local experiment log. Other hosts/users have their own files under `repo
 
 ---
 
+## SSv2 full extract + prune + overlap plot | Track B | 2026-05-27 03:20
+
+- **Status:** DONE
+- **Run:** ssv2-full-extract
+- **Experiment:** [`track_b_round1`](../../track_b_round1.md) — (no dedicated experiments/*.md)
+- **Hydra:** n/a (data prep)
+- **Log:** [`ssv2_full_extract_20260527.log`](../../logs/track_b/ssv2_full_extract_20260527.log), [`ssv2_prune_full_20260527.log`](../../logs/track_b/ssv2_prune_full_20260527.log)
+- **Ckpt:** `data/ssv2/raw/20bn-something-something-v2/*.webm` (62_981 pruned)
+- **Metrics:** local 51_739/51_739 on disk; +11_242 SSv2 extras; plot `report/figures/ssv2_extended_class_distribution_full.pdf`
+
+---
+
+## SSv2 part-01 download (split 2/2, ~9.4 GB) | Track B | 2026-05-27 02:55
+
+- **Status:** DONE
+- **Run:** ssv2-part01
+- **Experiment:** [`track_b_round1`](../../track_b_round1.md) — (no dedicated experiments/*.md)
+- **Hydra:** n/a (data prep)
+- **Log:** [`ssv2_part01_download_20260527.log`](../../logs/track_b/ssv2_part01_download_20260527.log)
+- **Ckpt:** `data/ssv2/raw/archives/20bn-something-something-v2-01` (9_444_975_475 B)
+- **Metrics:** download complete; fed full `cat 00 01 | tar` extract
+
+---
+
+## SSv2 part-00 download (split 1/2, 10 GB) | Track B | 2026-05-27 02:17
+
+- **Status:** DONE
+- **Run:** ssv2-part00
+- **Experiment:** [`track_b_round1`](../../track_b_round1.md) — (no dedicated experiments/*.md)
+- **Hydra:** n/a (data prep)
+- **Log:** [`ssv2_part00_download_20260527.log`](../../logs/track_b/ssv2_part00_download_20260527.log)
+- **Ckpt:** `data/ssv2/raw/archives/20bn-something-something-v2-00` (10_000_000_000 B)
+- **Metrics:** part 00 complete; `gzip -t` on part alone fails by design (split TGZ); need part 01 + `cat …-00 …-01 | tar -xzf -`
+
+---
+
 ## mae150-ft-f4 official SSv2 FT (ep150, T=4) | Track A | 2026-05-25 01:50
 
 - **Status:** RUNNING

@@ -1,0 +1,13 @@
+# @package _global_
+# Exp 1 — Meta probe LR grid (5e-3), LoRA LR = probe/10.
+defaults:
+  - track_b_r1_data
+  - track_b_vjepa2_hfclf_16f_lora_r16
+
+training:
+  lr: 0.005
+  lora_lr: 0.0005
+  warmup_epochs: 0
+  val_eval_tta: false
+  checkpoint_path: checkpoints/track_b/r1_b01_hf_lr5e3.pt
+  wandb_name: r1_b01_hf_lr5e3

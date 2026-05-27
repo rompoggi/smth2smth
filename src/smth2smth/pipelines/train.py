@@ -642,11 +642,27 @@ def run(cfg: DictConfig) -> Path | None:
                     "[data] official_val_holdout_ratio>0: ignoring "
                     "include_val_in_train (holdout split adds val to train)."
                 )
-            val_for_train, val_samples = split_train_val_stratified(
-                val_samples_all,
-                val_ratio=val_holdout_ratio,
-                seed=int(cfg.dataset.seed),
-            )
+            holdout_manifest = cfg.dataset.get("holdout_manifest")
+            if holdout_manifest:
+                from smth2smth.ensemble.holdout import apply_holdout_manifest
+
+                manifest_path = Path(str(holdout_manifest)).resolve()
+                val_for_train, val_samples = apply_holdout_manifest(
+                    val_samples_all, manifest_path
+                )
+                print(
+                    f"[data] holdout_manifest={manifest_path} "
+                    f"(frozen split; ignores dataset.seed for holdout)"
+                )
+            else:
+                split_seed = int(
+                    cfg.dataset.get("official_val_holdout_split_seed", cfg.dataset.seed)
+                )
+                val_for_train, val_samples = split_train_val_stratified(
+                    val_samples_all,
+                    val_ratio=val_holdout_ratio,
+                    seed=split_seed,
+                )
             train_samples.extend(val_for_train)
             train_sources += (
                 f" + val_dir={len(val_for_train)} "

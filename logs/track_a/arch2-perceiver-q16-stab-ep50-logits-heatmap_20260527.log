@@ -1,0 +1,7 @@
+# run: arch2-perceiver-q16-stab-ep50-logits-heatmap
+# started: 2026-05-27T00:57:27+02:00
+# sort-rows: none
+[submit] masking 1 never-trained class index/indices: [27]
+[save] logits (6913, 33) -> /Data/romain.poggi/smth2smth/outputs/logits_heatmap/arch2-perceiver-q16-stab.final-ep50_test_champion.npy
+[plot] (6913, 33) -> scaled (6913, 33) -> /Data/romain.poggi/smth2smth/report/figures/submission_logits_heatmap/arch2-perceiver-q16-stab.final-ep50_heatmap.png
+[plot] also wrote /Data/romain.poggi/smth2smth/report/figures/submission_logits_heatmap/arch2-perceiver-q16-stab.final-ep50_heatmap.pdf

@@ -33,6 +33,11 @@ dataset:
   # class: ``(1 - ratio)`` joins ``train_dir`` for training, ``ratio`` is the
   # honest holdout for validation metrics. Ignores ``include_val_in_train``.
   official_val_holdout_ratio: 0.0
+  # When set, ``train.py`` uses this JSON instead of re-splitting val each run.
+  # Build with ``scripts/build_holdout_clean.py`` (seed 42, 15% stratified).
+  holdout_manifest: null
+  # Used only when ``holdout_manifest`` is null and ``official_val_holdout_ratio`` > 0.
+  official_val_holdout_split_seed: 42
   seed: ${seed}
   # Open-world (Track B) extra training data. When ``use_extra`` is true, every
   # clip under ``train_extra_dir`` is appended to the *training* set only (never

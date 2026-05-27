@@ -1,0 +1,17 @@
+# @package _global_
+# Exp 5 / 8 — DoRA r=16 + MLP LoRA targets on HF Meta pooler (E5b).
+defaults:
+  - track_b_r1_data
+  - track_b_vjepa2_hfclf_16f_lora_r16
+
+model:
+  lora_target_modules: ["query", "key", "value", "proj", "fc1", "fc2"]
+  dora_enabled: true
+
+training:
+  lr: 0.0001
+  lora_lr: 0.00001
+  warmup_epochs: 0
+  val_eval_tta: false
+  checkpoint_path: checkpoints/track_b/r1_b12_hf_dora_mlp.pt
+  wandb_name: r1_b12_hf_dora_mlp

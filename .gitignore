@@ -34,7 +34,8 @@ Thumbs.db
 !.env.example
 
 # --- Data (large; not versioned) ---
-/data/
+/data/*
+!data/holdout_clean.json
 processed_data/
 **/processed_data/
 
