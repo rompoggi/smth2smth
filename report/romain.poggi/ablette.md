@@ -4,17 +4,58 @@ Machine-local experiment log. Other hosts/users have their own files under `repo
 
 ---
 
-## V-JEPA2 16f val90 holdout clf FT (Run 9) | Track B | 2026-05-25 03:03
+## arch3-divided-st-k3-stab Round 2 diverse-heads | Track A | 2026-05-25 17:10
 
-- **Status:** RUNNING
+- **Status:** RUNNING (resumed VM stop 2026-05-26)
+- **Run:** arch3-divided-st-k3-stab
+- **Experiment:** [`diver_CL_head_continue`](../../experiments/diver_CL_head_continue.md)
+- **Hydra:** `experiment=track_a_diverse_arch3_divided_st_k3_stab` · `training.resume_from=…/arch3-divided-st-k3-stab.last.pt`
+- **Log:** [`arch3-divided-st-k3-stab_20260525.log`](../../logs/track_a/arch3-divided-st-k3-stab_20260525.log)
+- **W&B:** [run](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-diverse-heads/runs/76973glj) (`WANDB_RESUME=allow`, same run id)
+- **PID:** [`arch3-divided-st-k3-stab_20260525.pid`](../../logs/track_a/arch3-divided-st-k3-stab_20260525.pid)
+- **Ckpt:** `checkpoints/track_a/videomaev2+ft/arch3-divided-st-k3-stab.pt`
+- **Metrics:** best holdout val top1=**0.5207** (ep12); resumed ep12/50; step logging OK @25
+
+---
+
+## arch3-divided-st-k9 diverse-heads FT (ep500 SSL, T=4) | Track A | 2026-05-25 06:42
+
+- **Status:** STOPPED (GPU freed for Round 2 k3-stab)
+- **Run:** arch3-divided-st-k9
+- **Experiment:** [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+- **Hydra:** `experiment=track_a_diverse_arch3_divided_st` · `model.temporal_layers=9` · `training.resume_from=…/arch3-divided-st-k9.last.pt`
+- **Log:** [`arch3-divided-st-k9_20260525.log`](../../logs/track_a/arch3-divided-st-k9_20260525.log)
+- **W&B:** [run](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-diverse-heads/runs/3zhm3b1n) (`WANDB_RESUME=allow`, same run id)
+- **PID:** [`arch3-divided-st-k9_20260525.pid`](../../logs/track_a/arch3-divided-st-k9_20260525.pid)
+- **Ckpt:** `checkpoints/track_a/videomaev2+ft/arch3-divided-st-k9.pt`
+- **Metrics:** best val top1=**0.2909** (ep2) before stop; resumed ep2/50, step logging OK @25
+
+---
+
+## Run 9 holdout submit (champion 3-scale TTA, no flip) | Track B | 2026-05-25 03:03
+
+- **Status:** DONE
+- **Run:** run-9-holdout-submit-champion
+- **Experiment:** [`results_tta_ensembling`](../../experiments/results_tta_ensembling.md) (champion `scales3`; flip off for Track B direction)
+- **Hydra:** `experiment=track_b_vjepa2_hfclf_16f_lora_r16` · `training.tta_scales=[0.857,1.0,1.143]` · `training.tta_flip=false`
+- **Log:** [`track_b_vjepa2_hfclf_16f_lora_r16_val90_holdout_clf_submit_20260525_champion_tta.log`](../../logs/track_b/track_b_vjepa2_hfclf_16f_lora_r16_val90_holdout_clf_submit_20260525_champion_tta.log)
+- **Ckpt:** `checkpoints/track_b/vitl_fpc16ssv2_16f_lora_r16_val90_holdout_clf.pt`
+- **Submit:** `submissions/track_b_vjepa2_hfclf_16f_lora_r16_val90_holdout_clf_20260525_champion_tta.csv` → **public LB 53.28%**
+- **Note:** Holdout FT val top1 was **75.00%** on the same checkpoint — large LB gap vs val.
+- **Hypothesis (romain):** The Track-A **champion TTA** recipe (multi-scale + horizontal flip in [`results_tta_ensembling`](../../experiments/results_tta_ensembling.md)) is tuned for **VideoMAE** and likely **hurts V-JEPA**; the **official SSv2 / V-JEPA test recipe** is dense **2×3 crops without horizontal flip**, not 3-scale softmax averaging (and not h-flip). This submit turned flip off but still used VideoMAE champion scales — LB **53.28%** supports trying **no multi-scale TTA** or **official 2×3 no-flip** on the next V-JEPA submit instead of importing the champion pipeline.
+
+---
+
+## V-JEPA2 16f val90 holdout clf FT (Run 9) | Track B | 2026-05-25 04:04
+
+- **Status:** DONE
 - **Run:** run-9-holdout-ft
 - **Experiment:** [`track_b_next_steps`](../../experiments/track_b_next_steps.md)
-- **Hydra:** `experiment=track_b_vjepa2_hfclf_16f_lora_r16_val90_holdout_clf` · `RESUME=1` from `vitl_fpc16ssv2_16f_lora_r16_val90_holdout_clf.last.pt`
+- **Hydra:** `experiment=track_b_vjepa2_hfclf_16f_lora_r16_val90_holdout_clf` · `RESUME=1` from `.last.pt` after VM restart
 - **Log:** [`track_b_vjepa2_hfclf_16f_lora_r16_val90_holdout_clf_20260524_val90clf.log`](../../logs/track_b/track_b_vjepa2_hfclf_16f_lora_r16_val90_holdout_clf_20260524_val90clf.log)
-- **W&B:** [run](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-track-b/runs/ml4x36cd) (resume segment; prior segments `kitoj513`, `n2oem28s`)
-- **PID:** [`track_b_vjepa2_hfclf_16f_lora_r16_val90_holdout_clf_20260524_val90clf.pid`](../../logs/track_b/track_b_vjepa2_hfclf_16f_lora_r16_val90_holdout_clf_20260524_val90clf.pid)
-- **Ckpt:** `checkpoints/track_b/vitl_fpc16ssv2_16f_lora_r16_val90_holdout_clf.pt` (best)
-- **Metrics:** best holdout val top1=**0.7500** (ep8); ep9 train in progress (~step 10000/12766); VM restart 2026-05-25 resumed ep7+ from `.last.pt` (ep6 done; crashed mid-ep7 step ~10725)
+- **W&B:** [run](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-track-b/runs/ml4x36cd)
+- **Ckpt:** `checkpoints/track_b/vitl_fpc16ssv2_16f_lora_r16_val90_holdout_clf.pt`
+- **Metrics:** best holdout val top1=**0.7500** (ep8); final ep10 val top1=0.7485
 
 ---
 

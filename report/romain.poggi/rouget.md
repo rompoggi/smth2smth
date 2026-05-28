@@ -4,51 +4,43 @@ Machine-local experiment log. Other hosts/users have their own files under `repo
 
 ---
 
-## SSv2 full extract + prune + overlap plot | Track B | 2026-05-27 03:20
-
-- **Status:** DONE
-- **Run:** ssv2-full-extract
-- **Experiment:** [`track_b_round1`](../../track_b_round1.md) — (no dedicated experiments/*.md)
-- **Hydra:** n/a (data prep)
-- **Log:** [`ssv2_full_extract_20260527.log`](../../logs/track_b/ssv2_full_extract_20260527.log), [`ssv2_prune_full_20260527.log`](../../logs/track_b/ssv2_prune_full_20260527.log)
-- **Ckpt:** `data/ssv2/raw/20bn-something-something-v2/*.webm` (62_981 pruned)
-- **Metrics:** local 51_739/51_739 on disk; +11_242 SSv2 extras; plot `report/figures/ssv2_extended_class_distribution_full.pdf`
-
----
-
-## SSv2 part-01 download (split 2/2, ~9.4 GB) | Track B | 2026-05-27 02:55
-
-- **Status:** DONE
-- **Run:** ssv2-part01
-- **Experiment:** [`track_b_round1`](../../track_b_round1.md) — (no dedicated experiments/*.md)
-- **Hydra:** n/a (data prep)
-- **Log:** [`ssv2_part01_download_20260527.log`](../../logs/track_b/ssv2_part01_download_20260527.log)
-- **Ckpt:** `data/ssv2/raw/archives/20bn-something-something-v2-01` (9_444_975_475 B)
-- **Metrics:** download complete; fed full `cat 00 01 | tar` extract
-
----
-
-## SSv2 part-00 download (split 1/2, 10 GB) | Track B | 2026-05-27 02:17
-
-- **Status:** DONE
-- **Run:** ssv2-part00
-- **Experiment:** [`track_b_round1`](../../track_b_round1.md) — (no dedicated experiments/*.md)
-- **Hydra:** n/a (data prep)
-- **Log:** [`ssv2_part00_download_20260527.log`](../../logs/track_b/ssv2_part00_download_20260527.log)
-- **Ckpt:** `data/ssv2/raw/archives/20bn-something-something-v2-00` (10_000_000_000 B)
-- **Metrics:** part 00 complete; `gzip -t` on part alone fails by design (split TGZ); need part 01 + `cat …-00 …-01 | tar -xzf -`
-
----
-
-## mae150-ft-f4 official SSv2 FT (ep150, T=4) | Track A | 2026-05-25 01:50
+## mae150-ft-f4 resume (VM interrupt ep28) | Track A | 2026-05-26 00:42
 
 - **Status:** RUNNING
 - **Run:** mae150-ft-f4
 - **Experiment:** [`new_ideas_tracka`](../../experiments/new_ideas_tracka.md)
 - **Hydra:** `experiment=track_a_videomae_official_ssv2_ft`
-- **Log:** `logs/mae150-ft-f4_20260525.log` · **PID:** `logs/mae150-ft-f4_20260525.pid`
-- **Ckpt:** `checkpoints/track_a/videomaev2+ft/mae150-ft-f4.pt` (target)
-- **Metrics:** ep1 in progress; SSL ep150; eff. bs=64, E=50
+- **Log:** [`mae150-ft-f4_20260525.log`](../../logs/track_a/mae150-ft-f4_20260525.log)
+- **W&B:** [mae150-ft-f4](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/tiaanksc) (resumed `tiaanksc`)
+- **PID:** [`mae150-ft-f4_20260525.pid`](../../logs/track_a/mae150-ft-f4_20260525.pid) · trainer **1827638**
+- **Ckpt:** resume `mae150-ft-f4.last.pt` (ep27) → best val top1=**0.4804**
+- **Metrics:** interrupted ep28 ~step 2400/5625; resumed ep28 from last.pt; step logging OK @25
+
+---
+
+## mae150-ft-f4 resume (VM interrupt ep12) | Track A | 2026-05-25 16:17
+
+- **Status:** STOPPED (VM interrupt ep28)
+- **Run:** mae150-ft-f4
+- **Experiment:** [`new_ideas_tracka`](../../experiments/new_ideas_tracka.md)
+- **Hydra:** `experiment=track_a_videomae_official_ssv2_ft`
+- **Log:** [`mae150-ft-f4_20260525.log`](../../logs/track_a/mae150-ft-f4_20260525.log)
+- **W&B:** [mae150-ft-f4](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/tiaanksc)
+- **Ckpt:** through ep27 val top1=0.4804 (best); ep26 ema val top1=0.4750
+- **Metrics:** ran ep12–27 after first resume; stopped mid ep28
+
+---
+
+## mae150-ft-f4 official SSv2 FT (ep150, T=4) | Track A | 2026-05-25 01:50
+
+- **Status:** STOPPED (VM interrupt ep12)
+- **Run:** mae150-ft-f4
+- **Experiment:** [`new_ideas_tracka`](../../experiments/new_ideas_tracka.md)
+- **Hydra:** `experiment=track_a_videomae_official_ssv2_ft`
+- **Log:** [`mae150-ft-f4_20260525.log`](../../logs/track_a/mae150-ft-f4_20260525.log)
+- **W&B:** [mae150-ft-f4](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/tiaanksc)
+- **Ckpt:** `checkpoints/track_a/videomaev2+ft/mae150-ft-f4.pt`
+- **Metrics:** through ep11 val top1=0.4040; stopped mid ep12
 
 ---
 
