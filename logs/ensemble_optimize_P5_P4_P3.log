@@ -1,0 +1,6 @@
+/Data/romain.poggi/smth2smth/.venv/lib/python3.12/site-packages/numpy/_core/numeric.py:1222: RuntimeWarning: invalid value encountered in dot
+  res = dot(at, bt)
+P5            top1= 59.91%  top5= 86.83%  ce=1.4086  w={42: 4.740647466523699e-06, 43: 0.6929450587465344, 44: 0.307050200605999}
+P4            top1= 60.50%  top5= 88.17%  ce=1.3648  w={42: 4.740647466523699e-06, 43: 0.6929450587465344, 44: 0.307050200605999}
+P3            top1= 61.24%  top5= 88.02%  ce=1.3626  w={42: 1.3324236818238263e-06, 43: 0.7955061581144289, 44: 0.20449250946188927}
+[optimize] wrote /Data/romain.poggi/smth2smth/outputs/ensemble/videomaev2_3seed/ensemble_results.json

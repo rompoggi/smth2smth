@@ -1,0 +1,8 @@
+  submission_output: ${hydra:runtime.cwd}/submissions/track_b_ssv2ft_dora16_mlp_fulltrain1e_20260524.csv
+Error executing job with overrides: ['track=b', 'experiment=track_b_vjepa2_dora16_mlp_fulltrain1e']
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 64.00 MiB. GPU 0 has a total capacity of 23.54 GiB of which 16.19 MiB is free. Including non-PyTorch memory, this process has 23.39 GiB memory in use. Of the allocated memory 23.07 GiB is allocated by PyTorch, and 5.08 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)
+  submission_output: ${hydra:runtime.cwd}/submissions/track_b_ssv2ft_dora16_mlp_fulltrain1e_notta_20260524.csv
+  submission_output: ${hydra:runtime.cwd}/submissions/track_b_ssv2ft_dora16_mlp_fulltrain1e_notta_20260524.csv
+[submit] masking 1 never-trained class index/indices: [27]
+[submit] inference autocast fp16 enabled (matches training.amp).
+Wrote 6913 rows to /Data/thomas.turkieh/smth2smth/submissions/track_b_ssv2ft_dora16_mlp_fulltrain1e_notta_20260524.csv

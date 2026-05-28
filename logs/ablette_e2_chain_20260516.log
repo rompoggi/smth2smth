@@ -1,0 +1,6 @@
+nohup: ignoring input
+[2026-05-16T19:01:47+02:00] [chain] watching pretrain pid=2349254
+[2026-05-17T00:34:01+02:00] [chain] watching pretrain pid=8880 (track_a_ssl_pretrain_e2)
+[2026-05-17T02:37:02+02:00] [chain] pretrain process exited
+[2026-05-17T02:37:03+02:00] [chain] encoder ok (epoch=150); launching Phase 2 FT
+[2026-05-17T02:37:03+02:00] [chain] fine-tune launched pid=40835 log=/Data/thomas.turkieh/smth2smth/logs/ablette_e2_ft_champion_20260516.log

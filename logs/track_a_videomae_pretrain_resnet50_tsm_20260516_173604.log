@@ -1,0 +1,389 @@
+nohup: ignoring input
+model:
+  name: video_mae_resnet
+  backbone: resnet50
+  shift_div: 8
+  shift_place: blockres
+  encoder_depth: 2
+  encoder_heads: 8
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: ${hydra:runtime.cwd}/submissions/track_a.csv
+  num_frames: 8
+  val_ratio: 0.2
+  use_official_val: false
+  include_val_in_train: false
+  seed: ${seed}
+  max_samples: null
+  max_samples_per_class: null
+  image_size: 224
+  time_reversal_prob: 0.0
+  temporal_reversal_augment:
+    enabled: false
+    prob: 0.5
+  class_boosting:
+    enabled: false
+training:
+  batch_size: 8
+  lr: 0.0001
+  epochs: 5
+  num_workers: 4
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/best_model.pt
+  resume_from: null
+  lora_lr: null
+  lora_lr_ratio: 0.25
+  motion_lr: null
+  motion_lr_ratio: null
+  resume_apply_cfg_lr: false
+  amp: true
+  device: cuda
+  optimizer: adam
+  momentum: 0.9
+  nesterov: false
+  weight_decay: 0.0
+  scheduler_cosine: false
+  warmup_epochs: 0
+  min_lr: 0.0
+  label_smoothing: 0.0
+  videomix_alpha: 0.0
+  videomix_prob: 1.0
+  videomix_mode: cube_cutmix
+  early_stopping_enabled: false
+  early_stopping_patience: 10
+  early_stopping_min_delta: 0.0
+  log_interval_steps: 0
+  ema_enabled: false
+  ema_decay: 0.999
+  eval_every_n_epochs: 1
+  eval_ema: true
+  save_last_checkpoint: true
+  last_checkpoint_path: null
+  tta: true
+  tta_flip: true
+  tta_temporal_shift: 0
+  tta_scales:
+  - 0.875
+  - 1.0
+  - 1.125
+  tta_logit_adjust: 0.0
+  class_balance_sampler: none
+  class_balance_loss: none
+  class_balance_beta: 0.999
+augment:
+  name: none
+  random_horizontal_flip: false
+  random_crop: true
+  crop_padding: 32
+  color_jitter: false
+  color_jitter_brightness: 0.0
+  color_jitter_contrast: 0.0
+  color_jitter_saturation: 0.0
+  color_jitter_hue: 0.0
+  random_grayscale: false
+  random_grayscale_prob: 0.0
+  gaussian_blur: false
+  gaussian_blur_prob: 0.0
+  gaussian_blur_radius_min: 0.1
+  gaussian_blur_radius_max: 2.0
+pretrain:
+  epochs: 100
+  warmup_epochs: 5
+  batch_size: 16
+  lr: 0.00015
+  weight_decay: 0.05
+  min_lr: 0.0
+  mask_ratio: 0.75
+  norm_pix: true
+  norm_feat: true
+  drop_path_rate: 0.0
+  tube_t: 2
+  patch_size: 16
+  checkpoint_path: ${hydra:runtime.cwd}/checkpoints/track_a/videomae_encoder_resnet50_tsm_e100.pt
+  max_videos: null
+  image_size: 224
+  num_frames: 4
+  log_interval_steps: 100
+track:
+  name: a
+  description: 'Closed-world track: train from scratch.'
+num_classes: 33
+seed: 42
+
+[cuda] cache emptied (videomae-pretrain-start). Free: 23.15 / 23.54 GiB
+[videomae] scanning video folders from /Data/thomas.turkieh/smth2smth/data/train, /Data/thomas.turkieh/smth2smth/data/val, /Data/thomas.turkieh/smth2smth/data/test
+[videomae] using 58651 unlabeled clips (T=4).
+[videomae] model: video_mae_resnet (resnet50_tsm), total params=139,039,808, backbone=23,508,032
+[videomae] AMP (bfloat16) enabled.
+[videomae] epoch 1/100 step 0/3665 loss 1.2087 lr 8.19e-09
+[videomae] epoch 1/100 step 100/3665 loss 1.1101 lr 8.27e-07
+[videomae] epoch 1/100 step 200/3665 loss 0.9993 lr 1.65e-06
+[videomae] epoch 1/100 step 300/3665 loss 0.8448 lr 2.46e-06
+[videomae] epoch 1/100 step 400/3665 loss 0.7055 lr 3.28e-06
+[videomae] epoch 1/100 step 500/3665 loss 0.5176 lr 4.10e-06
+[videomae] epoch 1/100 step 600/3665 loss 0.4147 lr 4.92e-06
+[videomae] epoch 1/100 step 700/3665 loss 0.3008 lr 5.74e-06
+[videomae] epoch 1/100 step 800/3665 loss 0.1895 lr 6.56e-06
+[videomae] epoch 1/100 step 900/3665 loss 0.1716 lr 7.38e-06
+[videomae] epoch 1/100 step 1000/3665 loss 0.0757 lr 8.19e-06
+[videomae] epoch 1/100 step 1100/3665 loss 0.0483 lr 9.01e-06
+[videomae] epoch 1/100 step 1200/3665 loss 0.0274 lr 9.83e-06
+[videomae] epoch 1/100 step 1300/3665 loss 0.0316 lr 1.06e-05
+[videomae] epoch 1/100 step 1400/3665 loss 0.0137 lr 1.15e-05
+[videomae] epoch 1/100 step 1500/3665 loss 0.0167 lr 1.23e-05
+[videomae] epoch 1/100 step 1600/3665 loss 0.0101 lr 1.31e-05
+[videomae] epoch 1/100 step 1700/3665 loss 0.0104 lr 1.39e-05
+[videomae] epoch 1/100 step 1800/3665 loss 0.0133 lr 1.47e-05
+[videomae] epoch 1/100 step 1900/3665 loss 0.0091 lr 1.56e-05
+[videomae] epoch 1/100 step 2000/3665 loss 0.0086 lr 1.64e-05
+[videomae] epoch 1/100 step 2100/3665 loss 0.0033 lr 1.72e-05
+[videomae] epoch 1/100 step 2200/3665 loss 0.0021 lr 1.80e-05
+[videomae] epoch 1/100 step 2300/3665 loss 0.0014 lr 1.88e-05
+[videomae] epoch 1/100 step 2400/3665 loss 0.0021 lr 1.97e-05
+[videomae] epoch 1/100 step 2500/3665 loss 0.0007 lr 2.05e-05
+[videomae] epoch 1/100 step 2600/3665 loss 0.0007 lr 2.13e-05
+[videomae] epoch 1/100 step 2700/3665 loss 0.0008 lr 2.21e-05
+[videomae] epoch 1/100 step 2800/3665 loss 0.0004 lr 2.29e-05
+[videomae] epoch 1/100 step 2900/3665 loss 0.0007 lr 2.37e-05
+[videomae] epoch 1/100 step 3000/3665 loss 0.0002 lr 2.46e-05
+[videomae] epoch 1/100 step 3100/3665 loss 0.0002 lr 2.54e-05
+[videomae] epoch 1/100 step 3200/3665 loss 0.0006 lr 2.62e-05
+[videomae] epoch 1/100 step 3300/3665 loss 0.0004 lr 2.70e-05
+[videomae] epoch 1/100 step 3400/3665 loss 0.0002 lr 2.78e-05
+[videomae] epoch 1/100 step 3500/3665 loss 0.0001 lr 2.87e-05
+[videomae] epoch 1/100 step 3600/3665 loss 0.0001 lr 2.95e-05
+[videomae] 2026-05-16T17:46:29 epoch 1/100 avg loss 0.1656
+[videomae] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/checkpoints/track_a/videomae_encoder_resnet50_tsm_e100.pt (318 tensors)
+[videomae] epoch 2/100 step 0/3665 loss 0.0002 lr 3.00e-05
+[videomae] epoch 2/100 step 100/3665 loss 0.0001 lr 3.08e-05
+[videomae] epoch 2/100 step 200/3665 loss 0.0001 lr 3.16e-05
+[videomae] epoch 2/100 step 300/3665 loss 0.0001 lr 3.25e-05
+[videomae] epoch 2/100 step 400/3665 loss 0.0001 lr 3.33e-05
+[videomae] epoch 2/100 step 500/3665 loss 0.0001 lr 3.41e-05
+[videomae] epoch 2/100 step 600/3665 loss 0.0001 lr 3.49e-05
+[videomae] epoch 2/100 step 700/3665 loss 0.0001 lr 3.57e-05
+[videomae] epoch 2/100 step 800/3665 loss 0.0001 lr 3.66e-05
+[videomae] epoch 2/100 step 900/3665 loss 0.0001 lr 3.74e-05
+[videomae] epoch 2/100 step 1000/3665 loss 0.0001 lr 3.82e-05
+[videomae] epoch 2/100 step 1100/3665 loss 0.0001 lr 3.90e-05
+[videomae] epoch 2/100 step 1200/3665 loss 0.0001 lr 3.98e-05
+[videomae] epoch 2/100 step 1300/3665 loss 0.0002 lr 4.06e-05
+[videomae] epoch 2/100 step 1400/3665 loss 0.0001 lr 4.15e-05
+[videomae] epoch 2/100 step 1500/3665 loss 0.0001 lr 4.23e-05
+[videomae] epoch 2/100 step 1600/3665 loss 0.0001 lr 4.31e-05
+[videomae] epoch 2/100 step 1700/3665 loss 0.0001 lr 4.39e-05
+[videomae] epoch 2/100 step 1800/3665 loss 0.0001 lr 4.47e-05
+[videomae] epoch 2/100 step 1900/3665 loss 0.0001 lr 4.56e-05
+[videomae] epoch 2/100 step 2000/3665 loss 0.0001 lr 4.64e-05
+[videomae] epoch 2/100 step 2100/3665 loss 0.0002 lr 4.72e-05
+[videomae] epoch 2/100 step 2200/3665 loss 0.0001 lr 4.80e-05
+[videomae] epoch 2/100 step 2300/3665 loss 0.0000 lr 4.88e-05
+[videomae] epoch 2/100 step 2400/3665 loss 0.0001 lr 4.97e-05
+[videomae] epoch 2/100 step 2500/3665 loss 0.0001 lr 5.05e-05
+[videomae] epoch 2/100 step 2600/3665 loss 0.0001 lr 5.13e-05
+[videomae] epoch 2/100 step 2700/3665 loss 0.0001 lr 5.21e-05
+[videomae] epoch 2/100 step 2800/3665 loss 0.0001 lr 5.29e-05
+[videomae] epoch 2/100 step 2900/3665 loss 0.0001 lr 5.37e-05
+[videomae] epoch 2/100 step 3000/3665 loss 0.0001 lr 5.46e-05
+[videomae] epoch 2/100 step 3100/3665 loss 0.0000 lr 5.54e-05
+[videomae] epoch 2/100 step 3200/3665 loss 0.0001 lr 5.62e-05
+[videomae] epoch 2/100 step 3300/3665 loss 0.0001 lr 5.70e-05
+[videomae] epoch 2/100 step 3400/3665 loss 0.0001 lr 5.78e-05
+[videomae] epoch 2/100 step 3500/3665 loss 0.0001 lr 5.87e-05
+[videomae] epoch 2/100 step 3600/3665 loss 0.0000 lr 5.95e-05
+[videomae] epoch 2/100 avg loss 0.0001
+[videomae] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/checkpoints/track_a/videomae_encoder_resnet50_tsm_e100.pt (318 tensors)
+[videomae] epoch 3/100 step 0/3665 loss 0.0001 lr 6.00e-05
+[videomae] epoch 3/100 step 100/3665 loss 0.0001 lr 6.08e-05
+[videomae] epoch 3/100 step 200/3665 loss 0.0001 lr 6.16e-05
+[videomae] epoch 3/100 step 300/3665 loss 0.0001 lr 6.25e-05
+[videomae] epoch 3/100 step 400/3665 loss 0.0001 lr 6.33e-05
+[videomae] epoch 3/100 step 500/3665 loss 0.0001 lr 6.41e-05
+[videomae] epoch 3/100 step 600/3665 loss 0.0000 lr 6.49e-05
+[videomae] epoch 3/100 step 700/3665 loss 0.0001 lr 6.57e-05
+[videomae] epoch 3/100 step 800/3665 loss 0.0001 lr 6.66e-05
+[videomae] epoch 3/100 step 900/3665 loss 0.0000 lr 6.74e-05
+[videomae] epoch 3/100 step 1000/3665 loss 0.0001 lr 6.82e-05
+[videomae] epoch 3/100 step 1100/3665 loss 0.0001 lr 6.90e-05
+[videomae] epoch 3/100 step 1200/3665 loss 0.0001 lr 6.98e-05
+[videomae] epoch 3/100 step 1300/3665 loss 0.0000 lr 7.06e-05
+[videomae] epoch 3/100 step 1400/3665 loss 0.0000 lr 7.15e-05
+[videomae] epoch 3/100 step 1500/3665 loss 0.0000 lr 7.23e-05
+[videomae] epoch 3/100 step 1600/3665 loss 0.0000 lr 7.31e-05
+[videomae] epoch 3/100 step 1700/3665 loss 0.0000 lr 7.39e-05
+[videomae] epoch 3/100 step 1800/3665 loss 0.0000 lr 7.47e-05
+[videomae] epoch 3/100 step 1900/3665 loss 0.0000 lr 7.56e-05
+[videomae] epoch 3/100 step 2000/3665 loss 0.0000 lr 7.64e-05
+[videomae] epoch 3/100 step 2100/3665 loss 0.0000 lr 7.72e-05
+[videomae] epoch 3/100 step 2200/3665 loss 0.0000 lr 7.80e-05
+[videomae] epoch 3/100 step 2300/3665 loss 0.0000 lr 7.88e-05
+[videomae] epoch 3/100 step 2400/3665 loss 0.0000 lr 7.97e-05
+[videomae] epoch 3/100 step 2500/3665 loss 0.0000 lr 8.05e-05
+[videomae] epoch 3/100 step 2600/3665 loss 0.0000 lr 8.13e-05
+[videomae] epoch 3/100 step 2700/3665 loss 0.0000 lr 8.21e-05
+[videomae] epoch 3/100 step 2800/3665 loss 0.0001 lr 8.29e-05
+[videomae] epoch 3/100 step 2900/3665 loss 0.0000 lr 8.37e-05
+[videomae] epoch 3/100 step 3000/3665 loss 0.0001 lr 8.46e-05
+[videomae] epoch 3/100 step 3100/3665 loss 0.0000 lr 8.54e-05
+[videomae] epoch 3/100 step 3200/3665 loss 0.0000 lr 8.62e-05
+[videomae] epoch 3/100 step 3300/3665 loss 0.0000 lr 8.70e-05
+[videomae] epoch 3/100 step 3400/3665 loss 0.0000 lr 8.78e-05
+[videomae] epoch 3/100 step 3500/3665 loss 0.0000 lr 8.87e-05
+[videomae] epoch 3/100 step 3600/3665 loss 0.0000 lr 8.95e-05
+[videomae] epoch 3/100 avg loss 0.0001
+[videomae] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/checkpoints/track_a/videomae_encoder_resnet50_tsm_e100.pt (318 tensors)
+[videomae] epoch 4/100 step 0/3665 loss 0.0000 lr 9.00e-05
+[videomae] epoch 4/100 step 100/3665 loss 0.0000 lr 9.08e-05
+[videomae] epoch 4/100 step 200/3665 loss 0.0000 lr 9.16e-05
+[videomae] epoch 4/100 step 300/3665 loss 0.0000 lr 9.25e-05
+[videomae] epoch 4/100 step 400/3665 loss 0.0000 lr 9.33e-05
+[videomae] epoch 4/100 step 500/3665 loss 0.0000 lr 9.41e-05
+[videomae] epoch 4/100 step 600/3665 loss 0.0000 lr 9.49e-05
+[videomae] epoch 4/100 step 700/3665 loss 0.0000 lr 9.57e-05
+[videomae] epoch 4/100 step 800/3665 loss 0.0000 lr 9.66e-05
+[videomae] epoch 4/100 step 900/3665 loss 0.0000 lr 9.74e-05
+[videomae] epoch 4/100 step 1000/3665 loss 0.0000 lr 9.82e-05
+[videomae] epoch 4/100 step 1100/3665 loss 0.0000 lr 9.90e-05
+[videomae] epoch 4/100 step 1200/3665 loss 0.0000 lr 9.98e-05
+[videomae] epoch 4/100 step 1300/3665 loss 0.0000 lr 1.01e-04
+[videomae] epoch 4/100 step 1400/3665 loss 0.0000 lr 1.01e-04
+[videomae] epoch 4/100 step 1500/3665 loss 0.0000 lr 1.02e-04
+[videomae] epoch 4/100 step 1600/3665 loss 0.0000 lr 1.03e-04
+[videomae] epoch 4/100 step 1700/3665 loss 0.0000 lr 1.04e-04
+[videomae] epoch 4/100 step 1800/3665 loss 0.0000 lr 1.05e-04
+[videomae] epoch 4/100 step 1900/3665 loss 0.0000 lr 1.06e-04
+[videomae] epoch 4/100 step 2000/3665 loss 0.0000 lr 1.06e-04
+[videomae] epoch 4/100 step 2100/3665 loss 0.0000 lr 1.07e-04
+[videomae] epoch 4/100 step 2200/3665 loss 0.0000 lr 1.08e-04
+[videomae] epoch 4/100 step 2300/3665 loss 0.0000 lr 1.09e-04
+[videomae] epoch 4/100 step 2400/3665 loss 0.0000 lr 1.10e-04
+[videomae] epoch 4/100 step 2500/3665 loss 0.0000 lr 1.10e-04
+[videomae] epoch 4/100 step 2600/3665 loss 0.0000 lr 1.11e-04
+[videomae] epoch 4/100 step 2700/3665 loss 0.0000 lr 1.12e-04
+[videomae] epoch 4/100 step 2800/3665 loss 0.0000 lr 1.13e-04
+[videomae] epoch 4/100 step 2900/3665 loss 0.0000 lr 1.14e-04
+[videomae] epoch 4/100 step 3000/3665 loss 0.0000 lr 1.15e-04
+[videomae] epoch 4/100 step 3100/3665 loss 0.0000 lr 1.15e-04
+[videomae] epoch 4/100 step 3200/3665 loss 0.0000 lr 1.16e-04
+[videomae] epoch 4/100 step 3300/3665 loss 0.0000 lr 1.17e-04
+[videomae] epoch 4/100 step 3400/3665 loss 0.0000 lr 1.18e-04
+[videomae] epoch 4/100 step 3500/3665 loss 0.0001 lr 1.19e-04
+[videomae] epoch 4/100 step 3600/3665 loss 0.0000 lr 1.19e-04
+[videomae] epoch 4/100 avg loss 0.0000
+[videomae] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/checkpoints/track_a/videomae_encoder_resnet50_tsm_e100.pt (318 tensors)
+[videomae] epoch 5/100 step 0/3665 loss 0.0000 lr 1.20e-04
+[videomae] epoch 5/100 step 100/3665 loss 0.0000 lr 1.21e-04
+[videomae] epoch 5/100 step 200/3665 loss 0.0000 lr 1.22e-04
+[videomae] epoch 5/100 step 300/3665 loss 0.0000 lr 1.22e-04
+[videomae] epoch 5/100 step 400/3665 loss 0.0000 lr 1.23e-04
+[videomae] epoch 5/100 step 500/3665 loss 0.0000 lr 1.24e-04
+[videomae] epoch 5/100 step 600/3665 loss 0.0000 lr 1.25e-04
+[videomae] epoch 5/100 step 700/3665 loss 0.0001 lr 1.26e-04
+[videomae] epoch 5/100 step 800/3665 loss 0.0000 lr 1.27e-04
+[videomae] epoch 5/100 step 900/3665 loss 0.0000 lr 1.27e-04
+[videomae] epoch 5/100 step 1000/3665 loss 0.0001 lr 1.28e-04
+[videomae] epoch 5/100 step 1100/3665 loss 0.0000 lr 1.29e-04
+[videomae] epoch 5/100 step 1200/3665 loss 0.0000 lr 1.30e-04
+[videomae] epoch 5/100 step 1300/3665 loss 0.0000 lr 1.31e-04
+[videomae] epoch 5/100 step 1400/3665 loss 0.0001 lr 1.31e-04
+[videomae] epoch 5/100 step 1500/3665 loss 0.0001 lr 1.32e-04
+[videomae] epoch 5/100 step 1600/3665 loss 0.0000 lr 1.33e-04
+[videomae] epoch 5/100 step 1700/3665 loss 0.0000 lr 1.34e-04
+[videomae] epoch 5/100 step 1800/3665 loss 0.0000 lr 1.35e-04
+[videomae] epoch 5/100 step 1900/3665 loss 0.0000 lr 1.36e-04
+[videomae] epoch 5/100 step 2000/3665 loss 0.0000 lr 1.36e-04
+[videomae] epoch 5/100 step 2100/3665 loss 0.0000 lr 1.37e-04
+[videomae] epoch 5/100 step 2200/3665 loss 0.0000 lr 1.38e-04
+[videomae] epoch 5/100 step 2300/3665 loss 0.0000 lr 1.39e-04
+[videomae] epoch 5/100 step 2400/3665 loss 0.0000 lr 1.40e-04
+[videomae] epoch 5/100 step 2500/3665 loss 0.0000 lr 1.40e-04
+[videomae] epoch 5/100 step 2600/3665 loss 0.0000 lr 1.41e-04
+[videomae] epoch 5/100 step 2700/3665 loss 0.0000 lr 1.42e-04
+[videomae] epoch 5/100 step 2800/3665 loss 0.0000 lr 1.43e-04
+[videomae] epoch 5/100 step 2900/3665 loss 0.0000 lr 1.44e-04
+[videomae] epoch 5/100 step 3000/3665 loss 0.0000 lr 1.45e-04
+[videomae] epoch 5/100 step 3100/3665 loss 0.0000 lr 1.45e-04
+[videomae] epoch 5/100 step 3200/3665 loss 0.0000 lr 1.46e-04
+[videomae] epoch 5/100 step 3300/3665 loss 0.0000 lr 1.47e-04
+[videomae] epoch 5/100 step 3400/3665 loss 0.0000 lr 1.48e-04
+[videomae] epoch 5/100 step 3500/3665 loss 0.0000 lr 1.49e-04
+[videomae] epoch 5/100 step 3600/3665 loss 0.0000 lr 1.49e-04
+[videomae] epoch 5/100 avg loss 0.0000
+[videomae] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/checkpoints/track_a/videomae_encoder_resnet50_tsm_e100.pt (318 tensors)
+[videomae] epoch 6/100 step 0/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 100/3665 loss 0.0001 lr 1.50e-04
+[videomae] epoch 6/100 step 200/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 300/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 400/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 500/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 600/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 700/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 800/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 900/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 1000/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 1100/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 1200/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 1300/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 1400/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 1500/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 1600/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 1700/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 1800/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 1900/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 2000/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 2100/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 2200/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 2300/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 2400/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 2500/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 2600/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 2700/3665 loss 0.0001 lr 1.50e-04
+[videomae] epoch 6/100 step 2800/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 2900/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 3000/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 3100/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 3200/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 3300/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 3400/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 3500/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 step 3600/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 6/100 avg loss 0.0000
+[videomae] wrote trunk checkpoint -> /Data/thomas.turkieh/smth2smth/checkpoints/track_a/videomae_encoder_resnet50_tsm_e100.pt (318 tensors)
+[videomae] epoch 7/100 step 0/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 100/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 200/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 300/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 400/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 500/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 600/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 700/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 800/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 900/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 1000/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 1100/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 1200/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 1300/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 1400/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 1500/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 1600/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 1700/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 1800/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 1900/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 2000/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 2100/3665 loss 0.0001 lr 1.50e-04
+[videomae] epoch 7/100 step 2200/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 2300/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 2400/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 2500/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 2600/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 2700/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 2800/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 2900/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 3000/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 3100/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 3200/3665 loss 0.0000 lr 1.50e-04
+[videomae] epoch 7/100 step 3300/3665 loss 0.0000 lr 1.50e-04

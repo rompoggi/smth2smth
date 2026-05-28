@@ -1,0 +1,608 @@
+[chain] 2026-05-24T11:00:49+02:00 host=mulet expt=track_b_vjepa2_vitl_ema9998_fulltrain1e train start
+model:
+  name: vjepa2
+  pretrained: true
+  num_classes: ${num_classes}
+  hf_repo: facebook/vjepa2-vitl-fpc64-256
+  head_type: attentive
+  head_num_heads: 8
+  head_num_queries: 1
+  head_dropout: 0.0
+  lora_enabled: true
+  lora_r: 8
+  lora_alpha: 16
+  lora_dropout: 0.05
+  lora_target_modules: null
+  freeze_backbone: true
+  attn_implementation: sdpa
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: ${hydra:runtime.cwd}/submissions/track_b_vitl_ema9998_fulltrain1e_20260524.csv
+  num_frames: 16
+  frame_upsample_mode: linspace
+  val_ratio: 0.2
+  use_official_val: true
+  include_val_in_train: true
+  official_val_holdout_ratio: 0.0
+  seed: ${seed}
+  use_extra: false
+  train_extra_dir: ${dataset.root}/train_extra
+  max_samples: null
+  max_samples_per_class: null
+  image_size: 256
+  time_reversal_prob: 0.0
+  temporal_reversal_augment:
+    enabled: false
+    prob: 0.5
+  class_boosting:
+    enabled: false
+training:
+  batch_size: 4
+  lr: 5.0e-05
+  epochs: 1
+  num_workers: 0
+  checkpoint_path: checkpoints/track_b/vitl_ema9998_fulltrain1e.pt
+  resume_from: checkpoints/track_b/vitl_ema9998_best.pt
+  lora_lr: 1.0e-05
+  lora_lr_ratio: 0.25
+  motion_lr: null
+  motion_lr_ratio: null
+  resume_apply_cfg_lr: true
+  amp: true
+  device: cuda
+  optimizer: adamw
+  momentum: 0.9
+  nesterov: false
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 0
+  min_lr: 1.0e-06
+  label_smoothing: 0.1
+  videomix_alpha: 0.0
+  videomix_prob: 1.0
+  videomix_mode: cube_cutmix
+  videomix_mixup_alpha: null
+  videomix_cutmix_alpha: null
+  videomix_switch_prob: 0.5
+  layer_decay: null
+  repeated_aug: 1
+  grad_accum_steps: 1
+  amp_dtype: float16
+  scheduler: none
+  sgdr_T0: 30
+  sgdr_save_snapshots: false
+  early_stopping_enabled: false
+  early_stopping_patience: 8
+  early_stopping_min_delta: 0.001
+  log_interval_steps: 50
+  ema_enabled: true
+  ema_decay: 0.9998
+  eval_every_n_epochs: 1
+  eval_ema: true
+  save_last_checkpoint: true
+  last_checkpoint_path: null
+  resume_reset_scheduler: false
+  continuation_warmup_epochs: 0
+  continuation_rewarm_lr: false
+  continuation_peak_lr_ratio: 0.4
+  tta: true
+  tta_flip: true
+  tta_temporal_shift: 0
+  tta_scales: null
+  tta_logit_adjust: 0.0
+  class_balance_sampler: none
+  class_balance_loss: none
+  class_balance_beta: 0.999
+  wandb:
+    enabled: false
+    project: null
+    entity: null
+    name: null
+    run_name: null
+    tags: []
+    mode: null
+    log_interval_epochs: 1
+  resume_reset_epoch: true
+augment:
+  name: none
+  random_horizontal_flip: false
+  random_crop: false
+  crop_padding: 0
+  color_jitter: false
+  color_jitter_brightness: 0.0
+  color_jitter_contrast: 0.0
+  color_jitter_saturation: 0.0
+  color_jitter_hue: 0.0
+  random_grayscale: false
+  random_grayscale_prob: 0.0
+  gaussian_blur: false
+  gaussian_blur_prob: 0.0
+  gaussian_blur_radius_min: 0.1
+  gaussian_blur_radius_max: 2.0
+pretrain:
+  epochs: 100
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 50
+  checkpoint_path: ${hydra:runtime.cwd}/ssl_trunk.pt
+  max_frames: null
+  image_size: 224
+  local_image_size: 96
+  num_local_views: 6
+  out_dim: 4096
+  hidden_dim: 2048
+  bottleneck_dim: 256
+  n_layers: 3
+  teacher_temp: 0.04
+  student_temp: 0.1
+  center_momentum: 0.9
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
+test:
+  num_segment: 2
+  num_crop: 3
+  flip_tta: false
+track:
+  name: b
+  description: 'Open-world track: pretrained backbone allowed.'
+num_classes: 33
+seed: 42
+
+[cuda] cache emptied (run-start). Free: 23.15 / 23.54 GiB
+[data] use_official_val=true: train=51738 (train_dir=44993 + val_dir=6745), val=6745 (from /Data/thomas.turkieh/smth2smth/data/val)
+[2026-05-24 11:01:00,663][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/facebook/vjepa2-vitl-fpc64-256/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-05-24 11:01:00,669][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/facebook/vjepa2-vitl-fpc64-256/b3c1679b7c34d3255ef3547f27c7b226aefab26f/config.json "HTTP/1.1 200 OK"
+[2026-05-24 11:01:01,017][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/facebook/vjepa2-vitl-fpc64-256/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[2026-05-24 11:01:01,018][huggingface_hub.utils._http][WARNING] - Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[2026-05-24 11:01:01,023][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/facebook/vjepa2-vitl-fpc64-256/b3c1679b7c34d3255ef3547f27c7b226aefab26f/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/587 [00:00<?, ?it/s]Loading weights: 100%|██████████| 587/587 [00:00<00:00, 14258.08it/s]
+[model] freeze_backbone ignored (only supported for video_mae_vit).
+[optim] two param groups: head lr=5e-05 (n=9), lora lr=1e-05 (n=292)
+[optim] trainable 6,134,817 / total 332,106,145 params (1.85%)
+[amp] mixed-precision (torch.float16 + GradScaler) enabled.
+[ema] enabled (decay=0.9998); will eval both live and EMA each epoch.
+Resuming from checkpoint: /Data/thomas.turkieh/smth2smth/checkpoints/track_b/vitl_ema9998_best.pt
+  Loaded weights from epoch 5; resume_reset_epoch=true -> starting at epoch 0/1 (best val reset for new split).
+  Optimizer state restored from checkpoint.
+  [resume] resume_apply_cfg_lr=true: applied cfg peak LRs; cosine scheduler will fast-forward from new bases.
+  GradScaler state restored from checkpoint.
+  LR after resume: head=5e-05, lora=1e-05 (cosine will step after each train epoch).
+    [11:01:33] step 50/12935 | avg train loss 0.9960 top1 0.9050 top5 0.9850
+    [11:02:04] step 100/12935 | avg train loss 1.0026 top1 0.8925 top5 0.9900
+    [11:02:34] step 150/12935 | avg train loss 1.0014 top1 0.8850 top5 0.9883
+    [11:03:05] step 200/12935 | avg train loss 1.0068 top1 0.8862 top5 0.9850
+    [11:03:35] step 250/12935 | avg train loss 1.0178 top1 0.8790 top5 0.9840
+    [11:04:06] step 300/12935 | avg train loss 1.0272 top1 0.8783 top5 0.9833
+    [11:04:37] step 350/12935 | avg train loss 1.0196 top1 0.8793 top5 0.9843
+    [11:05:07] step 400/12935 | avg train loss 1.0188 top1 0.8819 top5 0.9831
+    [11:05:38] step 450/12935 | avg train loss 1.0217 top1 0.8817 top5 0.9839
+    [11:06:09] step 500/12935 | avg train loss 1.0186 top1 0.8825 top5 0.9845
+    [11:06:39] step 550/12935 | avg train loss 1.0199 top1 0.8823 top5 0.9850
+    [11:07:10] step 600/12935 | avg train loss 1.0231 top1 0.8817 top5 0.9846
+    [11:07:41] step 650/12935 | avg train loss 1.0220 top1 0.8815 top5 0.9858
+    [11:08:11] step 700/12935 | avg train loss 1.0219 top1 0.8811 top5 0.9861
+    [11:08:42] step 750/12935 | avg train loss 1.0250 top1 0.8783 top5 0.9857
+    [11:09:13] step 800/12935 | avg train loss 1.0273 top1 0.8766 top5 0.9856
+    [11:09:43] step 850/12935 | avg train loss 1.0309 top1 0.8741 top5 0.9847
+    [11:10:14] step 900/12935 | avg train loss 1.0264 top1 0.8758 top5 0.9853
+    [11:10:45] step 950/12935 | avg train loss 1.0258 top1 0.8761 top5 0.9850
+    [11:11:15] step 1000/12935 | avg train loss 1.0262 top1 0.8748 top5 0.9855
+    [11:11:46] step 1050/12935 | avg train loss 1.0302 top1 0.8733 top5 0.9843
+    [11:12:17] step 1100/12935 | avg train loss 1.0271 top1 0.8750 top5 0.9848
+    [11:12:47] step 1150/12935 | avg train loss 1.0259 top1 0.8737 top5 0.9852
+    [11:13:18] step 1200/12935 | avg train loss 1.0258 top1 0.8740 top5 0.9858
+    [11:13:49] step 1250/12935 | avg train loss 1.0249 top1 0.8742 top5 0.9856
+    [11:14:19] step 1300/12935 | avg train loss 1.0261 top1 0.8742 top5 0.9852
+    [11:14:50] step 1350/12935 | avg train loss 1.0278 top1 0.8735 top5 0.9852
+    [11:15:21] step 1400/12935 | avg train loss 1.0302 top1 0.8725 top5 0.9854
+    [11:15:51] step 1450/12935 | avg train loss 1.0328 top1 0.8716 top5 0.9852
+    [11:16:22] step 1500/12935 | avg train loss 1.0344 top1 0.8715 top5 0.9852
+    [11:16:53] step 1550/12935 | avg train loss 1.0339 top1 0.8723 top5 0.9853
+    [11:17:23] step 1600/12935 | avg train loss 1.0350 top1 0.8716 top5 0.9853
+    [11:17:54] step 1650/12935 | avg train loss 1.0348 top1 0.8721 top5 0.9855
+    [11:18:25] step 1700/12935 | avg train loss 1.0367 top1 0.8709 top5 0.9851
+    [11:18:55] step 1750/12935 | avg train loss 1.0347 top1 0.8713 top5 0.9856
+    [11:19:26] step 1800/12935 | avg train loss 1.0344 top1 0.8710 top5 0.9857
+    [11:19:57] step 1850/12935 | avg train loss 1.0351 top1 0.8705 top5 0.9857
+    [11:20:27] step 1900/12935 | avg train loss 1.0337 top1 0.8708 top5 0.9858
+    [11:20:58] step 1950/12935 | avg train loss 1.0325 top1 0.8713 top5 0.9860
+    [11:21:29] step 2000/12935 | avg train loss 1.0343 top1 0.8711 top5 0.9858
+    [11:21:59] step 2050/12935 | avg train loss 1.0359 top1 0.8709 top5 0.9859
+    [11:22:30] step 2100/12935 | avg train loss 1.0338 top1 0.8723 top5 0.9860
+    [11:23:01] step 2150/12935 | avg train loss 1.0349 top1 0.8715 top5 0.9856
+    [11:23:31] step 2200/12935 | avg train loss 1.0343 top1 0.8712 top5 0.9857
+    [11:24:02] step 2250/12935 | avg train loss 1.0361 top1 0.8716 top5 0.9851
+    [11:24:33] step 2300/12935 | avg train loss 1.0365 top1 0.8715 top5 0.9853
+    [11:25:03] step 2350/12935 | avg train loss 1.0366 top1 0.8720 top5 0.9852
+    [11:25:34] step 2400/12935 | avg train loss 1.0367 top1 0.8720 top5 0.9852
+    [11:26:05] step 2450/12935 | avg train loss 1.0359 top1 0.8719 top5 0.9853
+    [11:26:35] step 2500/12935 | avg train loss 1.0361 top1 0.8719 top5 0.9852
+    [11:27:06] step 2550/12935 | avg train loss 1.0370 top1 0.8713 top5 0.9850
+    [11:27:37] step 2600/12935 | avg train loss 1.0370 top1 0.8715 top5 0.9849
+    [11:28:07] step 2650/12935 | avg train loss 1.0383 top1 0.8716 top5 0.9846
+    [11:28:38] step 2700/12935 | avg train loss 1.0383 top1 0.8717 top5 0.9844
+    [11:29:09] step 2750/12935 | avg train loss 1.0378 top1 0.8719 top5 0.9845
+    [11:29:39] step 2800/12935 | avg train loss 1.0392 top1 0.8711 top5 0.9846
+    [11:30:10] step 2850/12935 | avg train loss 1.0392 top1 0.8711 top5 0.9846
+    [11:30:41] step 2900/12935 | avg train loss 1.0388 top1 0.8710 top5 0.9847
+    [11:31:11] step 2950/12935 | avg train loss 1.0382 top1 0.8714 top5 0.9847
+    [11:31:42] step 3000/12935 | avg train loss 1.0379 top1 0.8719 top5 0.9847
+    [11:32:13] step 3050/12935 | avg train loss 1.0389 top1 0.8715 top5 0.9845
+    [11:32:43] step 3100/12935 | avg train loss 1.0388 top1 0.8714 top5 0.9846
+    [11:33:14] step 3150/12935 | avg train loss 1.0378 top1 0.8716 top5 0.9848
+    [11:33:45] step 3200/12935 | avg train loss 1.0366 top1 0.8723 top5 0.9850
+    [11:34:15] step 3250/12935 | avg train loss 1.0368 top1 0.8718 top5 0.9851
+    [11:34:46] step 3300/12935 | avg train loss 1.0353 top1 0.8723 top5 0.9852
+    [11:35:17] step 3350/12935 | avg train loss 1.0345 top1 0.8719 top5 0.9854
+    [11:35:48] step 3400/12935 | avg train loss 1.0344 top1 0.8719 top5 0.9855
+    [11:36:18] step 3450/12935 | avg train loss 1.0339 top1 0.8719 top5 0.9855
+    [11:36:49] step 3500/12935 | avg train loss 1.0328 top1 0.8721 top5 0.9856
+    [11:37:20] step 3550/12935 | avg train loss 1.0326 top1 0.8722 top5 0.9857
+    [11:37:50] step 3600/12935 | avg train loss 1.0334 top1 0.8716 top5 0.9857
+    [11:38:21] step 3650/12935 | avg train loss 1.0335 top1 0.8716 top5 0.9858
+    [11:38:52] step 3700/12935 | avg train loss 1.0343 top1 0.8712 top5 0.9857
+    [11:39:22] step 3750/12935 | avg train loss 1.0338 top1 0.8716 top5 0.9857
+    [11:39:53] step 3800/12935 | avg train loss 1.0330 top1 0.8720 top5 0.9857
+    [11:40:24] step 3850/12935 | avg train loss 1.0329 top1 0.8716 top5 0.9857
+    [11:40:54] step 3900/12935 | avg train loss 1.0328 top1 0.8715 top5 0.9857
+    [11:41:25] step 3950/12935 | avg train loss 1.0331 top1 0.8715 top5 0.9858
+    [11:41:56] step 4000/12935 | avg train loss 1.0341 top1 0.8714 top5 0.9856
+    [11:42:26] step 4050/12935 | avg train loss 1.0330 top1 0.8717 top5 0.9857
+    [11:42:57] step 4100/12935 | avg train loss 1.0320 top1 0.8722 top5 0.9857
+    [11:43:28] step 4150/12935 | avg train loss 1.0322 top1 0.8721 top5 0.9857
+    [11:43:59] step 4200/12935 | avg train loss 1.0335 top1 0.8713 top5 0.9857
+    [11:44:29] step 4250/12935 | avg train loss 1.0330 top1 0.8715 top5 0.9856
+    [11:45:00] step 4300/12935 | avg train loss 1.0333 top1 0.8715 top5 0.9856
+    [11:45:31] step 4350/12935 | avg train loss 1.0327 top1 0.8718 top5 0.9855
+    [11:46:01] step 4400/12935 | avg train loss 1.0323 top1 0.8719 top5 0.9856
+    [11:46:32] step 4450/12935 | avg train loss 1.0314 top1 0.8722 top5 0.9856
+    [11:47:03] step 4500/12935 | avg train loss 1.0315 top1 0.8722 top5 0.9857
+    [11:47:33] step 4550/12935 | avg train loss 1.0314 top1 0.8723 top5 0.9857
+    [11:48:04] step 4600/12935 | avg train loss 1.0302 top1 0.8728 top5 0.9858
+    [11:48:34] step 4650/12935 | avg train loss 1.0304 top1 0.8729 top5 0.9856
+    [11:49:05] step 4700/12935 | avg train loss 1.0306 top1 0.8730 top5 0.9855
+    [11:49:36] step 4750/12935 | avg train loss 1.0308 top1 0.8728 top5 0.9854
+    [11:50:06] step 4800/12935 | avg train loss 1.0307 top1 0.8729 top5 0.9855
+    [11:50:37] step 4850/12935 | avg train loss 1.0295 top1 0.8736 top5 0.9856
+    [11:51:08] step 4900/12935 | avg train loss 1.0294 top1 0.8732 top5 0.9858
+    [11:51:38] step 4950/12935 | avg train loss 1.0290 top1 0.8734 top5 0.9859
+    [11:52:09] step 5000/12935 | avg train loss 1.0282 top1 0.8735 top5 0.9859
+    [11:52:40] step 5050/12935 | avg train loss 1.0281 top1 0.8735 top5 0.9860
+    [11:53:10] step 5100/12935 | avg train loss 1.0281 top1 0.8732 top5 0.9860
+    [11:53:41] step 5150/12935 | avg train loss 1.0282 top1 0.8734 top5 0.9858
+    [11:54:12] step 5200/12935 | avg train loss 1.0286 top1 0.8733 top5 0.9858
+    [11:54:42] step 5250/12935 | avg train loss 1.0278 top1 0.8737 top5 0.9859
+    [11:55:13] step 5300/12935 | avg train loss 1.0271 top1 0.8739 top5 0.9859
+    [11:55:44] step 5350/12935 | avg train loss 1.0273 top1 0.8737 top5 0.9859
+    [11:56:15] step 5400/12935 | avg train loss 1.0275 top1 0.8736 top5 0.9858
+    [11:56:45] step 5450/12935 | avg train loss 1.0274 top1 0.8737 top5 0.9858
+    [11:57:16] step 5500/12935 | avg train loss 1.0268 top1 0.8740 top5 0.9859
+    [11:57:47] step 5550/12935 | avg train loss 1.0263 top1 0.8742 top5 0.9859
+    [11:58:17] step 5600/12935 | avg train loss 1.0258 top1 0.8743 top5 0.9858
+    [11:58:48] step 5650/12935 | avg train loss 1.0256 top1 0.8742 top5 0.9859
+    [11:59:19] step 5700/12935 | avg train loss 1.0257 top1 0.8743 top5 0.9859
+    [11:59:50] step 5750/12935 | avg train loss 1.0253 top1 0.8744 top5 0.9860
+    [12:00:20] step 5800/12935 | avg train loss 1.0257 top1 0.8742 top5 0.9860
+    [12:00:51] step 5850/12935 | avg train loss 1.0260 top1 0.8743 top5 0.9860
+    [12:01:22] step 5900/12935 | avg train loss 1.0259 top1 0.8741 top5 0.9861
+    [12:01:52] step 5950/12935 | avg train loss 1.0256 top1 0.8742 top5 0.9861
+    [12:02:23] step 6000/12935 | avg train loss 1.0255 top1 0.8744 top5 0.9861
+    [12:02:54] step 6050/12935 | avg train loss 1.0254 top1 0.8743 top5 0.9862
+    [12:03:24] step 6100/12935 | avg train loss 1.0254 top1 0.8743 top5 0.9862
+    [12:03:55] step 6150/12935 | avg train loss 1.0267 top1 0.8738 top5 0.9859
+    [12:04:26] step 6200/12935 | avg train loss 1.0259 top1 0.8742 top5 0.9860
+    [12:04:57] step 6250/12935 | avg train loss 1.0261 top1 0.8740 top5 0.9861
+    [12:05:27] step 6300/12935 | avg train loss 1.0259 top1 0.8742 top5 0.9860
+    [12:05:58] step 6350/12935 | avg train loss 1.0261 top1 0.8739 top5 0.9860
+    [12:06:29] step 6400/12935 | avg train loss 1.0264 top1 0.8738 top5 0.9859
+    [12:06:59] step 6450/12935 | avg train loss 1.0269 top1 0.8736 top5 0.9859
+    [12:07:30] step 6500/12935 | avg train loss 1.0263 top1 0.8737 top5 0.9859
+    [12:08:01] step 6550/12935 | avg train loss 1.0264 top1 0.8736 top5 0.9860
+    [12:08:31] step 6600/12935 | avg train loss 1.0263 top1 0.8738 top5 0.9858
+    [12:09:02] step 6650/12935 | avg train loss 1.0261 top1 0.8739 top5 0.9859
+    [12:09:33] step 6700/12935 | avg train loss 1.0262 top1 0.8740 top5 0.9859
+    [12:10:03] step 6750/12935 | avg train loss 1.0264 top1 0.8739 top5 0.9859
+    [12:10:34] step 6800/12935 | avg train loss 1.0262 top1 0.8739 top5 0.9859
+    [12:11:05] step 6850/12935 | avg train loss 1.0256 top1 0.8742 top5 0.9859
+    [12:11:36] step 6900/12935 | avg train loss 1.0252 top1 0.8744 top5 0.9859
+    [12:12:06] step 6950/12935 | avg train loss 1.0248 top1 0.8744 top5 0.9859
+    [12:12:37] step 7000/12935 | avg train loss 1.0244 top1 0.8745 top5 0.9860
+    [12:13:08] step 7050/12935 | avg train loss 1.0246 top1 0.8743 top5 0.9860
+    [12:13:38] step 7100/12935 | avg train loss 1.0257 top1 0.8739 top5 0.9859
+    [12:14:09] step 7150/12935 | avg train loss 1.0254 top1 0.8740 top5 0.9860
+    [12:14:40] step 7200/12935 | avg train loss 1.0262 top1 0.8737 top5 0.9859
+    [12:15:10] step 7250/12935 | avg train loss 1.0260 top1 0.8738 top5 0.9859
+    [12:15:41] step 7300/12935 | avg train loss 1.0260 top1 0.8737 top5 0.9860
+    [12:16:12] step 7350/12935 | avg train loss 1.0267 top1 0.8734 top5 0.9860
+    [12:16:43] step 7400/12935 | avg train loss 1.0261 top1 0.8738 top5 0.9860
+    [12:17:13] step 7450/12935 | avg train loss 1.0265 top1 0.8737 top5 0.9859
+    [12:17:44] step 7500/12935 | avg train loss 1.0261 top1 0.8738 top5 0.9860
+    [12:18:15] step 7550/12935 | avg train loss 1.0260 top1 0.8738 top5 0.9860
+    [12:18:45] step 7600/12935 | avg train loss 1.0261 top1 0.8737 top5 0.9860
+    [12:19:16] step 7650/12935 | avg train loss 1.0259 top1 0.8737 top5 0.9860
+    [12:19:46] step 7700/12935 | avg train loss 1.0258 top1 0.8738 top5 0.9861
+    [12:20:17] step 7750/12935 | avg train loss 1.0254 top1 0.8741 top5 0.9861
+    [12:20:48] step 7800/12935 | avg train loss 1.0257 top1 0.8739 top5 0.9861
+    [12:21:18] step 7850/12935 | avg train loss 1.0254 top1 0.8739 top5 0.9861
+    [12:21:49] step 7900/12935 | avg train loss 1.0251 top1 0.8741 top5 0.9860
+    [12:22:19] step 7950/12935 | avg train loss 1.0250 top1 0.8742 top5 0.9860
+    [12:22:50] step 8000/12935 | avg train loss 1.0250 top1 0.8742 top5 0.9859
+    [12:23:21] step 8050/12935 | avg train loss 1.0249 top1 0.8742 top5 0.9859
+    [12:23:51] step 8100/12935 | avg train loss 1.0247 top1 0.8742 top5 0.9860
+    [12:24:22] step 8150/12935 | avg train loss 1.0253 top1 0.8739 top5 0.9859
+    [12:24:52] step 8200/12935 | avg train loss 1.0254 top1 0.8737 top5 0.9859
+    [12:25:23] step 8250/12935 | avg train loss 1.0252 top1 0.8737 top5 0.9860
+    [12:25:54] step 8300/12935 | avg train loss 1.0250 top1 0.8737 top5 0.9860
+    [12:26:24] step 8350/12935 | avg train loss 1.0251 top1 0.8739 top5 0.9860
+    [12:26:55] step 8400/12935 | avg train loss 1.0252 top1 0.8738 top5 0.9860
+    [12:27:26] step 8450/12935 | avg train loss 1.0254 top1 0.8739 top5 0.9859
+    [12:27:56] step 8500/12935 | avg train loss 1.0251 top1 0.8740 top5 0.9860
+    [12:28:27] step 8550/12935 | avg train loss 1.0251 top1 0.8741 top5 0.9859
+    [12:28:58] step 8600/12935 | avg train loss 1.0252 top1 0.8740 top5 0.9859
+    [12:29:28] step 8650/12935 | avg train loss 1.0254 top1 0.8739 top5 0.9859
+    [12:29:59] step 8700/12935 | avg train loss 1.0255 top1 0.8739 top5 0.9859
+    [12:30:29] step 8750/12935 | avg train loss 1.0252 top1 0.8741 top5 0.9859
+    [12:31:00] step 8800/12935 | avg train loss 1.0247 top1 0.8743 top5 0.9859
+    [12:31:31] step 8850/12935 | avg train loss 1.0242 top1 0.8744 top5 0.9860
+    [12:32:01] step 8900/12935 | avg train loss 1.0242 top1 0.8745 top5 0.9859
+    [12:32:32] step 8950/12935 | avg train loss 1.0239 top1 0.8746 top5 0.9859
+    [12:33:03] step 9000/12935 | avg train loss 1.0238 top1 0.8746 top5 0.9859
+    [12:33:33] step 9050/12935 | avg train loss 1.0239 top1 0.8746 top5 0.9859
+    [12:34:04] step 9100/12935 | avg train loss 1.0239 top1 0.8745 top5 0.9859
+    [12:34:35] step 9150/12935 | avg train loss 1.0237 top1 0.8745 top5 0.9859
+    [12:35:05] step 9200/12935 | avg train loss 1.0238 top1 0.8745 top5 0.9858
+    [12:35:36] step 9250/12935 | avg train loss 1.0240 top1 0.8745 top5 0.9858
+    [12:36:07] step 9300/12935 | avg train loss 1.0237 top1 0.8746 top5 0.9858
+    [12:36:37] step 9350/12935 | avg train loss 1.0235 top1 0.8748 top5 0.9858
+    [12:37:08] step 9400/12935 | avg train loss 1.0233 top1 0.8749 top5 0.9859
+    [12:37:38] step 9450/12935 | avg train loss 1.0236 top1 0.8748 top5 0.9858
+    [12:38:09] step 9500/12935 | avg train loss 1.0233 top1 0.8751 top5 0.9858
+    [12:38:40] step 9550/12935 | avg train loss 1.0234 top1 0.8750 top5 0.9858
+    [12:39:10] step 9600/12935 | avg train loss 1.0234 top1 0.8749 top5 0.9858
+    [12:39:41] step 9650/12935 | avg train loss 1.0236 top1 0.8748 top5 0.9858
+    [12:40:12] step 9700/12935 | avg train loss 1.0237 top1 0.8748 top5 0.9858
+    [12:40:42] step 9750/12935 | avg train loss 1.0234 top1 0.8749 top5 0.9858
+    [12:41:13] step 9800/12935 | avg train loss 1.0234 top1 0.8749 top5 0.9858
+    [12:41:44] step 9850/12935 | avg train loss 1.0231 top1 0.8751 top5 0.9858
+    [12:42:14] step 9900/12935 | avg train loss 1.0233 top1 0.8750 top5 0.9858
+    [12:42:45] step 9950/12935 | avg train loss 1.0232 top1 0.8750 top5 0.9858
+    [12:43:16] step 10000/12935 | avg train loss 1.0233 top1 0.8750 top5 0.9858
+    [12:43:46] step 10050/12935 | avg train loss 1.0239 top1 0.8748 top5 0.9857
+    [12:44:17] step 10100/12935 | avg train loss 1.0241 top1 0.8749 top5 0.9856
+    [12:44:47] step 10150/12935 | avg train loss 1.0240 top1 0.8749 top5 0.9857
+    [12:45:18] step 10200/12935 | avg train loss 1.0238 top1 0.8749 top5 0.9857
+    [12:45:49] step 10250/12935 | avg train loss 1.0237 top1 0.8750 top5 0.9857
+    [12:46:19] step 10300/12935 | avg train loss 1.0233 top1 0.8751 top5 0.9858
+    [12:46:50] step 10350/12935 | avg train loss 1.0226 top1 0.8753 top5 0.9858
+    [12:47:21] step 10400/12935 | avg train loss 1.0230 top1 0.8753 top5 0.9857
+    [12:47:51] step 10450/12935 | avg train loss 1.0232 top1 0.8752 top5 0.9857
+    [12:48:22] step 10500/12935 | avg train loss 1.0229 top1 0.8753 top5 0.9857
+    [12:48:53] step 10550/12935 | avg train loss 1.0231 top1 0.8753 top5 0.9857
+    [12:49:23] step 10600/12935 | avg train loss 1.0228 top1 0.8756 top5 0.9857
+    [12:49:54] step 10650/12935 | avg train loss 1.0223 top1 0.8758 top5 0.9857
+    [12:50:25] step 10700/12935 | avg train loss 1.0222 top1 0.8759 top5 0.9857
+    [12:50:55] step 10750/12935 | avg train loss 1.0222 top1 0.8759 top5 0.9856
+    [12:51:26] step 10800/12935 | avg train loss 1.0222 top1 0.8759 top5 0.9856
+    [12:51:57] step 10850/12935 | avg train loss 1.0220 top1 0.8760 top5 0.9856
+    [12:52:27] step 10900/12935 | avg train loss 1.0225 top1 0.8758 top5 0.9855
+    [12:52:58] step 10950/12935 | avg train loss 1.0222 top1 0.8759 top5 0.9855
+    [12:53:29] step 11000/12935 | avg train loss 1.0220 top1 0.8760 top5 0.9856
+    [12:53:59] step 11050/12935 | avg train loss 1.0218 top1 0.8760 top5 0.9856
+    [12:54:30] step 11100/12935 | avg train loss 1.0220 top1 0.8760 top5 0.9855
+    [12:55:00] step 11150/12935 | avg train loss 1.0216 top1 0.8761 top5 0.9855
+    [12:55:31] step 11200/12935 | avg train loss 1.0221 top1 0.8760 top5 0.9855
+    [12:56:02] step 11250/12935 | avg train loss 1.0223 top1 0.8759 top5 0.9854
+    [12:56:32] step 11300/12935 | avg train loss 1.0222 top1 0.8760 top5 0.9854
+    [12:57:03] step 11350/12935 | avg train loss 1.0224 top1 0.8759 top5 0.9854
+    [12:57:34] step 11400/12935 | avg train loss 1.0223 top1 0.8760 top5 0.9854
+    [12:58:04] step 11450/12935 | avg train loss 1.0223 top1 0.8759 top5 0.9854
+    [12:58:35] step 11500/12935 | avg train loss 1.0222 top1 0.8760 top5 0.9855
+    [12:59:05] step 11550/12935 | avg train loss 1.0219 top1 0.8761 top5 0.9855
+    [12:59:36] step 11600/12935 | avg train loss 1.0219 top1 0.8761 top5 0.9855
+    [13:00:07] step 11650/12935 | avg train loss 1.0216 top1 0.8762 top5 0.9855
+    [13:00:37] step 11700/12935 | avg train loss 1.0215 top1 0.8763 top5 0.9855
+    [13:01:08] step 11750/12935 | avg train loss 1.0215 top1 0.8764 top5 0.9855
+    [13:01:39] step 11800/12935 | avg train loss 1.0214 top1 0.8764 top5 0.9856
+    [13:02:09] step 11850/12935 | avg train loss 1.0211 top1 0.8765 top5 0.9856
+    [13:02:40] step 11900/12935 | avg train loss 1.0215 top1 0.8763 top5 0.9856
+    [13:03:11] step 11950/12935 | avg train loss 1.0215 top1 0.8763 top5 0.9855
+    [13:03:41] step 12000/12935 | avg train loss 1.0215 top1 0.8763 top5 0.9856
+    [13:04:12] step 12050/12935 | avg train loss 1.0211 top1 0.8764 top5 0.9856
+    [13:04:42] step 12100/12935 | avg train loss 1.0208 top1 0.8765 top5 0.9856
+    [13:05:13] step 12150/12935 | avg train loss 1.0207 top1 0.8766 top5 0.9856
+    [13:05:44] step 12200/12935 | avg train loss 1.0210 top1 0.8764 top5 0.9857
+    [13:06:15] step 12250/12935 | avg train loss 1.0210 top1 0.8763 top5 0.9857
+    [13:06:45] step 12300/12935 | avg train loss 1.0208 top1 0.8764 top5 0.9856
+    [13:07:16] step 12350/12935 | avg train loss 1.0206 top1 0.8765 top5 0.9857
+    [13:07:46] step 12400/12935 | avg train loss 1.0207 top1 0.8765 top5 0.9856
+    [13:08:17] step 12450/12935 | avg train loss 1.0203 top1 0.8766 top5 0.9857
+    [13:08:48] step 12500/12935 | avg train loss 1.0205 top1 0.8764 top5 0.9856
+    [13:09:18] step 12550/12935 | avg train loss 1.0206 top1 0.8763 top5 0.9856
+    [13:09:49] step 12600/12935 | avg train loss 1.0203 top1 0.8764 top5 0.9857
+    [13:10:19] step 12650/12935 | avg train loss 1.0203 top1 0.8764 top5 0.9857
+    [13:10:50] step 12700/12935 | avg train loss 1.0201 top1 0.8764 top5 0.9857
+    [13:11:21] step 12750/12935 | avg train loss 1.0205 top1 0.8762 top5 0.9856
+    [13:11:51] step 12800/12935 | avg train loss 1.0203 top1 0.8763 top5 0.9857
+    [13:12:22] step 12850/12935 | avg train loss 1.0202 top1 0.8764 top5 0.9857
+    [13:12:53] step 12900/12935 | avg train loss 1.0204 top1 0.8763 top5 0.9857
+    [13:13:14] step 12935/12935 | avg train loss 1.0201 top1 0.8765 top5 0.9857
+[2026-05-24T13:29:23] Epoch 1/1 | train loss 1.0201 top1 0.8765 | val loss 0.8555 top1 0.7615 top5 0.9539 | ema val top1 0.7478 top5 0.9489
+  Saved new best checkpoint (live): /Data/thomas.turkieh/smth2smth/checkpoints/track_b/vitl_ema9998_fulltrain1e.pt (val top1=0.7615)
+[cuda] cache emptied (run-end). Free: 19.19 / 23.54 GiB
+Done. Best val top1: 0.7615. Checkpoint: /Data/thomas.turkieh/smth2smth/checkpoints/track_b/vitl_ema9998_fulltrain1e.pt
+[chain] 2026-05-24T13:29:26+02:00 train done; starting submit
+model:
+  name: vjepa2
+  pretrained: true
+  num_classes: ${num_classes}
+  hf_repo: facebook/vjepa2-vitl-fpc64-256
+  head_type: attentive
+  head_num_heads: 8
+  head_num_queries: 1
+  head_dropout: 0.0
+  lora_enabled: true
+  lora_r: 8
+  lora_alpha: 16
+  lora_dropout: 0.05
+  lora_target_modules: null
+  freeze_backbone: true
+  attn_implementation: sdpa
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: ${hydra:runtime.cwd}/submissions/track_b_vitl_ema9998_fulltrain1e_notta_20260524.csv
+  num_frames: 16
+  frame_upsample_mode: linspace
+  val_ratio: 0.2
+  use_official_val: true
+  include_val_in_train: true
+  official_val_holdout_ratio: 0.0
+  seed: ${seed}
+  use_extra: false
+  train_extra_dir: ${dataset.root}/train_extra
+  max_samples: null
+  max_samples_per_class: null
+  image_size: 256
+  time_reversal_prob: 0.0
+  temporal_reversal_augment:
+    enabled: false
+    prob: 0.5
+  class_boosting:
+    enabled: false
+training:
+  batch_size: 4
+  lr: 5.0e-05
+  epochs: 1
+  num_workers: 0
+  checkpoint_path: checkpoints/track_b/vitl_ema9998_fulltrain1e.pt
+  resume_from: checkpoints/track_b/vitl_ema9998_best.pt
+  lora_lr: 1.0e-05
+  lora_lr_ratio: 0.25
+  motion_lr: null
+  motion_lr_ratio: null
+  resume_apply_cfg_lr: true
+  amp: true
+  device: cuda
+  optimizer: adamw
+  momentum: 0.9
+  nesterov: false
+  weight_decay: 0.05
+  scheduler_cosine: true
+  warmup_epochs: 0
+  min_lr: 1.0e-06
+  label_smoothing: 0.1
+  videomix_alpha: 0.0
+  videomix_prob: 1.0
+  videomix_mode: cube_cutmix
+  videomix_mixup_alpha: null
+  videomix_cutmix_alpha: null
+  videomix_switch_prob: 0.5
+  layer_decay: null
+  repeated_aug: 1
+  grad_accum_steps: 1
+  amp_dtype: float16
+  scheduler: none
+  sgdr_T0: 30
+  sgdr_save_snapshots: false
+  early_stopping_enabled: false
+  early_stopping_patience: 8
+  early_stopping_min_delta: 0.001
+  log_interval_steps: 50
+  ema_enabled: true
+  ema_decay: 0.9998
+  eval_every_n_epochs: 1
+  eval_ema: true
+  save_last_checkpoint: true
+  last_checkpoint_path: null
+  resume_reset_scheduler: false
+  continuation_warmup_epochs: 0
+  continuation_rewarm_lr: false
+  continuation_peak_lr_ratio: 0.4
+  tta: false
+  tta_flip: false
+  tta_temporal_shift: 0
+  tta_scales: null
+  tta_logit_adjust: 0.0
+  class_balance_sampler: none
+  class_balance_loss: none
+  class_balance_beta: 0.999
+  wandb:
+    enabled: false
+    project: null
+    entity: null
+    name: null
+    run_name: null
+    tags: []
+    mode: null
+    log_interval_epochs: 1
+  resume_reset_epoch: true
+augment:
+  name: none
+  random_horizontal_flip: false
+  random_crop: false
+  crop_padding: 0
+  color_jitter: false
+  color_jitter_brightness: 0.0
+  color_jitter_contrast: 0.0
+  color_jitter_saturation: 0.0
+  color_jitter_hue: 0.0
+  random_grayscale: false
+  random_grayscale_prob: 0.0
+  gaussian_blur: false
+  gaussian_blur_prob: 0.0
+  gaussian_blur_radius_min: 0.1
+  gaussian_blur_radius_max: 2.0
+pretrain:
+  epochs: 100
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 50
+  checkpoint_path: ${hydra:runtime.cwd}/ssl_trunk.pt
+  max_frames: null
+  image_size: 224
+  local_image_size: 96
+  num_local_views: 6
+  out_dim: 4096
+  hidden_dim: 2048
+  bottleneck_dim: 256
+  n_layers: 3
+  teacher_temp: 0.04
+  student_temp: 0.1
+  center_momentum: 0.9
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
+test:
+  num_segment: 1
+  num_crop: 1
+  flip_tta: false
+track:
+  name: b
+  description: 'Open-world track: pretrained backbone allowed.'
+num_classes: 33
+seed: 42
+
+[2026-05-24 13:29:31,058][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/facebook/vjepa2-vitl-fpc64-256/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[2026-05-24 13:29:31,059][huggingface_hub.utils._http][WARNING] - Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[2026-05-24 13:29:31,064][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/facebook/vjepa2-vitl-fpc64-256/b3c1679b7c34d3255ef3547f27c7b226aefab26f/config.json "HTTP/1.1 200 OK"
+[2026-05-24 13:29:31,225][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/facebook/vjepa2-vitl-fpc64-256/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-05-24 13:29:31,231][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/facebook/vjepa2-vitl-fpc64-256/b3c1679b7c34d3255ef3547f27c7b226aefab26f/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/587 [00:00<?, ?it/s]Loading weights: 100%|██████████| 587/587 [00:00<00:00, 15682.19it/s]
+Indexing video folders under: /Data/thomas.turkieh/smth2smth/data/test
+Found 6913 test videos.
+[submit] masking 1 never-trained class index/indices: [27]
+[submit] inference autocast fp16 enabled (matches training.amp).
+Wrote 6913 rows to /Data/thomas.turkieh/smth2smth/submissions/track_b_vitl_ema9998_fulltrain1e_notta_20260524.csv
+[chain] 2026-05-24T13:38:21+02:00 submit done

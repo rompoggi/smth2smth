@@ -1,0 +1,26 @@
+S0-s42-B        top1= 53.25%  top5= 82.40%  ce=1.6775
+S1-s42-T        top1= 39.94%  top5= 74.41%  ce=2.1018
+S0-s43-B        top1= 58.88%  top5= 85.80%  ce=1.4379
+S1-s43-T        top1= 46.60%  top5= 77.66%  ce=1.9311
+S0-s44-B        top1= 55.77%  top5= 84.32%  ce=1.5687
+S1-s44-T        top1= 43.64%  top5= 76.78%  ce=2.0419
+T-mean          top1= 45.71%  top5= 77.51%  ce=1.9484
+T-softmax       top1= 43.34%  top5= 77.37%  ce=1.9730
+T-vote          top1= 44.67%  top5= 44.67%  ce=0.0000
+T-ws            top1= 45.86%  top5= 77.96%  ce=1.9143
+T-cws           top1= 46.15%  top5= 78.11%  ce=1.8998
+T-lsg           top1= 70.56%  top5= 93.64%  ce=3.1888
+BT-mean         top1= 45.71%  top5= 77.51%  ce=1.9484
+BT-softmax      top1= 43.34%  top5= 77.37%  ce=1.9730
+BT-vote         top1= 44.67%  top5= 44.67%  ce=0.0000
+BT-ws           top1= 46.15%  top5= 77.81%  ce=1.9145
+BT-cws          top1= 45.27%  top5= 77.51%  ce=1.9180
+BT-lsg          top1= 52.66%  top5= 84.17%  ce=3.2555
+B-mean          top1= 58.58%  top5= 86.24%  ce=1.4538
+B-softmax       top1= 58.88%  top5= 86.83%  ce=1.4511
+B-vote          top1= 57.84%  top5= 57.84%  ce=0.0000
+B-ws            top1= 59.91%  top5= 86.83%  ce=1.4086
+B-cws           top1= 58.58%  top5= 87.28%  ce=1.4105
+B-lsg           top1= 75.74%  top5= 96.01%  ce=3.1203
+[optimize] wrote /Data/romain.poggi/smth2smth/outputs/ensemble/videomaev2_3seed_v2/ensemble_results_v2.json
+[optimize] best ensemble candidate: B-lsg (75.74%)
