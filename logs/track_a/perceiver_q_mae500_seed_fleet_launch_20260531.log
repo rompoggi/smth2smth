@@ -1,0 +1,65 @@
+=== COPY ep500 -> gardon ===
+-rw-r--r-- 1 romain.poggi users 330M May 30 02:02 /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/pretrain/videomaev2_t4native_encoder_ep500.pt
+=== COPY ep500 -> lieu ===
+-rw-r--r-- 1 romain.poggi users 330M May 30 02:02 /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/pretrain/videomaev2_t4native_encoder_ep500.pt
+=== COPY ep500 -> lotte ===
+-rw-r--r-- 1 romain.poggi users 330M May 30 02:02 /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/pretrain/videomaev2_t4native_encoder_ep500.pt
+=== COPY ep500 -> mulet ===
+-rw-r--r-- 1 romain.poggi users 330M May 30 02:02 /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/pretrain/videomaev2_t4native_encoder_ep500.pt
+=== COPY ep500 -> murene ===
+-rw-r--r-- 1 romain.poggi users 330M May 30 02:02 /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/pretrain/videomaev2_t4native_encoder_ep500.pt
+=== COPY ep500 -> piranha ===
+-rw-r--r-- 1 romain.poggi users 330M May 30 02:02 /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/pretrain/videomaev2_t4native_encoder_ep500.pt
+=== COPY ep500 -> raie ===
+-rw-r--r-- 1 romain.poggi users 330M May 30 02:02 /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/pretrain/videomaev2_t4native_encoder_ep500.pt
+=== COPY ep500 -> requin ===
+-rw-r--r-- 1 romain.poggi users 330M May 30 02:02 /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/pretrain/videomaev2_t4native_encoder_ep500.pt
+=== COPY ep500 -> roussette ===
+-rw-r--r-- 1 romain.poggi users 330M May 30 02:02 /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/pretrain/videomaev2_t4native_encoder_ep500.pt
+=== COPY ep500 -> sole ===
+-rw-r--r-- 1 romain.poggi users 330M May 30 02:02 /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/pretrain/videomaev2_t4native_encoder_ep500.pt
+=== COPY ep500 -> thon ===
+-rw-r--r-- 1 romain.poggi users 330M May 30 02:02 /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/pretrain/videomaev2_t4native_encoder_ep500.pt
+=== COPY ep500 -> truite ===
+-rw-r--r-- 1 romain.poggi users 330M May 30 02:02 /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/pretrain/videomaev2_t4native_encoder_ep500.pt
+Updating 534c4d9..7b36ae4
+Updating 534c4d9..7b36ae4
+Updating 534c4d9..7b36ae4
+Updating 534c4d9..7b36ae4
+Updating 37c2be7..7b36ae4
+Updating 37c2be7..7b36ae4
+Updating 534c4d9..7b36ae4
+Updating 534c4d9..7b36ae4
+Updating 534c4d9..7b36ae4
+Updating 534c4d9..7b36ae4
+Updating 534c4d9..7b36ae4
+Updating 534c4d9..7b36ae4
+Updating 37c2be7..7b36ae4
+Updating 37c2be7..7b36ae4
+Updating 534c4d9..7b36ae4
+Updating 534c4d9..7b36ae4
+Updating 534c4d9..7b36ae4
+Updating 534c4d9..7b36ae4
+=== LAUNCH gardon -> perceiverQ2-mae500-s43 (Q=2, seed=43) ===
+trainer_pid=1565141 log=logs/track_a/perceiverQ2-mae500-s43_20260531.log
+=== LAUNCH lieu -> perceiverQ2-mae500-s44 (Q=2, seed=44) ===
+trainer_pid=1698428 log=logs/track_a/perceiverQ2-mae500-s44_20260531.log
+=== LAUNCH lotte -> perceiverQ4-mae500-s43 (Q=4, seed=43) ===
+trainer_pid=1182394 log=logs/track_a/perceiverQ4-mae500-s43_20260531.log
+=== LAUNCH mulet -> perceiverQ4-mae500-s44 (Q=4, seed=44) ===
+trainer_pid=1590508 log=logs/track_a/perceiverQ4-mae500-s44_20260531.log
+=== LAUNCH murene -> perceiverQ8-mae500-s43 (Q=8, seed=43) ===
+trainer_pid=1558128 log=logs/track_a/perceiverQ8-mae500-s43_20260531.log
+=== LAUNCH piranha -> perceiverQ8-mae500-s44 (Q=8, seed=44) ===
+trainer_pid=1735883 log=logs/track_a/perceiverQ8-mae500-s44_20260531.log
+=== LAUNCH raie -> perceiverQ32-mae500-s43 (Q=32, seed=43) ===
+trainer_pid=1941852 log=logs/track_a/perceiverQ32-mae500-s43_20260531.log
+=== LAUNCH requin -> perceiverQ32-mae500-s44 (Q=32, seed=44) ===
+trainer_pid=1609793 log=logs/track_a/perceiverQ32-mae500-s44_20260531.log
+=== LAUNCH roussette -> perceiverQ64-mae500-s42 (Q=64, seed=42) ===
+trainer_pid=1866024 log=logs/track_a/perceiverQ64-mae500-s42_20260531.log
+=== LAUNCH sole -> perceiverQ64-mae500-s43 (Q=64, seed=43) ===
+trainer_pid=1602680 log=logs/track_a/perceiverQ64-mae500-s43_20260531.log
+=== LAUNCH thon -> perceiverQ64-mae500-s44 (Q=64, seed=44) ===
+trainer_pid=1755889 log=logs/track_a/perceiverQ64-mae500-s44_20260531.log
+scripts/launch_perceiver_q_mae500_seed_fleet.sh: line 179: RUNS[$i]: unbound variable

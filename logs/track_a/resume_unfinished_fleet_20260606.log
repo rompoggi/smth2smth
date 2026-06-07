@@ -1,0 +1,50 @@
+=== FRESH STAB ablette -> perceiverQ16-mae50-s42 ===
+trainer_pid=836441 log=logs/track_a/perceiverQ16-mae50-s42_20260606.log
+=== FRESH STAB anguille -> perceiverQ16-mae50-s43 ===
+trainer_pid=810666 log=logs/track_a/perceiverQ16-mae50-s43_20260606.log
+=== FRESH STAB barbeau -> perceiverQ16-mae50-s44 ===
+trainer_pid=827654 log=logs/track_a/perceiverQ16-mae50-s44_20260606.log
+=== FRESH STAB barbue -> perceiverQ16-mae100-s42 ===
+trainer_pid=803880 log=logs/track_a/perceiverQ16-mae100-s42_20260606.log
+=== FRESH STAB baudroie -> perceiverQ16-mae200-s42 ===
+trainer_pid=475566 log=logs/track_a/perceiverQ16-mae200-s42_20260606.log
+=== FRESH STAB carrelet -> perceiverQ16-mae300-s42 ===
+trainer_pid=800774 log=logs/track_a/perceiverQ16-mae300-s42_20260606.log
+=== FRESH STAB gardon -> perceiverQ16-mae400-s42 ===
+trainer_pid=804506 log=logs/track_a/perceiverQ16-mae400-s42_20260606.log
+=== CKPT saumon -> labre (perceiverQ16-mae350-s42) ===
+The source and destination cannot both be remote.
+rsync error: syntax or usage error (code 1) at main.c(1417) [Receiver=3.2.5]
+=== FRESH STAB ablette -> perceiverQ16-mae50-s42 ===
+ABORT: GPU busy on ablette
+FAIL ablette perceiverQ16-mae50-s42
+=== FRESH STAB anguille -> perceiverQ16-mae50-s43 ===
+ABORT: GPU busy on anguille
+FAIL anguille perceiverQ16-mae50-s43
+=== FRESH STAB barbeau -> perceiverQ16-mae50-s44 ===
+ABORT: GPU busy on barbeau
+FAIL barbeau perceiverQ16-mae50-s44
+=== FRESH STAB barbue -> perceiverQ16-mae100-s42 ===
+ABORT: GPU busy on barbue
+FAIL barbue perceiverQ16-mae100-s42
+=== FRESH STAB baudroie -> perceiverQ16-mae200-s42 ===
+ABORT: GPU busy on baudroie
+FAIL baudroie perceiverQ16-mae200-s42
+=== FRESH STAB carrelet -> perceiverQ16-mae300-s42 ===
+ABORT: GPU busy on carrelet
+FAIL carrelet perceiverQ16-mae300-s42
+=== FRESH STAB gardon -> perceiverQ16-mae400-s42 ===
+ABORT: GPU busy on gardon
+FAIL gardon perceiverQ16-mae400-s42
+=== CKPT saumon -> labre (perceiverQ16-mae350-s42) ===
+=== RESUME Q16 BASE labre -> perceiverQ16-mae350-s42 rgs=258750 wandb=scxr4ydc ===
+FAIL labre perceiverQ16-mae350-s42
+=== CKPT mulet -> mulet (perceiverQ16-mae450-s43) ===
+=== RESUME Q16 BASE mulet -> perceiverQ16-mae450-s43 rgs=209125 wandb=npvdiorm ===
+trainer_pid=815245 log=logs/track_a/perceiverQ16-mae450-s43_20260601.log
+=== CKPT murene -> murene (perceiverQ16-mae450-s44) ===
+=== RESUME Q16 BASE murene -> perceiverQ16-mae450-s44 rgs=230825 wandb=2y4dnv7t ===
+trainer_pid=808857 log=logs/track_a/perceiverQ16-mae450-s44_20260601.log
+=== CKPT rouget -> truite (perceiverQ8-mae450-s44) ===
+=== RESUME Q8 STAB truite -> perceiverQ8-mae450-s44 rgs=168750 wandb=cpfqyts2 ===
+FAIL truite perceiverQ8-mae450-s44

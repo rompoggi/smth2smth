@@ -1,0 +1,22 @@
+# meanpool-maeXXX-s42 replay runs (group ft-mae-scaling)
+mae050 id=s42-replay-v2-mae050 log=meanpool-mae050-s42_20260524.log
+mae100 id=s42-replay-v2-mae100 log=meanpool-mae100-s42_20260523.log
+mae150 id=s42-replay-v2-mae150 log=meanpool-mae150-s42_20260525.log
+mae200 id=s42-replay-v2-mae200 log=meanpool-mae200-s42_20260524.log
+mae250 id=s42-replay-v2-mae250 log=meanpool-mae250-s42_20260524.log
+mae300 id=s42-replay-v2-mae300 log=meanpool-mae300-s42_20260524.log
+mae350 id=s42-replay-v2-mae350 log=meanpool-mae350-s42_20260524.log
+mae400 id=s42-replay-v2-mae400 log=meanpool-mae400-s42_20260524.log
+mae450 id=s42-replay-v2-mae450 log=meanpool-mae450-s42_20260524.log
+mae500 id=s42-replay-v2-mae500 log=meanpool-mae500-s42_20260524.log
+
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-mae050
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-mae100
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-mae150
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-mae200
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-mae250
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-mae300
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-mae350
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-mae400
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-mae450
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-mae500

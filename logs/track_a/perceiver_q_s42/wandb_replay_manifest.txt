@@ -1,0 +1,13 @@
+# perceiverQ*-mae500-s42 replay runs (group ft-mae-scaling)
+# source project: smth2smth-diverse-heads
+Q2 id=s42-replay-v2-perceiverQ2-mae500 source=j3pdr8gj log=wandb-history:j3pdr8gj
+Q4 id=s42-replay-v2-perceiverQ4-mae500 source=yfms3io3 log=wandb-history:yfms3io3
+Q8 id=s42-replay-v2-perceiverQ8-mae500 source=mbb75n3k log=wandb-history:mbb75n3k
+Q16 id=s42-replay-v2-perceiverQ16-mae500 source=cfqjfqy1 log=wandb-history:cfqjfqy1
+Q32 id=s42-replay-v2-perceiverQ32-mae500 source=18la2ij5 log=wandb-history:18la2ij5
+
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-perceiverQ2-mae500
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-perceiverQ4-mae500
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-perceiverQ8-mae500
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-perceiverQ16-mae500
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-perceiverQ32-mae500

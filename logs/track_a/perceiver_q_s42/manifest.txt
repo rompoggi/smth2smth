@@ -1,0 +1,10 @@
+# collected: 2026-05-31T19:00:11+02:00
+# seed: 42 | train-only (include_val_in_train=false) | SSL ep500 | Perceiver head
+# renamed: arch2-perceiver-q*-trainonly -> perceiverQ*-mae500-s42
+# source W&B project: smth2smth-diverse-heads
+# columns: Q old_run new_run log ckpt status best_ema_honest note
+2 arch2-perceiver-q2-trainonly perceiverQ2-mae500-s42 perceiverQ2-mae500-s42_20260526.log perceiverQ2-mae500-s42.pt DONE 0.5431 ckpt brochet; full log brochet
+4 arch2-perceiver-q4-trainonly perceiverQ4-mae500-s42 perceiverQ4-mae500-s42_20260526.log perceiverQ4-mae500-s42.pt DONE 0.5361 ckpt lieu; W&B replay ep49 (original crashed)
+8 arch2-perceiver-q8-trainonly perceiverQ8-mae500-s42 perceiverQ8-mae500-s42_20260526.log perceiverQ8-mae500-s42.pt DONE 0.5405 ckpt round3 final-ep50; W&B replay ep50
+16 arch2-perceiver-q16-trainonly perceiverQ16-mae500-s42 perceiverQ16-mae500-s42_20260526.log perceiverQ16-mae500-s42.pt DONE 0.5391 ckpt round3 final-ep50; W&B replay ep50
+32 arch2-perceiver-q32-trainonly perceiverQ32-mae500-s42 perceiverQ32-mae500-s42_20260526.log perceiverQ32-mae500-s42.pt DONE 0.5401 ckpt round3 final-ep50; W&B replay ep50

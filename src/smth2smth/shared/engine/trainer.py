@@ -53,6 +53,7 @@ def train_one_epoch(
     max_grad_norm: float | None = None,
     new_module_param_ids: set[int] | None = None,
     new_module_max_grad_norm: float | None = None,
+    skip_batches: int = 0,
 ) -> EpochStats:
     """Run one training epoch and return aggregated metrics.
 
@@ -91,8 +92,15 @@ def train_one_epoch(
     accum_steps = max(1, int(grad_accum_steps))
 
     total_steps = len(data_loader)
+    skip_batches = max(0, int(skip_batches))
+    if skip_batches >= total_steps:
+        raise ValueError(
+            f"skip_batches={skip_batches} >= len(data_loader)={total_steps}"
+        )
     optimizer.zero_grad(set_to_none=True)
     for step_idx, (video_batch, labels) in enumerate(data_loader, start=1):
+        if step_idx <= skip_batches:
+            continue
         video_batch = video_batch.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
 

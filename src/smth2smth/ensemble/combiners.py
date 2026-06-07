@@ -159,10 +159,15 @@ def run_combiner(
     labels: np.ndarray,
     *,
     name: str,
+    fit_labels: np.ndarray | None = None,
 ) -> EnsembleResult:
-    """Fit on ``fit_*`` when learned; always score on ``eval_*``."""
+    """Fit on ``fit_*`` (labelled by ``fit_labels``) when learned; always score on ``eval_*`` with ``labels``.
+
+    ``fit_labels`` defaults to ``labels`` when ``None`` (legacy fit==eval behaviour).
+    """
     fit_arrays = [sanitize_logits(a) for a in fit_arrays]
     eval_arrays = [sanitize_logits(a) for a in eval_arrays]
+    fit_labels = labels if fit_labels is None else fit_labels
     combiner = combiner.lower()
     if combiner == "mean":
         w = np.full(len(fit_arrays), 1.0 / len(fit_arrays))
@@ -175,19 +180,19 @@ def run_combiner(
     if combiner == "vote":
         return majority_vote_result(eval_arrays, labels, name=name)
     if combiner == "ws":
-        r_fit = optimize_mix_weights(fit_arrays, labels, name=name)
+        r_fit = optimize_mix_weights(fit_arrays, fit_labels, name=name)
         return _score_logits(eval_arrays, labels, r_fit.weights, name=name)
     if combiner == "cws":
-        r_fit = optimize_cws_weights(fit_arrays, labels, name=name)
+        r_fit = optimize_cws_weights(fit_arrays, fit_labels, name=name)
         w = r_fit.weights
         if w.ndim == 2:
             stacked = np.stack(eval_arrays, axis=0)
             combined = np.einsum("mnc,mc->nc", stacked, w)
             top1, top5, ce = metrics_from_logits(combined, labels)
             return EnsembleResult(name=name, weights=w, top1=top1, top5=top5, cross_entropy=ce)
-        return r_fit
+        return _score_logits(eval_arrays, labels, w, name=name)
     if combiner == "lsg":
-        y = np.asarray(labels, dtype=np.int64)
+        y = np.asarray(fit_labels, dtype=np.int64)
         n_classes = int(fit_arrays[0].shape[1])
         x_fit = np.concatenate(fit_arrays, axis=1).astype(np.float64)
         x_eval = np.concatenate(eval_arrays, axis=1).astype(np.float64)

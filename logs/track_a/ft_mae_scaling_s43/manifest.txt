@@ -1,0 +1,17 @@
+# collected: 2026-05-30T23:00:29+02:00
+# host run log ckpt best_val
+roussette perceiverQ16-mae200-s43 perceiverQ16-mae200-s43_20260530.log perceiverQ16-mae200-s43.pt Done. Best val honest top1: 0.4986. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/perceiverQ16-mae200-s43.pt
+murene meanpool-mae350-s43 meanpool-mae350-s43_20260530.log meanpool-mae350-s43.pt Done. Best val honest top1: 0.5294. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/meanpool-mae350-s43.pt
+truite perceiverQ16-mae500-s43 perceiverQ16-mae500-s43_20260530.log perceiverQ16-mae500-s43.pt Done. Best val honest top1: 0.5207. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/perceiverQ16-mae500-s43.pt
+requin meanpool-mae500-s43 meanpool-mae500-s43_20260530.log meanpool-mae500-s43.pt Done. Best val honest top1: 0.5370. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/meanpool-mae500-s43.pt
+labre meanpool-mae150-s43 meanpool-mae150-s43_20260530.log meanpool-mae150-s43.pt Done. Best val honest top1: 0.5185. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/meanpool-mae150-s43.pt
+rouget perceiverQ16-mae100-s43 perceiverQ16-mae100-s43_20260530.log perceiverQ16-mae100-s43.pt Done. Best val honest top1: 0.4729. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/perceiverQ16-mae100-s43.pt
+mulet meanpool-mae300-s43 meanpool-mae300-s43_20260530.log meanpool-mae300-s43.pt Done. Best val honest top1: 0.5364. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/meanpool-mae300-s43.pt
+thon perceiverQ16-mae400-s43 perceiverQ16-mae400-s43_20260530.log perceiverQ16-mae400-s43.pt Done. Best val honest top1: 0.5217. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/perceiverQ16-mae400-s43.pt
+lieu meanpool-mae200-s43 meanpool-mae200-s43_20260530.log meanpool-mae200-s43.pt Done. Best val honest top1: 0.5259. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/meanpool-mae200-s43.pt
+piranha meanpool-mae400-s43 meanpool-mae400-s43_20260530.log meanpool-mae400-s43.pt Done. Best val honest top1: 0.5371. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/meanpool-mae400-s43.pt
+sole perceiverQ16-mae300-s43 perceiverQ16-mae300-s43_20260530.log perceiverQ16-mae300-s43.pt Done. Best val honest top1: 0.5125. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/perceiverQ16-mae300-s43.pt
+raie meanpool-mae450-s43 meanpool-mae450-s43_20260530.log meanpool-mae450-s43.pt Done. Best val honest top1: 0.5362. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/meanpool-mae450-s43.pt
+lotte meanpool-mae250-s43 meanpool-mae250-s43_20260530.log meanpool-mae250-s43.pt Done. Best val honest top1: 0.5318. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/meanpool-mae250-s43.pt
+gardon meanpool-mae050-s43 meanpool-mae050-s43_20260530.log meanpool-mae050-s43.pt Done. Best val honest top1: 0.4519. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/meanpool-mae050-s43.pt
+gymnote meanpool-mae100-s43 meanpool-mae100-s43_20260530.log meanpool-mae100-s43.pt Done. Best val honest top1: 0.4999. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/meanpool-mae100-s43.pt

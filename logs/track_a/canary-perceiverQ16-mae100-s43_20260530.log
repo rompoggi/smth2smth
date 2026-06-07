@@ -1,0 +1,226 @@
+# run: canary-perceiverQ16-mae100-s43
+# started: 2026-05-30T02:22:55+02:00
+# track: a
+# experiment_doc: experiments/experimental_cleanup.md
+# hydra: experiment=track_a_diverse_arch2_perceiver seed=43 T=4
+# host: gymnote.polytechnique.fr
+# ssl: /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/pretrain/videomaev2_t4native_encoder_ep100.pt
+model:
+  name: video_mae_vit
+  variant: vit_b
+  num_classes: ${num_classes}
+  tube_t: 1
+  patch_size: 16
+  mlp_ratio: 4.0
+  drop_path_rate: 0.2
+  dropout: 0.0
+  head: perceiver
+  head_num_heads: 12
+  head_queries: 16
+  head_mlp_ratio: 4.0
+  temporal_mode: none
+  temporal_layers: 0
+  aim_bottleneck: 64
+  init_from: /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/pretrain/videomaev2_t4native_encoder_ep100.pt
+  interpolate_pos_embed: false
+  interpolate_src_image_size: 224
+  interpolate_src_num_frames: ${dataset.num_frames}
+  gradient_checkpointing: true
+  freeze_backbone: false
+  residual_variant: prenorm
+  hc_n: 4
+  hc_sk_iters: 3
+  hc_sk_tau: 1.0
+dataset:
+  root: ${hydra:runtime.cwd}/data
+  train_dir: ${dataset.root}/train
+  val_dir: ${dataset.root}/val
+  test_dir: ${dataset.root}/test
+  augmented_dirs: []
+  test_manifest: null
+  submission_output: ${hydra:runtime.cwd}/submissions/track_a.csv
+  num_frames: 4
+  val_ratio: 0.2
+  use_official_val: true
+  include_val_in_train: false
+  official_val_holdout_ratio: 0.0
+  holdout_manifest: null
+  official_val_holdout_split_seed: 42
+  seed: ${seed}
+  use_extra: false
+  train_extra_dir: ${dataset.root}/train_extra
+  max_samples: 256
+  max_samples_per_class: null
+  image_size: 224
+  time_reversal_prob: 0.0
+  temporal_reversal_augment:
+    enabled: false
+    prob: 0.5
+  class_boosting:
+    enabled: false
+training:
+  optimizer: adamw
+  lr: 0.0005
+  weight_decay: 0.05
+  layer_decay: 0.75
+  epochs: 1
+  warmup_epochs: 5
+  scheduler: cosine
+  scheduler_cosine: true
+  min_lr: 1.0e-06
+  label_smoothing: 0.1
+  videomix_mode: mixup_cutmix_switch
+  videomix_mixup_alpha: 0.8
+  videomix_cutmix_alpha: 1.0
+  videomix_prob: 1.0
+  videomix_switch_prob: 0.5
+  repeated_aug: 2
+  amp: true
+  amp_dtype: bf16
+  ema_enabled: true
+  ema_decay: 0.9999
+  early_stopping_enabled: true
+  early_stopping_patience: 15
+  early_stopping_min_delta: 0.001
+  num_workers: 4
+  log_interval_steps: 25
+  batch_size: 8
+  grad_accum_steps: 8
+  resume_from: null
+  save_last_checkpoint: true
+  device: cuda
+  wandb:
+    enabled: true
+    mode: online
+    project: smth2smth-frame-ablation
+    group: ft-mae-scaling
+    config:
+      head_type: perceiverQ16
+      pretrain_epochs: 100
+    name: perceiverQ16-mae100-s43
+    tags:
+    - track_a
+    - diverse_heads
+    - arch2_perceiver
+    log_interval_epochs: 1
+    log_interval_steps: 25
+  checkpoint_path: checkpoints/track_a/videomaev2+ft/canary-perceiverQ16-mae100-s43.pt
+  tta: true
+  tta_flip: false
+  tta_scales: null
+augment:
+  name: official_videomae_ssv2
+  random_horizontal_flip: false
+  random_horizontal_flip_prob: 0.0
+  random_crop: false
+  multiscale_crop: true
+  multiscale_scale:
+  - 0.08
+  - 1.0
+  multiscale_aspect:
+  - 0.75
+  - 1.3333
+  color_jitter: false
+  sync_across_frames: true
+  randaugment:
+    enabled: true
+    'n': 4
+    m: 7.0
+    mode: spatial
+    magnitude_max: 30.0
+    ops: null
+  random_erase:
+    enabled: true
+    prob: 0.25
+    mode: pixel
+    count: 1
+pretrain:
+  epochs: 100
+  batch_size: 64
+  lr: 0.0005
+  weight_decay: 0.04
+  log_interval_steps: 50
+  checkpoint_path: ${hydra:runtime.cwd}/ssl_trunk.pt
+  max_frames: null
+  image_size: 224
+  local_image_size: 96
+  num_local_views: 6
+  out_dim: 4096
+  hidden_dim: 2048
+  bottleneck_dim: 256
+  n_layers: 3
+  teacher_temp: 0.04
+  student_temp: 0.1
+  center_momentum: 0.9
+  teacher_momentum_base: 0.996
+  teacher_momentum_final: 1.0
+test:
+  num_segment: 2
+  num_crop: 3
+  flip_tta: false
+track:
+  name: a
+  description: 'Closed-world track: train from scratch.'
+seed: 43
+num_classes: 33
+
+[cuda] cache emptied (run-start). Free: 23.15 / 23.54 GiB
+[data] use_official_val=true: train=256 (train_dir=256), val=256 (from /Data/romain.poggi/smth2smth/data/val)
+[data] repeated_aug=2: each clip drawn up to 2x per epoch with independent augmentations.
+[init_from] loaded 149 encoder tensors from /Data/romain.poggi/smth2smth/checkpoints/track_a/ssl/pretrain/videomaev2_t4native_encoder_ep100.pt. encoder-missing=0, unexpected=0
+[diverse-arch] pool_head: num_queries=16, init query pairwise cosine=0.0276 (>0.7 later ⇒ query collapse).
+[optim] LLRD: layer_decay=0.75, depth=12, 28 param groups.
+[optim] trainable 93,377,313 / total 93,377,313 params (100.00%)
+[amp] mixed-precision (torch.bfloat16 + GradScaler) enabled.
+[train] grad_accum_steps=8 (effective batch scales up).
+[ema] enabled (decay=0.9999); will eval both live and EMA each epoch.
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from WANDB_API_KEY.
+wandb: Currently logged in as: romain-poggi (romain-poggi-ecole-polytechnique) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.27.0
+wandb: Run data is saved locally in /Data/romain.poggi/smth2smth/wandb/run-20260530_022301-3cvm40t5
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run perceiverQ16-mae100-s43
+wandb: ⭐️ View project at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: 🚀 View run at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/3cvm40t5
+[wandb] run started: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/3cvm40t5
+    [02:23:07] step 25/32 | avg train loss 2.5694 top1 0.6800 top5 0.6800
+    [02:23:09] step 32/32 | avg train loss 2.2043 top1 0.7500 top5 0.7500
+[2026-05-30T02:23:12] Epoch 1/1 | train loss 2.2043 top1 0.7500 | val loss 0.8589 top1 0.8906 top5 0.8906 | ema holdout top1 0.8906 top5 0.8906
+  [head-diag] mlp_activity_ratio=0.2647, query_pairwise_cosine=0.0277
+  Saved new best checkpoint (live): /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/canary-perceiverQ16-mae100-s43.pt (val top1=0.8906)
+wandb: updating run metadata
+wandb: uploading output.log; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading history steps 0-1, summary, console lines 1-5
+wandb: 
+wandb: Run history:
+wandb:                      epoch ▁
+wandb:    head/mlp_activity_ratio ▁
+wandb: head/query_pairwise_cosine ▁
+wandb:                         lr ▁
+wandb:           optim/lr/llrd_l0 ▁
+wandb:        optim/lr/llrd_l0_nd ▁
+wandb:           optim/lr/llrd_l1 ▁
+wandb:          optim/lr/llrd_l10 ▁
+wandb:       optim/lr/llrd_l10_nd ▁
+wandb:          optim/lr/llrd_l11 ▁
+wandb:                        +67 ...
+wandb: 
+wandb: Run summary:
+wandb:                      epoch 1
+wandb:    head/mlp_activity_ratio 0.26473
+wandb: head/query_pairwise_cosine 0.02766
+wandb:                         lr 0.0
+wandb:           optim/lr/llrd_l0 0.0
+wandb:        optim/lr/llrd_l0_nd 0.0
+wandb:           optim/lr/llrd_l1 0.0
+wandb:          optim/lr/llrd_l10 4e-05
+wandb:       optim/lr/llrd_l10_nd 4e-05
+wandb:          optim/lr/llrd_l11 6e-05
+wandb:                        +67 ...
+wandb: 
+wandb: 🚀 View run perceiverQ16-mae100-s43 at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/3cvm40t5
+wandb: ⭐️ View project at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260530_022301-3cvm40t5/logs
+[cuda] cache emptied (run-end). Free: 21.11 / 23.54 GiB
+Done. Best val honest top1: 0.8906. Checkpoint: /Data/romain.poggi/smth2smth/checkpoints/track_a/videomaev2+ft/canary-perceiverQ16-mae100-s43.pt

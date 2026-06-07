@@ -1,0 +1,5 @@
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-perceiverQ2-mae500
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-perceiverQ4-mae500
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-perceiverQ8-mae500
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-perceiverQ16-mae500
+https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-perceiverQ32-mae500

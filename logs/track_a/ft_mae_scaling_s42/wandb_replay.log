@@ -1,0 +1,886 @@
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /users/eleves-a/2021/romain.poggi/.netrc.
+wandb: Currently logged in as: romain-poggi (romain-poggi-ecole-polytechnique) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.27.0
+wandb: Run data is saved locally in /Data/romain.poggi/smth2smth/wandb/run-20260531_174742-gson8ohp
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run meanpool-mae050-s42
+wandb: ⭐️ View project at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: 🚀 View run at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/gson8ohp
+wandb: updating run metadata
+wandb: uploading config.yaml; uploading wandb-metadata.json; uploading requirements.txt; uploading wandb-summary.json
+wandb: uploading history steps 0-11249, summary
+wandb: WARNING Tried to log to step 5625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 11250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 16875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 22500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 28125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 33750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 39375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 45000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 50625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 56250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 61875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 67500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 73125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 78750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 84375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 90000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 95625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 101250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 106875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 112500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 118125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 123750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 129375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 135000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 140625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 146250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 151875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 157500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 163125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 168750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 174375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 180000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 185625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 191250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 196875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 202500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 208125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 213750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 219375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 225000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 230625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 236250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 241875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 247500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 253125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 258750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 264375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 270000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 275625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: 
+wandb: Run history:
+wandb:            epoch ▁
+wandb: train/epoch_loss ▁
+wandb: train/epoch_top1 ▁
+wandb:       train/loss █▇▇▇▇▆▆▆▆▆▅▅▅▅▅▄▄▄▄▃▃▃▃▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train/top1 ▁▁▁▂▃▄▄▅▅▄▅▅▅▅▅▅▆▆▆▆▆▆▆▆▆▇▇▆▆▇▇▇█▇███▇██
+wandb:       train/top5 ▁▂▄▄▄▅▆▆▆▆▆▆▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇█▇▇▇▇▇███████
+wandb:    val/best_top1 ▁
+wandb:     val/ema_top1 ▁
+wandb:     val/ema_top5 ▁
+wandb:         val/loss ▁
+wandb:               +2 ...
+wandb: 
+wandb: Run summary:
+wandb:            epoch 50
+wandb: train/epoch_loss 1.9447
+wandb: train/epoch_top1 0.3867
+wandb:       train/loss 1.9447
+wandb:       train/top1 0.3867
+wandb:       train/top5 0.6385
+wandb:    val/best_top1 0.4519
+wandb:     val/ema_top1 0.4519
+wandb:     val/ema_top5 0.7821
+wandb:         val/loss 2.0062
+wandb:               +2 ...
+wandb: 
+wandb: 🚀 View run meanpool-mae050-s42 at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/gson8ohp
+wandb: ⭐️ View project at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260531_174742-gson8ohp/logs
+wandb: setting up run v3migx2m
+wandb: Tracking run with wandb version 0.27.0
+wandb: Run data is saved locally in /Data/romain.poggi/smth2smth/wandb/run-20260531_174746-v3migx2m
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run meanpool-mae100-s42
+wandb: ⭐️ View project at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: 🚀 View run at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/v3migx2m
+wandb: updating run metadata
+wandb: uploading wandb-summary.json; uploading config.yaml; uploading wandb-metadata.json; uploading requirements.txt
+wandb: uploading history steps 0-11249, summary
+wandb: WARNING Tried to log to step 5625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 11250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 16875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 22500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 28125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 33750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 39375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 45000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 50625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 56250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 61875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 67500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 73125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 78750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 84375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 90000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 95625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 101250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 106875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 112500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 118125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 123750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 129375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 135000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 140625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 146250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 151875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 157500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 163125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 168750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 174375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 180000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 185625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 191250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 196875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 202500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 208125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 213750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 219375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 225000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 230625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 236250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 241875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 247500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 253125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 258750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 264375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 270000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 275625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: 
+wandb: Run history:
+wandb:            epoch ▁
+wandb: train/epoch_loss ▁
+wandb: train/epoch_top1 ▁
+wandb:       train/loss █▆▆▆▅▄▅▅▄▄▄▄▃▃▃▃▃▂▂▂▂▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train/top1 ▁▂▃▃▃▄▅▅▅▅▆▆▆▆▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇▇▇▇▇███████
+wandb:       train/top5 ▁▂▃▄▅▅▅▅▅▅▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇▇██████████████
+wandb:    val/best_top1 ▁
+wandb:     val/ema_top1 ▁
+wandb:     val/ema_top5 ▁
+wandb:         val/loss ▁
+wandb:               +2 ...
+wandb: 
+wandb: Run summary:
+wandb:            epoch 50
+wandb: train/epoch_loss 1.8643
+wandb: train/epoch_top1 0.404
+wandb:       train/loss 1.8643
+wandb:       train/top1 0.404
+wandb:       train/top5 0.6527
+wandb:    val/best_top1 0.4995
+wandb:     val/ema_top1 0.4995
+wandb:     val/ema_top5 0.8126
+wandb:         val/loss 1.8358
+wandb:               +2 ...
+wandb: 
+wandb: 🚀 View run meanpool-mae100-s42 at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/v3migx2m
+wandb: ⭐️ View project at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260531_174746-v3migx2m/logs
+wandb: setting up run bolskve3
+wandb: Tracking run with wandb version 0.27.0
+wandb: Run data is saved locally in /Data/romain.poggi/smth2smth/wandb/run-20260531_174749-bolskve3
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run meanpool-mae150-s42
+wandb: ⭐️ View project at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: 🚀 View run at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/bolskve3
+wandb: updating run metadata
+wandb: uploading wandb-metadata.json; uploading requirements.txt; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading history steps 0-8692, summary
+wandb: WARNING Tried to log to step 5625 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 11250 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 16875 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 22500 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 28125 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 33750 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 39375 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 45000 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 50625 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 56250 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 61875 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 67500 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 73125 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 78750 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 84375 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 90000 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 95625 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 101250 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 106875 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 112500 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 118125 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 123750 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 129375 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 135000 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 140625 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 146250 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 151875 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 157500 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 163125 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 168750 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 174375 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 180000 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 185625 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 191250 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 196875 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 202500 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 208125 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 213750 that is less than the current step 217325. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: 
+wandb: Run history:
+wandb: train/loss ██▇▇▆▅▅▅▅▅▅▅▅▄▄▄▄▄▄▄▃▃▃▃▃▃▃▃▃▂▂▂▂▂▂▂▁▁▁▁
+wandb: train/top1 ▁▁▂▂▂▃▃▃▄▄▄▄▄▄▄▄▄▄▄▄▅▅▅▅▆▆▅▅▅▅▅▆▆▆▇▆▇▇██
+wandb: train/top5 ▁▁▁▁▃▄▄▄▄▅▅▅▅▅▅▅▅▆▆▆▆▆▆▆▆▆▆▇▇▇▇▇████████
+wandb: 
+wandb: Run summary:
+wandb: train/loss 1.731
+wandb: train/top1 0.4435
+wandb: train/top5 0.6776
+wandb: 
+wandb: 🚀 View run meanpool-mae150-s42 at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/bolskve3
+wandb: ⭐️ View project at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260531_174749-bolskve3/logs
+wandb: setting up run 8zg8n74y
+wandb: Tracking run with wandb version 0.27.0
+wandb: Run data is saved locally in /Data/romain.poggi/smth2smth/wandb/run-20260531_174752-8zg8n74y
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run meanpool-mae200-s42
+wandb: ⭐️ View project at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: 🚀 View run at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/8zg8n74y
+wandb: updating run metadata
+wandb: uploading config.yaml; uploading wandb-metadata.json; uploading requirements.txt; uploading wandb-summary.json
+wandb: uploading history steps 0-11249, summary
+wandb: WARNING Tried to log to step 5625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 11250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 16875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 22500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 28125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 33750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 39375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 45000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 50625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 56250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 61875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 67500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 73125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 78750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 84375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 90000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 95625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 101250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 106875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 112500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 118125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 123750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 129375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 135000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 140625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 146250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 151875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 157500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 163125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 168750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 174375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 180000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 185625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 191250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 196875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 202500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 208125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 213750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 219375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 225000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 230625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 236250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 241875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 247500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 253125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 258750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 264375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 270000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 275625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: 
+wandb: Run history:
+wandb:            epoch ▁
+wandb: train/epoch_loss ▁
+wandb: train/epoch_top1 ▁
+wandb:       train/loss ██▇▇▆▅▅▅▅▅▄▄▃▃▃▃▃▃▃▃▃▃▃▂▂▁▂▁▁▁▁▁▁▁▁▂▂▂▂▂
+wandb:       train/top1 ▁▃▃▃▃▄▄▄▅▅▅▅▆▆▆▇▇▇▇▇▇▇▇▇▇██▇▇█████▇▇▇▇▇▇
+wandb:       train/top5 ▁▁▃▄▄▄▄▄▅▆▆▆▅▅▅▆▆▆▆█▇▇▇▇██▇▇▇▇███▇▇▇▇▇▇▇
+wandb:    val/best_top1 ▁
+wandb:     val/ema_top1 ▁
+wandb:     val/ema_top5 ▁
+wandb:         val/loss ▁
+wandb:               +2 ...
+wandb: 
+wandb: Run summary:
+wandb:            epoch 50
+wandb: train/epoch_loss 1.9031
+wandb: train/epoch_top1 0.3977
+wandb:       train/loss 1.9031
+wandb:       train/top1 0.3977
+wandb:       train/top5 0.6467
+wandb:    val/best_top1 0.5087
+wandb:     val/ema_top1 0.5079
+wandb:     val/ema_top5 0.8184
+wandb:         val/loss 1.8073
+wandb:               +2 ...
+wandb: 
+wandb: 🚀 View run meanpool-mae200-s42 at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/8zg8n74y
+wandb: ⭐️ View project at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260531_174752-8zg8n74y/logs
+wandb: setting up run eqk3acqq
+wandb: Tracking run with wandb version 0.27.0
+wandb: Run data is saved locally in /Data/romain.poggi/smth2smth/wandb/run-20260531_174756-eqk3acqq
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run meanpool-mae250-s42
+wandb: ⭐️ View project at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: 🚀 View run at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/eqk3acqq
+wandb: updating run metadata
+wandb: uploading wandb-metadata.json; uploading requirements.txt; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading requirements.txt; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading history steps 0-11249, summary
+wandb: WARNING Tried to log to step 5625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 11250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 16875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 22500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 28125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 33750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 39375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 45000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 50625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 56250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 61875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 67500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 73125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 78750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 84375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 90000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 95625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 101250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 106875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 112500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 118125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 123750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 129375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 135000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 140625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 146250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 151875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 157500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 163125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 168750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 174375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 180000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 185625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 191250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 196875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 202500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 208125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 213750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 219375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 225000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 230625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 236250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 241875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 247500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 253125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 258750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 264375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 270000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 275625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: 
+wandb: Run history:
+wandb:            epoch ▁
+wandb: train/epoch_loss ▁
+wandb: train/epoch_top1 ▁
+wandb:       train/loss █▇▇▇▆▅▄▄▄▄▃▃▄▃▃▃▃▃▃▂▂▂▂▂▂▂▂▂▂▂▂▂▂▁▁▁▁▁▁▁
+wandb:       train/top1 ▁▁▃▄▄▄▄▅▅▅▅▅▅▆▆▆▇▆▇▇▇▇▇▇▇▇▇▇▇▇███▇██████
+wandb:       train/top5 ▁▁▃▃▃▅▅▆▆▆▆▇▇▇▇▇▇▇▇▇▇███████████████████
+wandb:    val/best_top1 ▁
+wandb:     val/ema_top1 ▁
+wandb:     val/ema_top5 ▁
+wandb:         val/loss ▁
+wandb:               +2 ...
+wandb: 
+wandb: Run summary:
+wandb:            epoch 50
+wandb: train/epoch_loss 1.8065
+wandb: train/epoch_top1 0.4147
+wandb:       train/loss 1.8065
+wandb:       train/top1 0.4147
+wandb:       train/top5 0.66
+wandb:    val/best_top1 0.5284
+wandb:     val/ema_top1 0.5278
+wandb:     val/ema_top5 0.8388
+wandb:         val/loss 1.7107
+wandb:               +2 ...
+wandb: 
+wandb: 🚀 View run meanpool-mae250-s42 at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/eqk3acqq
+wandb: ⭐️ View project at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260531_174756-eqk3acqq/logs
+wandb: setting up run ijsvtkow
+wandb: Tracking run with wandb version 0.27.0
+wandb: Run data is saved locally in /Data/romain.poggi/smth2smth/wandb/run-20260531_174800-ijsvtkow
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run meanpool-mae300-s42
+wandb: ⭐️ View project at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: 🚀 View run at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/ijsvtkow
+wandb: updating run metadata
+wandb: uploading config.yaml; uploading wandb-metadata.json; uploading wandb-summary.json
+wandb: uploading history steps 0-11249, summary
+wandb: WARNING Tried to log to step 5625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 11250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 16875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 22500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 28125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 33750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 39375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 45000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 50625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 56250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 61875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 67500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 73125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 78750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 84375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 90000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 95625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 101250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 106875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 112500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 118125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 123750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 129375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 135000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 140625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 146250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 151875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 157500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 163125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 168750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 174375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 180000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 185625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 191250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 196875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 202500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 208125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 213750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 219375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 225000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 230625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 236250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 241875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 247500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 253125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 258750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 264375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 270000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 275625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: 
+wandb: Run history:
+wandb:            epoch ▁
+wandb: train/epoch_loss ▁
+wandb: train/epoch_top1 ▁
+wandb:       train/loss ██▇▅▅▅▅▅▅▄▄▄▄▄▄▄▄▃▃▃▃▃▃▃▃▂▂▂▂▂▁▂▂▂▁▁▁▁▁▁
+wandb:       train/top1 ▁▂▂▃▃▄▄▄▄▅▅▅▅▇▆▆▆▇▇▇▇▇▇▇▇███████████████
+wandb:       train/top5 ▁▂▂▂▂▂▂▃▃▄▄▄▅▅▅▆▆▆▆▇▇▇▇▇▇▇▇▇▆▇▇▇▇████▇▇▇
+wandb:    val/best_top1 ▁
+wandb:     val/ema_top1 ▁
+wandb:     val/ema_top5 ▁
+wandb:         val/loss ▁
+wandb:               +2 ...
+wandb: 
+wandb: Run summary:
+wandb:            epoch 50
+wandb: train/epoch_loss 1.8085
+wandb: train/epoch_top1 0.4131
+wandb:       train/loss 1.8085
+wandb:       train/top1 0.4131
+wandb:       train/top5 0.6599
+wandb:    val/best_top1 0.5357
+wandb:     val/ema_top1 0.5337
+wandb:     val/ema_top5 0.8363
+wandb:         val/loss 1.7018
+wandb:               +2 ...
+wandb: 
+wandb: 🚀 View run meanpool-mae300-s42 at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/ijsvtkow
+wandb: ⭐️ View project at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260531_174800-ijsvtkow/logs
+wandb: setting up run hv6lokrb
+wandb: Tracking run with wandb version 0.27.0
+wandb: Run data is saved locally in /Data/romain.poggi/smth2smth/wandb/run-20260531_174803-hv6lokrb
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run meanpool-mae350-s42
+wandb: ⭐️ View project at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: 🚀 View run at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/hv6lokrb
+wandb: updating run metadata
+wandb: uploading wandb-metadata.json; uploading requirements.txt; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading history steps 0-11249, summary
+wandb: WARNING Tried to log to step 5625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 11250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 16875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 22500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 28125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 33750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 39375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 45000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 50625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 56250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 61875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 67500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 73125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 78750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 84375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 90000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 95625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 101250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 106875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 112500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 118125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 123750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 129375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 135000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 140625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 146250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 151875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 157500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 163125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 168750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 174375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 180000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 185625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 191250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 196875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 202500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 208125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 213750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 219375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 225000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 230625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 236250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 241875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 247500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 253125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 258750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 264375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 270000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 275625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: 
+wandb: Run history:
+wandb:            epoch ▁
+wandb: train/epoch_loss ▁
+wandb: train/epoch_top1 ▁
+wandb:       train/loss ███▅▅▄▃▄▃▃▃▃▃▃▃▂▂▂▂▂▂▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train/top1 ▁▂▂▄▄▅▅▅▅▅▅▆▆▆▆▇▇▆▆▆▆▇▇▇▇▇▇█▇▇▇█████████
+wandb:       train/top5 ▁▂▂▃▃▃▄▅▅▄▅▅▆▆▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇▇█▇▇▇▇▇▇██▇
+wandb:    val/best_top1 ▁
+wandb:     val/ema_top1 ▁
+wandb:     val/ema_top5 ▁
+wandb:         val/loss ▁
+wandb:               +2 ...
+wandb: 
+wandb: Run summary:
+wandb:            epoch 50
+wandb: train/epoch_loss 1.8113
+wandb: train/epoch_top1 0.4155
+wandb:       train/loss 1.8113
+wandb:       train/top1 0.4155
+wandb:       train/top5 0.6595
+wandb:    val/best_top1 0.5362
+wandb:     val/ema_top1 0.5362
+wandb:     val/ema_top5 0.836
+wandb:         val/loss 1.693
+wandb:               +2 ...
+wandb: 
+wandb: 🚀 View run meanpool-mae350-s42 at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/hv6lokrb
+wandb: ⭐️ View project at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260531_174803-hv6lokrb/logs
+wandb: setting up run 8r3jh05t
+wandb: Tracking run with wandb version 0.27.0
+wandb: Run data is saved locally in /Data/romain.poggi/smth2smth/wandb/run-20260531_174807-8r3jh05t
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run meanpool-mae400-s42
+wandb: ⭐️ View project at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: 🚀 View run at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/8r3jh05t
+wandb: updating run metadata
+wandb: uploading config.yaml; uploading wandb-metadata.json; uploading requirements.txt; uploading wandb-summary.json
+wandb: uploading history steps 0-11249, summary
+wandb: WARNING Tried to log to step 5625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 11250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 16875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 22500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 28125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 33750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 39375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 45000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 50625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 56250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 61875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 67500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 73125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 78750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 84375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 90000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 95625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 101250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 106875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 112500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 118125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 123750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 129375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 135000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 140625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 146250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 151875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 157500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 163125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 168750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 174375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 180000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 185625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 191250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 196875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 202500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 208125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 213750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 219375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 225000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 230625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 236250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 241875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 247500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 253125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 258750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 264375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 270000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 275625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: 
+wandb: Run history:
+wandb:            epoch ▁
+wandb: train/epoch_loss ▁
+wandb: train/epoch_top1 ▁
+wandb:       train/loss ██▇▇▆▆▅▅▅▄▄▄▄▄▄▄▄▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▃▂▃▂▂▂▂▁
+wandb:       train/top1 ▁▃▃▄▄▄▄▅▅▅▅▅▅▆▆▆▆▆▆▆▆▆▆▆▆▆▆▇▇▇▇▇▇███████
+wandb:       train/top5 ▁▁▄▅▅▅▅▅▅▆▆▆▇▇▇▇▇▆▆▇▇▇▇▇▇▇▇█▇▇██████████
+wandb:    val/best_top1 ▁
+wandb:     val/ema_top1 ▁
+wandb:     val/ema_top5 ▁
+wandb:         val/loss ▁
+wandb:               +2 ...
+wandb: 
+wandb: Run summary:
+wandb:            epoch 50
+wandb: train/epoch_loss 1.6671
+wandb: train/epoch_top1 0.4482
+wandb:       train/loss 1.6671
+wandb:       train/top1 0.4482
+wandb:       train/top5 0.6787
+wandb:    val/best_top1 0.5305
+wandb:     val/ema_top1 0.5288
+wandb:     val/ema_top5 0.8299
+wandb:         val/loss 1.7595
+wandb:               +2 ...
+wandb: 
+wandb: 🚀 View run meanpool-mae400-s42 at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/8r3jh05t
+wandb: ⭐️ View project at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260531_174807-8r3jh05t/logs
+wandb: setting up run pahn5dmp
+wandb: Tracking run with wandb version 0.27.0
+wandb: Run data is saved locally in /Data/romain.poggi/smth2smth/wandb/run-20260531_174811-pahn5dmp
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run meanpool-mae450-s42
+wandb: ⭐️ View project at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: 🚀 View run at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/pahn5dmp
+wandb: updating run metadata
+wandb: uploading history steps 0-11249, summary
+wandb: WARNING Tried to log to step 5625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 11250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 16875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 22500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 28125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 33750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 39375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 45000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 50625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 56250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 61875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 67500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 73125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 78750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 84375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 90000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 95625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 101250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 106875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 112500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 118125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 123750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 129375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 135000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 140625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 146250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 151875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 157500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 163125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 168750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 174375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 180000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 185625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 191250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 196875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 202500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 208125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 213750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 219375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 225000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 230625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 236250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 241875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 247500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 253125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 258750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 264375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 270000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 275625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: 
+wandb: Run history:
+wandb:            epoch ▁
+wandb: train/epoch_loss ▁
+wandb: train/epoch_top1 ▁
+wandb:       train/loss █▇▆▅▅▄▄▃▃▃▃▂▂▂▂▂▂▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:       train/top1 ▁▃▃▃▃▃▄▄▄▄▅▅▅▅▅▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇█▇▇███████
+wandb:       train/top5 ▁▂▂▂▄▅▅▅▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇▇▇▇▇█████▇███████
+wandb:    val/best_top1 ▁
+wandb:     val/ema_top1 ▁
+wandb:     val/ema_top5 ▁
+wandb:         val/loss ▁
+wandb:               +2 ...
+wandb: 
+wandb: Run summary:
+wandb:            epoch 50
+wandb: train/epoch_loss 1.8291
+wandb: train/epoch_top1 0.4142
+wandb:       train/loss 1.8291
+wandb:       train/top1 0.4142
+wandb:       train/top5 0.6619
+wandb:    val/best_top1 0.5357
+wandb:     val/ema_top1 0.5336
+wandb:     val/ema_top5 0.835
+wandb:         val/loss 1.6836
+wandb:               +2 ...
+wandb: 
+wandb: 🚀 View run meanpool-mae450-s42 at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/pahn5dmp
+wandb: ⭐️ View project at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260531_174811-pahn5dmp/logs
+wandb: setting up run xyl9crqz
+wandb: Tracking run with wandb version 0.27.0
+wandb: Run data is saved locally in /Data/romain.poggi/smth2smth/wandb/run-20260531_174814-xyl9crqz
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run meanpool-mae500-s42
+wandb: ⭐️ View project at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: 🚀 View run at https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/xyl9crqz
+wandb: updating run metadata
+wandb: uploading wandb-metadata.json; uploading requirements.txt; uploading wandb-summary.json; uploading config.yaml
+wandb: uploading history steps 0-11249, summary
+wandb: WARNING Tried to log to step 5625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 11250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 16875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 22500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 28125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 33750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 39375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 45000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 50625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 56250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 61875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 67500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 73125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 78750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 84375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 90000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 95625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 101250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 106875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 112500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 118125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 123750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 129375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 135000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 140625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 146250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 151875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 157500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 163125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 168750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 174375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 180000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 185625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 191250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 196875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 202500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 208125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 213750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 219375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 225000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 230625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 236250 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 241875 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 247500 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 253125 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 258750 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 264375 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 270000 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: WARNING Tried to log to step 275625 that is less than the current step 281250. Steps must be monotonically increasing, so this data will be ignored. See https://wandb.me/define-metric to log data out of order.
+wandb: 
+wandb: Run history:
+wandb:            epoch ▁
+wandb: train/epoch_loss ▁
+wandb: train/epoch_top1 ▁
+wandb:       train/loss █▆▆▆▅▅▅▅▅▄▄▄▄▄▄▄▄▄▃▃▃▃▃▃▃▃▂▂▂▂▁▁▁▁▁▁▁▁▁▁
+wandb:       train/top1 ▁▁▁▃▃▅▄▅▅▅▅▅▆▆▆▆▆▆▆▆▆▆▇▆▇▇▇▇▇▇▇▇▇▇██████
+wandb:       train/top5 ▁▂▃▅▅▅▅▅▆▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇▇▇▇▇██▇▇████████
+wandb:    val/best_top1 ▁
+wandb:     val/ema_top1 ▁
+wandb:     val/ema_top5 ▁
+wandb:         val/loss ▁
+wandb:               +2 ...
+wandb: 
+wandb: Run summary:
+wandb:            epoch 50
+wandb: train/epoch_loss 1.7059
+wandb: train/epoch_top1 0.441
+wandb:       train/loss 1.7059
+wandb:       train/top1 0.441
+wandb:       train/top5 0.682
+wandb:    val/best_top1 0.5331
+wandb:     val/ema_top1 0.5296
+wandb:     val/ema_top5 0.835
+wandb:         val/loss 1.7096
+wandb:               +2 ...
+wandb: 
+wandb: 🚀 View run meanpool-mae500-s42 at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/xyl9crqz
+wandb: ⭐️ View project at: https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation
+wandb: Synced 4 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260531_174814-xyl9crqz/logs
+uploaded meanpool-mae050-s42 -> https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/gson8ohp
+uploaded meanpool-mae100-s42 -> https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/v3migx2m
+uploaded meanpool-mae150-s42 -> https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/bolskve3
+uploaded meanpool-mae200-s42 -> https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/8zg8n74y
+uploaded meanpool-mae250-s42 -> https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/eqk3acqq
+uploaded meanpool-mae300-s42 -> https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/ijsvtkow
+uploaded meanpool-mae350-s42 -> https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/hv6lokrb
+uploaded meanpool-mae400-s42 -> https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/8r3jh05t
+uploaded meanpool-mae450-s42 -> https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/pahn5dmp
+uploaded meanpool-mae500-s42 -> https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/xyl9crqz
+wrote /Data/romain.poggi/smth2smth/logs/track_a/ft_mae_scaling_s42/wandb_replay_urls.txt

@@ -33,8 +33,10 @@ model:
 dataset:
   num_frames: 4
   image_size: 224
+  # Same honest-val protocol as official_ssv2_ft (no holdout, no val in train).
   use_official_val: true
   include_val_in_train: false
+  official_val_holdout_ratio: 0.0
 
 seed: 42
 

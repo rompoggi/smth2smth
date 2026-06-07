@@ -66,6 +66,10 @@ class WandbTracker:
         self.log_interval_epochs = max(1, int(wb_cfg.get("log_interval_epochs", 1)))
 
         config_dict = OmegaConf.to_container(cfg, resolve=True)
+        config_extra = wb_cfg.get("config")
+        if config_extra and isinstance(config_dict, dict):
+            for key, value in OmegaConf.to_container(config_extra, resolve=True).items():
+                config_dict[key] = value
         init_kwargs: dict[str, Any] = {
             "project": project,
             "config": config_dict,
@@ -75,6 +79,9 @@ class WandbTracker:
             init_kwargs["entity"] = str(entity)
         if run_name:
             init_kwargs["name"] = run_name
+        group = wb_cfg.get("group")
+        if group:
+            init_kwargs["group"] = str(group)
         if mode:
             init_kwargs["mode"] = str(mode)
 

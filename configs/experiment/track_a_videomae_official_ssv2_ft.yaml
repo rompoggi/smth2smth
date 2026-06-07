@@ -39,8 +39,10 @@ model:
 dataset:
   num_frames: 16
   image_size: 224
+  # Honest LB protocol: train on data/train only; metrics on full data/val (no val in train).
   use_official_val: true
   include_val_in_train: false
+  official_val_holdout_ratio: 0.0
 
 seed: 42
 

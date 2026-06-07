@@ -1,0 +1,5 @@
+# dense TTA cache: q16_s42 on gymnote
+# started: 2026-05-28T22:44:51+02:00
+[dense-cache] q16_s42: test N=6913 OFFICIAL_2X3 TTA ...
+[submit] masking 1 never-trained class index/indices: [27]
+[dense-cache] q16_s42: DONE test(6913, 33)

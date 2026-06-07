@@ -13,6 +13,8 @@ training:
   # scheduler, and GradScaler states are restored when present and compatible
   # with the current optimizer param groups (see ``pipelines/train.py``).
   resume_from: null
+  # Optional global training step for mid-epoch resume (aligns W&B step counter).
+  resume_global_step: null
   # PEFT LoRA (``model.lora_enabled=true``): separate LR for adapter tensors
   # matched by name (``lora_A`` / ``lora_B``). Head keeps ``training.lr``.
   # When ``null``, LoRA LR is ``lr * lora_lr_ratio``. Ignored if there are no

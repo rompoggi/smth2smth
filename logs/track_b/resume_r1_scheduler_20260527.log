@@ -1,0 +1,33 @@
+# scheduler: triggered 2026-05-27T06:30:36+02:00
+=== RESUME anguille -> r1_b01_hf_lr5e3 ===
+SKIP: track_b_r1_b01_hf_lr5e3 already running on anguille.polytechnique.fr
+=== RESUME barbeau -> r1_b02_hf_lr3e3 ===
+  checkpoint: none — starting fresh
+  W&B resume: f4ydf685
+pid=338381 log=logs/track_b/r1_b02_hf_lr3e3_20260527.log
+=== RESUME barbue -> r1_b03_hf_lr1e3 ===
+SKIP: track_b_r1_b03_hf_lr1e3 already running on barbue.polytechnique.fr
+=== RESUME baudroie -> r1_b04_hf_lr3e4 ===
+SKIP: track_b_r1_b04_hf_lr3e4 already running on baudroie.polytechnique.fr
+=== RESUME gardon -> r1_b05_hf_lr1e4 ===
+SKIP: track_b_r1_b05_hf_lr1e4 already running on gardon.polytechnique.fr
+=== RESUME lieu -> r1_b06_hf_wd001 ===
+SKIP: track_b_r1_b06_hf_wd001 already running on lieu.polytechnique.fr
+=== RESUME murene -> r1_b07_mq16_lr1e3 ===
+SKIP: track_b_r1_b07_mq16_lr1e3 already running on murene.polytechnique.fr
+=== RESUME piranha -> r1_b08_mq16_lr3e3 ===
+SKIP: track_b_r1_b08_mq16_lr3e3 already running on piranha.polytechnique.fr
+=== RESUME raie -> r1_b09_mq8_lr1e3 ===
+SKIP: track_b_r1_b09_mq8_lr1e3 already running on raie.polytechnique.fr
+=== RESUME roussette -> r1_b10_mq32_lr1e3 ===
+SKIP: track_b_r1_b10_mq32_lr1e3 already running on roussette.polytechnique.fr
+=== RESUME saumon -> r1_b11_4block_lr3e4 ===
+SKIP: track_b_r1_b11_4block_lr3e4 already running on saumon.polytechnique.fr
+=== RESUME truite -> r1_b12_hf_dora_mlp ===
+SKIP: track_b_r1_b12_hf_dora_mlp already running on truite.polytechnique.fr
+
+=== RESUME COMPLETE ===
+All 12 hosts contacted successfully.
+
+Health check in 90s:
+  bash scripts/check_track_b_r1_health.sh

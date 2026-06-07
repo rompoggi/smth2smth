@@ -1,0 +1,3 @@
+K3 https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-DivSpaceTimeK3-mae500 id=s42-replay-v2-DivSpaceTimeK3-mae500
+K6 https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-DivSpaceTimeK6-mae500 id=s42-replay-v2-DivSpaceTimeK6-mae500
+K9 https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-DivSpaceTimeK9-mae500 id=s42-replay-v2-DivSpaceTimeK9-mae500

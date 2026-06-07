@@ -1,0 +1,7 @@
+# collected: 2026-06-02T00:12:28+02:00
+# seed: 42 | train-only | SSL ep500 | divided space-time (arch3)
+# rename: arch3-divided-st-k*-trainonly -> DivSpaceTimeK*-mae500-s42
+# columns: K old_run new_run host ckpt log wandb_id note
+3 arch3-divided-st-k3-trainonly DivSpaceTimeK3-mae500-s42 barbeau /Data/romain.poggi/smth2smth/checkpoints/track_a/divspace_s42/DivSpaceTimeK3-mae500-s42.pt /Data/romain.poggi/smth2smth/logs/track_a/divspace_s42/DivSpaceTimeK3-mae500-s42_20260526.log hckni98d
+6 arch3-divided-st-k6-trainonly DivSpaceTimeK6-mae500-s42 saumon /Data/romain.poggi/smth2smth/checkpoints/track_a/divspace_s42/DivSpaceTimeK6-mae500-s42.pt /Data/romain.poggi/smth2smth/logs/track_a/divspace_s42/DivSpaceTimeK6-mae500-s42_20260526.log oz731qwd
+9 arch3-divided-st-k9-trainonly DivSpaceTimeK9-mae500-s42 sole /Data/romain.poggi/smth2smth/checkpoints/track_a/divspace_s42/DivSpaceTimeK9-mae500-s42.pt /Data/romain.poggi/smth2smth/logs/track_a/divspace_s42/DivSpaceTimeK9-mae500-s42_20260526.log zcjqthxh

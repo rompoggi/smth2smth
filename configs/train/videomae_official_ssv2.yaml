@@ -29,6 +29,7 @@ training:
   batch_size: 8
   grad_accum_steps: 8
   resume_from: null
+  resume_global_step: null
   save_last_checkpoint: true
   device: cuda
   wandb:
@@ -36,6 +37,8 @@ training:
     mode: online
     # project / name / tags: set per run in experiment YAML or launch script.
     project: smth2smth-frame-ablation
+    group: null
+    config: {}
     name: null
     tags:
       - track_a

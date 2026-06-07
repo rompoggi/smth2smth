@@ -1,0 +1,7 @@
+# chained holdout dense TTA cache after test
+# wait_for_test_pid=654197
+# queued: 2026-05-28T22:48:47+02:00
+=== test finished, starting holdout cache 2026-05-28T22:48:47+02:00 ===
+[dense-cache] q16_s42: holdout N=676 OFFICIAL_2X3 TTA ...
+[submit] masking 1 never-trained class index/indices: [27]
+[dense-cache] q16_s42: DONE holdout(676, 33)

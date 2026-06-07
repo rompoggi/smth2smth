@@ -1312,6 +1312,7 @@ def run(cfg: DictConfig) -> Path | None:
     start_epoch = 0
 
     save_last_enabled = bool(cfg.training.get("save_last_checkpoint", True))
+    steps_per_epoch_for_ckpt: list[int] = [0]
     last_override = cfg.training.get("last_checkpoint_path")
     if last_override:
         last_checkpoint_path = Path(str(last_override)).resolve()
@@ -1339,9 +1340,13 @@ def run(cfg: DictConfig) -> Path | None:
             last_extra["scaler_state_dict"] = scaler.state_dict()
         if latest_val_top1 is not None:
             last_extra["latest_val_top1"] = float(latest_val_top1)
+        if steps_per_epoch_for_ckpt[0] > 0:
+            last_extra["global_step"] = int(epoch_done) * steps_per_epoch_for_ckpt[0]
         save_checkpoint(last_checkpoint_path, model, cfg, extra=last_extra)
 
     resume_from = cfg.training.get("resume_from")
+    resume_skip_batches = 0
+    resume_global_step_value: int | None = None
     if resume_from:
         resume_path = Path(str(resume_from)).resolve()
         print(f"Resuming from checkpoint: {resume_path}")
@@ -1446,6 +1451,14 @@ def run(cfg: DictConfig) -> Path | None:
         )
         print(f"  LR after resume: {', '.join(lr_parts)} ({sched_hint}).")
 
+        rgs_cfg = cfg.training.get("resume_global_step")
+        if rgs_cfg is not None:
+            resume_global_step_value = int(rgs_cfg)
+        else:
+            gs = extra.get("global_step")
+            if gs is not None:
+                resume_global_step_value = int(gs)
+
     # Per-step stability logger for the HC/mHC ablation: grad norms (global +
     # per-block), HC mixing-matrix drift, mHC SK doubly-stochastic deviation.
     # Off by default; enabled by setting ``training.stability_log_path``.
@@ -1467,6 +1480,22 @@ def run(cfg: DictConfig) -> Path | None:
 
     wandb_tracker = WandbTracker(cfg)
     steps_per_epoch = len(train_loader)
+    steps_per_epoch_for_ckpt[0] = steps_per_epoch
+
+    if resume_global_step_value is not None:
+        rgs = resume_global_step_value
+        computed_start = rgs // steps_per_epoch
+        resume_skip_batches = rgs % steps_per_epoch
+        if computed_start != start_epoch:
+            print(
+                f"  [resume] global_step {rgs} adjusts start_epoch "
+                f"{start_epoch} -> {computed_start}"
+            )
+            start_epoch = computed_start
+        print(
+            f"  [resume] skip {resume_skip_batches} batches in first train epoch "
+            f"(global_step={rgs}, steps_per_epoch={steps_per_epoch})"
+        )
 
     try:
         for epoch in range(start_epoch, int(cfg.training.epochs)):
@@ -1483,6 +1512,9 @@ def run(cfg: DictConfig) -> Path | None:
                         group["lr"] = max_lr * warm_scale
             if stability_logger is not None:
                 stability_logger.set_epoch(epoch)
+            skip_batches = resume_skip_batches if epoch == start_epoch else 0
+            if skip_batches:
+                resume_skip_batches = 0
             train_stats: EpochStats = train_one_epoch(
                 model,
                 train_loader,
@@ -1508,6 +1540,7 @@ def run(cfg: DictConfig) -> Path | None:
                 max_grad_norm=max_grad_norm,
                 new_module_param_ids=new_module_param_ids or None,
                 new_module_max_grad_norm=new_module_max_grad_norm,
+                skip_batches=skip_batches,
             )
             eval_every_n_epochs = max(1, int(cfg.training.get("eval_every_n_epochs", 1)))
             eval_ema = bool(cfg.training.get("eval_ema", True))

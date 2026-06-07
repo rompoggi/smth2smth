@@ -4,6 +4,680 @@ Machine-local experiment log. Other hosts/users have their own files under `repo
 
 ---
 
+## Unified fleet re-collect (11 resumed + baudroie) | Track A | 2026-06-07
+
+- **Status:** DONE — **84/84** runs in [`unified_run_summary.csv`](../../outputs/unified_fleet/unified_run_summary.csv); **0** missing logs
+- **Script:** [`collect_unified_fleet_metrics.py`](../../scripts/collect_unified_fleet_metrics.py) `--collect` (added `baudroie` to host scan; tie-break duplicate log names by remote file size)
+- **Collected this pass (from [`resume_unfinished_fleet_20260606.sh`](../../scripts/resume_unfinished_fleet_20260606.sh)):**
+  - Fresh stab Q16 s42: `mae{50,100,200,300,400}-s42` → ablette, barbue, **baudroie**, carrelet, gardon
+  - Fresh stab Q16 s43/s44 @ mae50: anguille, barbeau
+  - Resumed: `Q16-mae350-s42` labre · `Q16-mae450-s{43,44}` mulet/murene · `Q8-mae450-s44` truite (not stale rouget partial)
+  - Also picked up: `Q16-mae150-s44` on baudroie (was missing from host list)
+- **Q8 grid:** all `perceiverQ8-mae*` SSL ladder points now collected (incl. `mae50-s{42,43,44}`, `mae500-s44` on truite)
+- **Artifacts:** [`outputs/unified_fleet/collected/`](../../outputs/unified_fleet/collected/) · epoch curves [`unified_epoch_val_long.csv`](../../outputs/unified_fleet/unified_epoch_val_long.csv) (4343 rows)
+
+---
+
+## Ensembling Steps 0–3 (MAE500 diverse heads, val-only) | Track A | 2026-06-06 23:26
+
+- **Status:** DONE — Steps 0–4 + Step 6 (basic). **LB confirms: ensemble gain transfers to test** (+1.31pp public, +1.21pp private). Champion-TTA re-dump in progress.
+- **Step 6 CSVs:** [`submissions/track_a_{single_*,ens-*}_basic_20260607.csv`](../../submissions/) — 6 individuals + 4 ensembles (seed-Q8×3 / arch-s42 / all-axes / diverse4-s42), softmax-avg; test logits on sole ([`ensemble_test_submissions.py`](../../scripts/ensemble_test_submissions.py)); 6913 rows, no collapse.
+- **LB (basic, no-TTA) — public / private:** seed-Q8×3 **0.5496 / 0.5619** · all-axes 0.5432 / **0.5627** · diverse4 0.5415 / 0.5613 · arch 0.5365 / 0.5578 · best single Q8-s44 0.5365 / 0.5506 · Q8-s42 0.5345 / 0.5486 · meanpool 0.5227 / 0.5384.
+- **Findings:** ensembles > all singles on both splits; **seed-diversity ≥ architecture-diversity on LB** (arch-only public 0.5365 only ties best single — its meanpool/DivST members drag it); val ranking → LB ranking holds at the single/ensemble level (val OOF ~best-single+1.3pp gain reproduced on test). Calibration: public LB ≈ val−0.7pp, private LB ≈ val+1pp.
+- **Plot:** [`plots/val_vs_lb_scatter.png`](../../outputs/ensemble/mae500_stab_val/plots/val_vs_lb_scatter.png) (val vs public+private LB) · data [`val_lb_points.csv`](../../outputs/ensemble/mae500_stab_val/val_lb_points.csv) · [`plot_val_vs_lb.py`](../../scripts/plot_val_vs_lb.py).
+- **Report + figures:** [`ensembling_report.md`](ensembling_report.md) (markdown, ready for paper) · figs in `plots/`: combiner_bars, learned_coeffs (WS+CWS), diversity_grid, disagreement_heatmap, ensemble_gain_vs_ssl_epoch, val_vs_lb_scatter ([`plot_ensemble_report_figs.py`](../../scripts/plot_ensemble_report_figs.py)).
+- **Champion-TTA LB (3-scale+flip) — public / private:** seed-Q8×3 **0.5536** / 0.5636 · all-axes 0.5449 / **0.5682** · diverse4 0.5446 / 0.5665 · arch 0.5438 / 0.5601 · best single Q8-s42 0.5409 / 0.5509, Q8-s43 0.5377 / 0.5572. **TTA = +0.29/+0.30pp mean** (inconsistent; hurts weak heads); no ranking change. Best overall **0.5536 pub / 0.5682 priv**.
+- **Report updated** with basic+TTA tables + 2×2 val→LB scatter ([`ensembling_report.md`](ensembling_report.md), [`val_lb_points.csv`](../../outputs/ensemble/mae500_stab_val/val_lb_points.csv)).
+- **Robustness investigations** ([`ensemble_investigations.py`](../../scripts/ensemble_investigations.py), report §6, [`plots/investigations.png`](../../outputs/ensemble/mae500_stab_val/plots/investigations.png)): **#1** no arch set beats seed-only outside CI — all 3-member sets 55.5–55.6 (gain +1.2…+1.3, overlapping CIs); 9-member set wins on count only → **seed ≈ architecture**. **#2** dominated heads are NOT dead weight (dropping mp/DivST costs 0.25–0.76pp). **#3** ep300 dip = **STALE-collected ckpt** of `Q8-mae300-s42` (gymnote collection grabbed a mid-train ep~22 model, 46.78%; NOT a collapse — final ep50 val 52.71% verified on rouget log/ckpt). Corrected → ep300 gain **+0.79pp**, on trend; Step-4 curve now smooth. **#4** r(weak-share, val−LB-pub)=+0.50 (under-transfer on public, but weak-heavy ens best on private → split noise). Dumped 3 recovered members (Q2-s42 local, mp-s44/DivST-K9-s44 from raie/roussette).
+- **Stale-collection caveat:** unified ckpt collection (q8_ssl/divspace, ~Jun 3) predated some runs finishing → ladder val logits had up to −5.9pp errors; mae500 members re-verified vs origin-host ckpts (match) so §1/§2/§4 + LB unaffected; only the ep300 ladder point was materially wrong (fixed).
+- **Step 4 — gain vs backbone (meanpool+Q8 s42, softmax OOF):** ensemble top1 rises with SSL epoch (ep50 47.1% → ep500 54.9%); gain over best single modest & noisy (+0.6…+1.6pp, dip −1.16pp @ ep300) — no clean shrink trend (2-member/1-seed, noisy).
+- **Script:** [`ensemble_heads_val_offline.py`](../../scripts/ensemble_heads_val_offline.py) — `dump|combiners|diversity|disagreement` (added self-contained `--members-manifest` dump mode)
+- **Cache:** `outputs/ensemble/mae500_stab_val/` — **25** per-clip val logits (24 mae500 stab members w/ ckpt + recovered `perceiverQ8-mae500-s42`); full official val N=6745
+- **Dump:** ran on **sole** (GPU, no-TTA, last-epoch ckpts shipped from gymnote). Single-head full-val top1 reproduces head study (Q8-s42 **54.31%**, meanpool-s42 53.33%, DivST-K9-s42 53.58%).
+- **Method:** **5-fold stratified OOF** over full val (fit combiner on 4 folds, predict held fold; pool); bootstrap CIs on pooled OOF. (Replaced an initial single 80/20 split whose eval slice was +3pp unrepresentative & underpowered.)
+- **Step 1 — combiner lock:** lsg 56.66 [55.40,57.86] · softmax 55.95 [54.57,57.12] · cws 55.94 · mean 55.73 · ws 55.67 · vote 55.34 — **all CIs overlap (no significant winner)**; **softmax locked** (no-fit, robust). lsg did *not* overfit under OOF.
+- **Step 2 — diversity 2×2 (softmax):** seed-only(Q8×3) ens **55.63** (+1.32pp) · architecture-only(mp/Q8/DivST-K9 s42) ens **55.64** (+1.33pp) · all-axes ens 55.24 (+1.54pp). **Seed ≈ architecture diversity** — refutes the "architecture > seed" prior; the slice artifact had faked seed≫arch.
+- **Step 3 — mechanism:** arch triple disagree 0.275 / err-corr 0.711 vs seed triple 0.262 / 0.729 — architecture diversity is marginally *more* decorrelated but yields **no extra ensemble gain** (its extra disagreement comes from the weaker, Pareto-dominated heads).
+- **Plots/CSVs:** [`outputs/ensemble/mae500_stab_val/plots/`](../../outputs/ensemble/mae500_stab_val/plots/)
+- **Code fixes (pipeline had never been run):** dump val-dir heuristic + `eval_` typo; `run_combiner` now takes `fit_labels` (nested-split correctness); fit-once + correct bootstrap CI (was a double-bootstrap collapsing CIs ~25×).
+
+---
+
+## Resume 11 unfinished runs | Track A | 2026-06-06 14:25
+
+- **Status:** RUNNING (11/11)
+- **Script:** [`resume_unfinished_fleet_20260606.sh`](../../scripts/resume_unfinished_fleet_20260606.sh)
+- **Fresh stab Q16 s42 (7):** `mae{50,100,200,300,400}-s42` + `mae50-s{43,44}` on ablette, anguille, barbeau, barbue, baudroie, carrelet, gardon
+- **Resume (4):** `Q16-mae350-s42` labre (from saumon ckpt, W&B scxr4ydc) · `Q16-mae450-s{43,44}` mulet/murene · `Q8-mae450-s44` truite (W&B cpfqyts2)
+- **Logs:** `logs/track_a/perceiverQ*_{20260606,20260601,20260604}.log` on worker hosts
+
+---
+
+## Unified fleet metrics collection | Track A | 2026-06-06
+
+- **Status:** audit DONE — **73/84** runs finished ep50; **11** incomplete/missing
+- **Script:** [`collect_unified_fleet_metrics.py`](../../scripts/collect_unified_fleet_metrics.py)
+- **Summary CSV:** [`unified_run_summary.csv`](../../outputs/unified_fleet/unified_run_summary.csv) — `best_val_top1`, `last_val_top1` (log/ckpt + W&B)
+- **Epoch curves:** [`unified_epoch_val_long.csv`](../../outputs/unified_fleet/unified_epoch_val_long.csv)
+- **Collected artifacts:** [`outputs/unified_fleet/collected/`](../../outputs/unified_fleet/collected/) (174 files, ~105G logs+ckpts on gymnote)
+- **Gaps:** 8× `perceiverQ16-mae{50,100,200,300,400}-s42` + `mae50-s{43,44}` never launched; incomplete: `Q16-mae350-s42`, `Q16-mae450-s{43,44}`, `Q8-mae450-s44`
+
+---
+
+## Q8 stab SSL grid resume | Track A | 2026-06-05 03:45
+
+- **Status:** RUNNING (20/20 resumed; 4 skipped DONE: Q16×2, DivSpaceTime K6/K9 s44)
+- **Script:** [`resume_fleet_gymnote.sh`](../../scripts/resume_fleet_gymnote.sh) · stale logs ~3h → `STALE_RESTART` with W&B resume
+- **Health:** 20/24 running after 90s; step logging OK (e.g. ablette ep18 step ~3975, `rgs=103725`, W&B `ec4la5do`)
+- **Log:** append `logs/track_a/perceiverQ8-mae*_{20260604}.log` on each host
+
+---
+
+## Q8 stab SSL grid (20 hosts) | Track A | 2026-06-04 18:10
+
+- **Status:** DONE (superseded by resume above)
+- **Run:** `perceiverQ8-mae{50,150,250,350,450}-s{42,43,44}` + `perceiverQ8-mae{100,200,300,400,500}-s44`
+- **Experiment:** [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+- **Hydra:** `experiment=track_a_diverse_arch2_perceiver_stab` · train-only · `recipe=stab` · group `ft-mae-scaling`
+- **Launcher:** [`launch_q8_stab_ssl_grid.sh`](../../scripts/launch_q8_stab_ssl_grid.sh)
+- **Log:** `logs/track_a/perceiverQ8-mae*_{20260604}.log` on each worker host (not gymnote)
+- **W&B:** online · group `ft-mae-scaling`
+
+| Host | Run | SSL ep |
+|------|-----|--------|
+| ablette | `perceiverQ8-mae50-s42` | 50 |
+| anchois | `perceiverQ8-mae50-s43` | 50 |
+| anguille | `perceiverQ8-mae50-s44` | 50 |
+| barbeau | `perceiverQ8-mae150-s42` | 150 |
+| barbue | `perceiverQ8-mae150-s43` | 150 |
+| carrelet | `perceiverQ8-mae150-s44` | 150 |
+| gardon | `perceiverQ8-mae250-s42` | 250 |
+| labre | `perceiverQ8-mae250-s43` | 250 |
+| lotte | `perceiverQ8-mae250-s44` | 250 |
+| mulet | `perceiverQ8-mae350-s42` | 350 |
+| murene | `perceiverQ8-mae350-s43` | 350 |
+| piranha | `perceiverQ8-mae350-s44` | 350 |
+| raie | `perceiverQ8-mae450-s42` | 450 |
+| requin | `perceiverQ8-mae450-s43` | 450 |
+| rouget | `perceiverQ8-mae450-s44` | 450 |
+| saumon | `perceiverQ8-mae100-s44` | 100 |
+| silure | `perceiverQ8-mae200-s44` | 200 |
+| sole | `perceiverQ8-mae300-s44` | 300 |
+| thon | `perceiverQ8-mae400-s44` | 400 |
+| truite | `perceiverQ8-mae500-s44` | 500 |
+
+Monitor (example): `ssh ablette 'tail -f /Data/romain.poggi/smth2smth/logs/track_a/perceiverQ8-mae50-s42_20260604.log'`
+
+---
+
+## Gymnote fleet status snapshot | Track A | 2026-06-04
+
+- **Status:** **15/19 DONE** · **4/19 RUNNING** (still training toward ep 50)
+- **Collector:** [`collect_gymnote_fleet_status.py`](../../scripts/collect_gymnote_fleet_status.py)
+- **Experiment:** [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+- **Metrics CSV (epoch curves):** [`fleet_epoch_val_long.csv`](../../outputs/gymnote_fleet/fleet_epoch_val_long.csv) — 920 rows (`run_name`, `ft_epoch`, `global_step`, `val_top1`, `val_ema_top1`, W&B id)
+- **Summary CSV:** [`fleet_run_summary.csv`](../../outputs/gymnote_fleet/fleet_run_summary.csv)
+
+Val top-1 = honest holdout (train-only split). **Best** = best epoch in W&B/ckpt; **Last** = last completed epoch (ckpt `latest_val_top1` or W&B last).
+
+### Not finished yet (4)
+
+| Host | Run | Status | Last ep | Best val top-1 | Last val top-1 | W&B |
+|------|-----|--------|---------|----------------|----------------|-----|
+| requin | `DivSpaceTimeK6-mae500-s44` | RUNNING | 49 | 53.28% | 53.05% | [01gnvhqm](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/01gnvhqm) |
+| roussette | `DivSpaceTimeK9-mae500-s44` | RUNNING | 47 | 53.65% | 53.25% | [533jwygf](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/533jwygf) |
+| lieu | `perceiverQ16-mae500-s43` | RUNNING | 38 | 53.40% | 53.40% | [6idgo6j5](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/6idgo6j5) |
+| brochet | `perceiverQ16-mae500-s44` | RUNNING | 41 | 53.25% | 53.34% | [24fxahew](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/24fxahew) |
+
+### Finished (15)
+
+| Host | Run | Last ep | Best val top-1 | Last val top-1 | W&B |
+|------|-----|---------|----------------|----------------|-----|
+| ablette | `DivSpaceTimeK1-mae500-s43` | 50 | 53.68% | 53.21% | [ntuwnv5r](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/ntuwnv5r) |
+| silure | `DivSpaceTimeK3-mae500-s43` | 50 | 53.74% | 53.70% | [i7ado1gd](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/i7ado1gd) |
+| barbue | `DivSpaceTimeK6-mae500-s43` | 50 | 53.67% | 52.96% | [txwwef5b](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/txwwef5b) |
+| carrelet | `DivSpaceTimeK9-mae500-s43` | 50 | 53.67% | 53.64% | [0sguvl8z](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/0sguvl8z) |
+| piranha | `DivSpaceTimeK1-mae500-s44` | 50 | 53.12% | 53.12% | [9cdrb7z6](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/9cdrb7z6) |
+| raie | `DivSpaceTimeK3-mae500-s44` | 50 | 53.02% | 52.91% | [z0zwj43l](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/z0zwj43l) |
+| gardon | `DivSpaceTimeK1-mae500-s42` | 50 | 52.97% | 52.77% | [pu325vfh](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/pu325vfh) |
+| anchois | `perceiverQ8-mae100-s42` | 50 | 49.61% | 49.61% | [715f76zo](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/715f76zo) |
+| labre | `perceiverQ8-mae100-s43` | 50 | 50.07% | 50.07% | [vs4mcp2v](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/vs4mcp2v) |
+| truite | `perceiverQ8-mae200-s42` | 50 | 52.79% | 52.79% | [culr1ccl](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/culr1ccl) |
+| thon | `perceiverQ8-mae200-s43` | 50 | 53.05% | 53.11% | [4wte56ck](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/4wte56ck) |
+| rouget | `perceiverQ8-mae300-s42` | 50 | 53.60% | 53.49% | [n6ibgn26](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/n6ibgn26) |
+| sole | `perceiverQ8-mae300-s43` | 50 | 53.40% | 53.48% | [jscsvpkp](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/jscsvpkp) |
+| mulet | `perceiverQ8-mae400-s42` | 50 | 54.05% | 54.05% | [x20b72jl](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/x20b72jl) |
+| murene | `perceiverQ8-mae400-s43` | 50 | 54.44% | 54.41% | [zufhx731](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/zufhx731) |
+
+**Note:** rouget hosts `perceiverQ8-mae300-s42` (done); anguille/lotte/saumon have no active gymnote fleet job.
+
+---
+
+## Fleet resume | Track A | 2026-06-04 09:05
+
+- **Status:** RUNNING **6/19** (13 finished ep50 — skipped)
+- **Launcher:** [`resume_fleet_gymnote.sh`](../../scripts/resume_fleet_gymnote.sh)
+- **Still training:** barbue `DivSpaceTimeK6-mae500-s43` · carrelet `DivSpaceTimeK9-mae500-s43` · requin `DivSpaceTimeK6-mae500-s44` · roussette `DivSpaceTimeK9-mae500-s44` · lieu `perceiverQ16-mae500-s43` · brochet `perceiverQ16-mae500-s44`
+- **DONE (idle):** ablette, silure, piranha, raie, gardon, anchois, labre, truite, thon, rouget, sole, mulet, murene — all Q8/DivSpaceTime K1/K3/K9/s42 at ep50
+- **Free hosts (no active run):** anguille, lotte, saumon (+ 13 above)
+
+---
+
+## Full fleet resume (stopped again) | Track A | 2026-06-03 20:34
+
+- **Status:** RUNNING (19/19 healthy @ 90s)
+- **Launcher:** [`resume_fleet_gymnote.sh`](../../scripts/resume_fleet_gymnote.sh) — `resume_global_step=max(ckpt, wandb log)`
+- **Experiment:** [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+- **Note:** Logs had stalled ~20:12; all trainers relaunched with aligned W&B steps.
+
+---
+
+## Full fleet resume (gymnote map) | Track A | 2026-06-03
+
+- **Status:** RUNNING (19/19 healthy @ 90s)
+- **Launcher:** [`resume_fleet_gymnote.sh`](../../scripts/resume_fleet_gymnote.sh) — `resume_global_step=max(ckpt, wandb log)`
+- **Experiment:** [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+
+| Host | Run |
+|------|-----|
+| ablette | `DivSpaceTimeK1-mae500-s43` |
+| silure | `DivSpaceTimeK3-mae500-s43` |
+| barbue | `DivSpaceTimeK6-mae500-s43` |
+| carrelet | `DivSpaceTimeK9-mae500-s43` |
+| piranha | `DivSpaceTimeK1-mae500-s44` |
+| raie | `DivSpaceTimeK3-mae500-s44` |
+| requin | `DivSpaceTimeK6-mae500-s44` |
+| roussette | `DivSpaceTimeK9-mae500-s44` |
+| gardon | `DivSpaceTimeK1-mae500-s42` |
+| lieu | `perceiverQ16-mae500-s43` |
+| brochet | `perceiverQ16-mae500-s44` |
+| anchois | `perceiverQ8-mae100-s42` |
+| labre | `perceiverQ8-mae100-s43` |
+| truite | `perceiverQ8-mae200-s42` |
+| thon | `perceiverQ8-mae200-s43` |
+| rouget | `perceiverQ8-mae300-s42` |
+| sole | `perceiverQ8-mae300-s43` |
+| mulet | `perceiverQ8-mae400-s42` |
+| murene | `perceiverQ8-mae400-s43` |
+
+**Not resumed:** K12, `*-NoStab`, paused m450; **anguille** / **lotte** idle (runs on silure / rouget).
+
+---
+
+## Priority resume rouget/silure (W&B step fix) | Track A | 2026-06-03 11:42
+
+- **Status:** RUNNING (2/2 healthy; W&B logging OK after `resume_global_step` aligned to W&B max step)
+- **Cause:** Post-reboot resume used ckpt `global_step` (101250 / 135000) while W&B was ahead (106826 / 140101) — metrics dropped, runs looked "stopped" in UI though local logs progressed.
+- **Run:** `perceiverQ8-mae300-s42` on **rouget** (from lotte) · `DivSpaceTimeK3-mae500-s43` on **silure** (from anguille)
+- **Experiment:** [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+- **Log:** [`perceiverQ8-mae300-s42_20260602.log`](../../logs/track_a/perceiverQ8-mae300-s42_20260602.log) · [`DivSpaceTimeK3-mae500-s43_20260602.log`](../../logs/track_a/divspace_s43/DivSpaceTimeK3-mae500-s43_20260602.log)
+- **W&B:** [n6ibgn26](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/n6ibgn26) · [i7ado1gd](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/i7ado1gd)
+- **Hydra:** `resume_global_step=106826` (Q8) · `140101` (K3)
+
+---
+
+## Full fleet resume (21 hosts idle) | Track A | 2026-06-03 10:47
+
+- **Status:** RUNNING (19/21 trainers; step logging OK @ 90s)
+- **Launcher:** [`resume_full_fleet_post_reboot.sh`](../../scripts/resume_full_fleet_post_reboot.sh)
+- **Experiment:** [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+
+| Category | Count | Notes |
+|----------|-------|-------|
+| DivSpaceTime K1/K3/K6/K9 | 9 running | s43/s44 fleet + gardon K1-s42; **brochet K6-s42 & lieu K9-s42 DONE** (ep50) |
+| Q8 stab | 8 running | anchois, labre, truite, thon, lotte, sole, mulet, murene |
+| Q16 mae500 stab (fresh) | 2 running | lieu `perceiverQ16-mae500-s43` · brochet `perceiverQ16-mae500-s44` |
+| Finished on resume | 1 | rouget `meanpool-mae150-s42` DONE (was ep50) |
+| Idle (by design) | 1 | silure (abandoned `*-NoStab`) |
+
+**Q16 W&B:** [s43 6idgo6j5](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/6idgo6j5) · [s44 24fxahew](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/24fxahew)
+
+**Logs:** DivSpaceTime append `logs/track_a/divspace_s{42,43,44}/*_20260602.log`; Q8 append `logs/track_a/perceiverQ8-mae*_20260602.log`; Q16 fresh [`perceiverQ16-mae500-s43_20260603.log`](../../logs/track_a/perceiverQ16-mae500-s43_20260603.log), [`perceiverQ16-mae500-s44_20260603.log`](../../logs/track_a/perceiverQ16-mae500-s44_20260603.log)
+
+**Not resumed:** K12, `*-NoStab`, paused `perceiverQ16-mae450-s{43,44}`; anchois `perceiverQ4-mae500-s42` superseded by Q8 stab.
+
+---
+
+## Post GPU restart resume | Track A | 2026-06-03
+
+- **Status:** RUNNING (11/11 DivSpaceTime resumed healthy; Q8 stab still up on 8 hosts; Q16 chain restarted)
+- **Launcher:** [`resume_divspace_post_reboot_20260603.sh`](../../scripts/resume_divspace_post_reboot_20260603.sh)
+- **Experiment:** [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+
+### Resumed (interrupted by GPU restart — append to existing logs, W&B resume)
+
+| Host | Run | resume_global_step |
+|------|-----|-------------------|
+| ablette | `DivSpaceTimeK1-mae500-s43` | 84375 |
+| anguille | `DivSpaceTimeK3-mae500-s43` | 67500 |
+| barbue | `DivSpaceTimeK6-mae500-s43` | 61875 |
+| carrelet | `DivSpaceTimeK9-mae500-s43` | 56250 |
+| piranha | `DivSpaceTimeK1-mae500-s44` | 67500 |
+| raie | `DivSpaceTimeK3-mae500-s44` | 67500 |
+| requin | `DivSpaceTimeK6-mae500-s44` | 56250 |
+| roussette | `DivSpaceTimeK9-mae500-s44` | 56250 |
+| brochet | `DivSpaceTimeK6-mae500-s42` | 247500 (~ep44) |
+| gardon | `DivSpaceTimeK1-mae500-s42` | 112500 |
+| lieu | `DivSpaceTimeK9-mae500-s42` | 275625 (~ep49) |
+
+Logs append to `logs/track_a/divspace_s{42,43,44}/*_20260602.log`. **Healthy:** step logging OK @ 90s on all 11.
+
+### Not resumed (by design)
+
+| Category | Runs / hosts |
+|----------|----------------|
+| **Intentionally PAUSED** (not stab) | `perceiverQ16-mae450-s{43,44}-NoStab` on mulet/murene — those hosts run **Q8 stab** instead |
+| **Intentionally STOPPED** | `DivSpaceTimeK12-mae500-s*` (K12 too slow) |
+| **Renamed / abandoned base recipe** | `perceiverQ16-mae*-NoStab` on barbeau, saumon, silure — idle, not relaunched |
+| **Still running through reboot** | 8× `perceiverQ8-mae{100,200,300,400}-s{42,43}` stab on anchois, labre, truite, thon, lotte, sole, mulet, murene |
+
+### Q16 mae500 stab chain (restarted)
+
+[`chain_q16_mae500_stab_20260603.log`](../../logs/track_a/chain_q16_mae500_stab_20260603.log) — after `DivSpaceTimeK9-mae500-s42` on **lieu** → `perceiverQ16-mae500-s43`; after `DivSpaceTimeK6-mae500-s42` on **brochet** → `perceiverQ16-mae500-s44` (fresh stab, replaces `*-NoStab` W&B runs).
+
+---
+
+- **Status:** RUNNING (8× Q8 stab healthy; Q16 mae500 stab queued on lieu/brochet)
+- **Launcher:** [`fleet_stab_reorg_20260602.sh`](../../scripts/fleet_stab_reorg_20260602.sh) · W&B rename [`rename_perceiver_nostab_wandb.py`](../../scripts/rename_perceiver_nostab_wandb.py)
+- **Experiment:** [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+- **Hydra (new stab runs):** `experiment=track_a_diverse_arch2_perceiver_stab` · train-only · `official_val_holdout_ratio=0`
+
+### Stopped / paused
+
+| Action | Host | Run | Reason |
+|--------|------|-----|--------|
+| PAUSED | mulet | `perceiverQ16-mae450-s43` | base `track_a_diverse_arch2_perceiver`, not stab |
+| PAUSED | murene | `perceiverQ16-mae450-s44` | same |
+| STOPPED | thon | `DivSpaceTimeK12-mae500-s42` | K12 ~10 ep / 12 h |
+| STOPPED | lotte | `DivSpaceTimeK12-mae500-s43` | same |
+| STOPPED | sole | `DivSpaceTimeK12-mae500-s44` | same |
+
+### Renamed non-stab PerceiverQ16 → `*-NoStab`
+
+25 W&B runs in group `ft-mae-scaling` + local ckpts on fleet hosts. Manifest: [`perceiver_nostab_rename_manifest.txt`](../../logs/track_a/perceiver_nostab_rename_manifest.txt). **Stab runs unchanged** (Q-sweep @ MAE500, `perceiverQ16-mae500-s42` trainonly).
+
+### GPU map (8 free → Q8 stab)
+
+| Host | Run | SSL ep |
+|------|-----|--------|
+| anchois | `perceiverQ8-mae100-s42` | 100 |
+| labre | `perceiverQ8-mae100-s43` | 100 |
+| truite | `perceiverQ8-mae200-s42` | 200 |
+| thon | `perceiverQ8-mae200-s43` | 200 |
+| lotte | `perceiverQ8-mae300-s42` | 300 |
+| sole | `perceiverQ8-mae300-s43` | 300 |
+| mulet | `perceiverQ8-mae400-s42` | 400 |
+| murene | `perceiverQ8-mae400-s43` | 400 |
+
+Logs: `logs/track_a/perceiverQ8-mae*_${DATE}.log` · step logging OK @ ~90s.
+
+### Queued (stab, fresh W&B)
+
+| After | Host | Run |
+|-------|------|-----|
+| `DivSpaceTimeK9-mae500-s42` (~47/50 ep) | lieu | `perceiverQ16-mae500-s43` |
+| `DivSpaceTimeK6-mae500-s42` (~42/50 ep) | brochet | `perceiverQ16-mae500-s44` |
+
+Chain log: [`chain_q16_mae500_stab_20260602.log`](../../logs/track_a/chain_q16_mae500_stab_20260602.log)
+
+**Stab vs base:** stab = `new_module_lr=1e-4`, 10-ep head warmup, tighter grad clip (`track_a_diverse_arch2_perceiver_stab`). Base scaling used standard LLRD only (`track_a_diverse_arch2_perceiver`).
+
+---
+
+- **Status:** RUNNING (13/13 healthy; step logging OK)
+- **Launcher:** [`launch_ft_mae_batch_20260602.sh`](../../scripts/launch_ft_mae_batch_20260602.sh)
+- **Experiment:** [`experimental_cleanup`](../../experiments/experimental_cleanup.md) · [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+
+| Host | Run | Resume from | W&B |
+|------|-----|-------------|-----|
+| rouget | `meanpool-mae150-s42` | ep49 (1 epoch left) | [s42-replay-v2-mae150](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-mae150) |
+| labre | `meanpool-mae200-s44` | ep37 | [ia58rbey](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/ia58rbey) |
+| anchois | `perceiverQ4-mae500-s42` | ep49 (1 epoch left) | [s42-replay-v2-perceiverQ4-mae500](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-perceiverQ4-mae500) |
+| ablette | `DivSpaceTimeK1-mae500-s43` | fresh | [hkb1izc3](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/hkb1izc3) |
+| anguille | `DivSpaceTimeK3-mae500-s43` | fresh | [zquz9rt4](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/zquz9rt4) |
+| barbue | `DivSpaceTimeK6-mae500-s43` | fresh | [uumcf5dy](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/uumcf5dy) |
+| carrelet | `DivSpaceTimeK9-mae500-s43` | fresh | [w90h4ndb](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/w90h4ndb) |
+| lotte | `DivSpaceTimeK12-mae500-s43` | fresh | [u7wewvlp](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/u7wewvlp) |
+| piranha | `DivSpaceTimeK1-mae500-s44` | fresh | [4bxkgz1p](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/4bxkgz1p) |
+| raie | `DivSpaceTimeK3-mae500-s44` | fresh | [sh870rym](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/sh870rym) |
+| requin | `DivSpaceTimeK6-mae500-s44` | fresh | [vf657vlo](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/vf657vlo) |
+| roussette | `DivSpaceTimeK9-mae500-s44` | fresh | [2as231af](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/2as231af) |
+| sole | `DivSpaceTimeK12-mae500-s44` | fresh | [h3pynnwi](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/h3pynnwi) |
+
+- **Log:** `logs/track_a/divspace_s43/*_20260602.log`, `logs/track_a/divspace_s44/*_20260602.log`, plus resume logs under `logs/track_a/`
+- **Note:** s42 DivSpaceTime fleet (brochet/lieu/thon/gardon) unchanged.
+
+---
+
+## Cut recovery resume (K1/K6/K9/K12 + unfinished Q s43/s44) | Track A | 2026-06-02 08:49
+
+- **Status:** RUNNING (8/8 healthy at 90s; step logging OK)
+- **Experiment:** [`experimental_cleanup`](../../experiments/experimental_cleanup.md) · [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+- **Hydra:** `experiment=track_a_diverse_arch2_perceiver` / `track_a_diverse_arch2_perceiver_stab` / `track_a_diverse_arch3_divided_st_stab`
+- **Launcher:** manual host resumes with `PYTHONPATH=src` + `uv run python -u` + `WANDB_RESUME=allow`
+- **Note:** `DivSpaceTimeK1-mae500-s42` checkpoint was missing on all free hosts; started on **gardon** with same config + W&B run id (no `resume_from` possible).
+
+| Host | Run | Action | W&B |
+|------|-----|--------|-----|
+| anchois | `perceiverQ16-mae050-s43` | resume `resume_global_step=253125` | [i38jvzho](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/i38jvzho) |
+| mulet | `perceiverQ16-mae450-s43` | resume `resume_global_step=90000` | [npvdiorm](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/npvdiorm) |
+| murene | `perceiverQ16-mae450-s44` | resume `resume_global_step=95625` | [2y4dnv7t](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/2y4dnv7t) |
+| requin | `perceiverQ32-mae500-s44` | resume `resume_global_step=247500` | [532pq1s0](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/532pq1s0) |
+| brochet | `DivSpaceTimeK6-mae500-s42` | resume `resume_global_step=157500` | [s42-replay-v2-DivSpaceTimeK6-mae500](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-DivSpaceTimeK6-mae500) |
+| lieu | `DivSpaceTimeK9-mae500-s42` | resume `resume_global_step=185625` | [s42-replay-v2-DivSpaceTimeK9-mae500](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-DivSpaceTimeK9-mae500) |
+| thon | `DivSpaceTimeK12-mae500-s42` | resume `resume_global_step=50625` | [1dw9ghpx](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/1dw9ghpx) |
+| gardon | `DivSpaceTimeK1-mae500-s42` | start (no checkpoint found) | [pu325vfh](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/pu325vfh) |
+
+- **Log:** [`logs/track_a/perceiverQ16-mae050-s43_20260601.log`](../../logs/track_a/perceiverQ16-mae050-s43_20260601.log), [`logs/track_a/perceiverQ16-mae450-s43_20260601.log`](../../logs/track_a/perceiverQ16-mae450-s43_20260601.log), [`logs/track_a/perceiverQ16-mae450-s44_20260601.log`](../../logs/track_a/perceiverQ16-mae450-s44_20260601.log), [`logs/track_a/perceiverQ32-mae500-s44_20260531.log`](../../logs/track_a/perceiverQ32-mae500-s44_20260531.log), [`logs/track_a/divspace_s42/DivSpaceTimeK6-mae500-s42_20260602.log`](../../logs/track_a/divspace_s42/DivSpaceTimeK6-mae500-s42_20260602.log), [`logs/track_a/divspace_s42/DivSpaceTimeK9-mae500-s42_20260602.log`](../../logs/track_a/divspace_s42/DivSpaceTimeK9-mae500-s42_20260602.log), [`logs/track_a/divspace_s42/DivSpaceTimeK12-mae500-s42_20260602.log`](../../logs/track_a/divspace_s42/DivSpaceTimeK12-mae500-s42_20260602.log), [`logs/track_a/divspace_s42/DivSpaceTimeK1-mae500-s42_20260602.log`](../../logs/track_a/divspace_s42/DivSpaceTimeK1-mae500-s42_20260602.log)
+- **W&B caveat:** step-order warnings are expected until local global step catches each run’s current W&B step.
+
+---
+
+## Post-reboot fleet resume + mae450-s43/s44 (replace DivSpaceTimeK1) | Track A | 2026-06-02 00:50
+
+- **Status:** RUNNING (21/21 resumed hosts healthy; step logging OK)
+- **Launcher:** [`resume_free_fleet_20260602.sh`](../../scripts/resume_free_fleet_20260602.sh)
+- **Experiment:** [`experimental_cleanup`](../../experiments/experimental_cleanup.md) (Q16 odd) · [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md) (MAE500 stab)
+- **Note:** Stopped `DivSpaceTimeK1-mae500-s42` on **murene**; fresh `perceiverQ16-mae450-s43` @ **mulet**, `perceiverQ16-mae450-s44` @ **murene**. All other free hosts resumed with `resume_global_step` from ckpt + `WANDB_RESUME=allow`.
+
+| Host | Run | Action |
+|------|-----|--------|
+| mulet | `perceiverQ16-mae450-s43` | fresh · [npvdiorm](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/npvdiorm) |
+| murene | `perceiverQ16-mae450-s44` | fresh (replaced K1) · [2y4dnv7t](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/2y4dnv7t) |
+| 12× free | `perceiverQ16-mae{050,150,250,350,450}-s*` | resumed @ ep ~36–43 |
+| 7× free | `perceiverQ{2,4,8,32,64}-mae500-s*` | resumed @ ep ~29–49 |
+
+- **Still running (not touched):** anchois `perceiverQ16-mae050-s43` · brochet `DivSpaceTimeK6` · lieu `DivSpaceTimeK9` · thon `DivSpaceTimeK12`
+- **Deferred:** `perceiverQ4-mae500-s44` on mulet (GPU → mae450-s43)
+- **W&B caveat:** some MAE500 resumes log step-order warnings until global step catches W&B max (training OK locally)
+
+Logs appended: `logs/track_a/perceiverQ16-mae*_20260601.log` · `logs/track_a/perceiverQ*-mae500-s*_20260531.log`
+
+---
+
+## DivSpaceTime K MAE500 seed 42 fleet | Track A | 2026-06-02 00:22
+
+- **Status:** RUNNING (4/4 healthy) · K3 **DONE** (collected on gymnote)
+- **Experiment:** [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+- **Hydra:** `experiment=track_a_diverse_arch3_divided_st_stab` · train-only · SSL ep500 · group `ft-mae-scaling`
+- **Collect:** [`collect_divspace_trainonly_s42.sh`](../../scripts/collect_divspace_trainonly_s42.sh) → `checkpoints/track_a/divspace_s42/`
+- **W&B replay:** [`upload_divspace_s42_wandb.py`](../../scripts/upload_divspace_s42_wandb.py)
+
+| Host | Run | K | Status | W&B |
+|------|-----|---|--------|-----|
+| gymnote (collected) | `DivSpaceTimeK3-mae500-s42` | 3 | DONE ep50 | [replay](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-DivSpaceTimeK3-mae500) |
+| brochet | `DivSpaceTimeK6-mae500-s42` | 6 | resumed ep17 | [s42-replay-v2-DivSpaceTimeK6-mae500](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-DivSpaceTimeK6-mae500) · `resume_global_step=94250` |
+| lieu | `DivSpaceTimeK9-mae500-s42` | 9 | resumed ep22 | [s42-replay-v2-DivSpaceTimeK9-mae500](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-DivSpaceTimeK9-mae500) · `resume_global_step=123950` |
+| murene | `DivSpaceTimeK1-mae500-s42` | 1 | fresh | [pu325vfh](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/pu325vfh) |
+| thon | `DivSpaceTimeK12-mae500-s42` | 12 | fresh | [1dw9ghpx](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/1dw9ghpx) |
+
+Logs: `logs/track_a/divspace_s42/DivSpaceTimeK*_*_20260602.log` (resume) · K3 log `*_20260526.log` on gymnote.
+
+---
+
+## Resume perceiverQ16-mae050-s43 @ anchois | Track A | 2026-06-01 18:00
+
+- **Status:** RUNNING
+- **Run:** `perceiverQ16-mae050-s43`
+- **Experiment:** [`experimental_cleanup`](../../experiments/experimental_cleanup.md)
+- **Hydra:** `experiment=track_a_diverse_arch2_perceiver` seed=43 SSL ep50
+- **Log:** [`perceiverQ16-mae050-s43_20260601.log`](../../logs/track_a/perceiverQ16-mae050-s43_20260601.log) (on **anchois**)
+- **W&B:** [i38jvzho](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/i38jvzho) (`WANDB_RESUME=allow`, `resume_global_step=111900`)
+- **Ckpt:** `checkpoints/track_a/videomaev2+ft/perceiverQ16-mae050-s43.last.pt` (ep 19)
+- **Metrics:** resumed mid-epoch ~step 5050/5625 ep 20/50
+
+---
+
+## Perceiver Q16 odd-epoch seed sweep (mae050/150/250/350/450 × s42–44) | Track A | 2026-06-01 02:33
+
+- **Status:** RUNNING (13/15 launched; 2 pending GPU on mulet/murene)
+- **Launcher:** [`launch_perceiverQ16_mae_odd_seed_fleet.sh`](../../scripts/launch_perceiverQ16_mae_odd_seed_fleet.sh)
+- **Experiment:** [`experimental_cleanup`](../../experiments/experimental_cleanup.md)
+- **Hydra:** `experiment=track_a_diverse_arch2_perceiver` · train-only · group `ft-mae-scaling`
+- **W&B:** [project](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation)
+
+| Host | Run | SSL ep |
+|------|-----|--------|
+| ablette | `perceiverQ16-mae050-s42` | 50 |
+| anchois | `perceiverQ16-mae050-s43` | 50 |
+| anguille | `perceiverQ16-mae050-s44` | 50 |
+| barbeau | `perceiverQ16-mae150-s42` | 150 |
+| barbue | `perceiverQ16-mae150-s43` | 150 |
+| baudroie | `perceiverQ16-mae150-s44` | 150 |
+| carrelet | `perceiverQ16-mae250-s42` | 250 |
+| labre | `perceiverQ16-mae250-s43` | 250 |
+| rouget | `perceiverQ16-mae250-s44` | 250 |
+| saumon | `perceiverQ16-mae350-s42` | 350 |
+| silure | `perceiverQ16-mae350-s43` | 350 |
+| truite | `perceiverQ16-mae350-s44` | 350 |
+| gymnote | `perceiverQ16-mae450-s42` | 450 |
+| **mulet** | `perceiverQ16-mae450-s43` | 450 — **PENDING** (Q4-mae500-s44 still running) |
+| **murene** | `perceiverQ16-mae450-s44` | 450 — **PENDING** (Q8-mae500-s43 still running) |
+
+Logs: `logs/track_a/perceiverQ16-mae*_20260601.log` on each host.
+
+---
+
+- **Status:** RUNNING (3/3 healthy; W&B logging OK)
+- **Fix:** `training.resume_global_step` + batch skip in trainer (mid-epoch W&B step alignment)
+- **Experiment:** [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+- **Hydra:** `experiment=track_a_diverse_arch2_perceiver_stab`
+
+| Host | Run | Log | W&B | resume_global_step |
+|------|-----|-----|-----|-------------------|
+| mulet | `perceiverQ4-mae500-s44` | [`perceiverQ4-mae500-s44_20260531.log`](../../logs/track_a/perceiverQ4-mae500-s44_20260531.log) | [3kmbiaki](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/3kmbiaki) | 67050 |
+| murene | `perceiverQ8-mae500-s43` | [`perceiverQ8-mae500-s43_20260531.log`](../../logs/track_a/perceiverQ8-mae500-s43_20260531.log) | [wwvaib7c](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/wwvaib7c) | 72550 |
+| thon | `perceiverQ64-mae500-s44` | [`perceiverQ64-mae500-s44_20260531.log`](../../logs/track_a/perceiverQ64-mae500-s44_20260531.log) | [e363jmlq](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/e363jmlq) | 67200 |
+
+- **Metrics:** W&B max_step advancing (+350 / +375 / +275 within 2 min post-resume); no step-order warnings after fix
+
+---
+
+## Resume ft-mae-scaling perceiver Q fleet (8 hosts, overnight stop) | Track A | 2026-06-01 06:35
+
+- **Status:** RUNNING (8/8 resumed with `resume_global_step`)
+- **Hosts:** gardon, lieu, lotte, piranha, raie, requin, roussette, sole
+- **Experiment:** [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+- **Hydra:** `experiment=track_a_diverse_arch2_perceiver_stab` · same W&B run ids
+
+| Host | Run | W&B | resume_global_step |
+|------|-----|-----|-------------------|
+| gardon | `perceiverQ2-mae500-s43` | [7ew6eok8](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/7ew6eok8) | 122250 |
+| lieu | `perceiverQ2-mae500-s44` | [gd5o0lwj](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/gd5o0lwj) | 154550 |
+| lotte | `perceiverQ4-mae500-s43` | [ldvozwwn](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/ldvozwwn) | 131575 |
+| piranha | `perceiverQ8-mae500-s44` | [2wusde6o](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/2wusde6o) | 131425 |
+| raie | `perceiverQ32-mae500-s43` | [20ykyagi](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/20ykyagi) | 132275 |
+| requin | `perceiverQ32-mae500-s44` | [532pq1s0](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/532pq1s0) | 131100 |
+| roussette | `perceiverQ64-mae500-s42` | [e4h78uqj](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/e4h78uqj) | 144975 |
+| sole | `perceiverQ64-mae500-s43` | [0xxh9rr3](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/0xxh9rr3) | 133450 |
+
+Logs appended: `logs/track_a/perceiverQ*-mae500-s*_20260531.log` on each host.
+
+---
+
+## Resume ft-mae-scaling + perceiver Q fleet (post VM restart) | Track A | 2026-06-01 01:42
+
+- **Status:** RUNNING (4/12 on other hosts: mulet, murene, thon, brochet — not resumed here)
+- **Launcher:** [`resume_ft_mae_scaling_fleet.sh`](../../scripts/resume_ft_mae_scaling_fleet.sh)
+- **Experiment:** [`experimental_cleanup`](../../experiments/experimental_cleanup.md) (meanpool) · [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md) (perceiver)
+- **Note:** resumed from `*.last.pt` with `WANDB_RESUME=allow` + same run ids; logs appended (not rotated)
+
+| Host | Run | W&B id | Resume ep (approx) |
+|------|-----|--------|-------------------|
+| brochet | `meanpool-mae050-s44` | cnjvhknv | 24 |
+| gardon | `perceiverQ2-mae500-s43` | 7ew6eok8 | 10 |
+| lieu | `perceiverQ2-mae500-s44` | gd5o0lwj | 13 |
+| lotte | `perceiverQ4-mae500-s43` | ldvozwwn | 11 |
+| mulet | `perceiverQ4-mae500-s44` | 3kmbiaki | 11 |
+| murene | `perceiverQ8-mae500-s43` | wwvaib7c | 12 |
+| piranha | `perceiverQ8-mae500-s44` | 2wusde6o | 11 |
+| raie | `perceiverQ32-mae500-s43` | 20ykyagi | 11 |
+| requin | `perceiverQ32-mae500-s44` | 532pq1s0 | 11 |
+| roussette | `perceiverQ64-mae500-s42` | e4h78uqj | 12 |
+| sole | `perceiverQ64-mae500-s43` | 0xxh9rr3 | 11 |
+| thon | `perceiverQ64-mae500-s44` | e363jmlq | 11 |
+
+**Not resumed:** `perceiverQ{2,4,8,32}-mae500-s42` — no active training runs/checkpoints on fleet (s42 Q values only exist as completed W&B log-replays from collection).
+
+---
+
+## Perceiver Q MAE500 seed sweep (s42–44) fleet | Track A | 2026-05-31 21:15
+
+- **Status:** RUNNING (11/11 healthy @ step ~400)
+- **Launcher:** [`launch_perceiver_q_mae500_seed_fleet.sh`](../../scripts/launch_perceiver_q_mae500_seed_fleet.sh)
+- **Experiment:** [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+- **Hydra:** `experiment=track_a_diverse_arch2_perceiver_stab` train-only · SSL ep500 · group `ft-mae-scaling`
+- **W&B:** [project](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation)
+
+| Host | Run | W&B |
+|------|-----|-----|
+| gardon | `perceiverQ2-mae500-s43` | [7ew6eok8](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/7ew6eok8) |
+| lieu | `perceiverQ2-mae500-s44` | [gd5o0lwj](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/gd5o0lwj) |
+| lotte | `perceiverQ4-mae500-s43` | [ldvozwwn](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/ldvozwwn) |
+| mulet | `perceiverQ4-mae500-s44` | [3kmbiaki](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/3kmbiaki) |
+| murene | `perceiverQ8-mae500-s43` | [wwvaib7c](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/wwvaib7c) |
+| piranha | `perceiverQ8-mae500-s44` | [2wusde6o](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/2wusde6o) |
+| raie | `perceiverQ32-mae500-s43` | [20ykyagi](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/20ykyagi) |
+| requin | `perceiverQ32-mae500-s44` | [532pq1s0](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/532pq1s0) |
+| roussette | `perceiverQ64-mae500-s42` | [e4h78uqj](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/e4h78uqj) |
+| sole | `perceiverQ64-mae500-s43` | [0xxh9rr3](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/0xxh9rr3) |
+| thon | `perceiverQ64-mae500-s44` | [e363jmlq](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/e363jmlq) |
+
+Logs: `logs/track_a/perceiverQ*-mae500-s*_<20260531>.log` on each host.
+
+---
+
+## Perceiver Q train-only s42 collect + W&B replay | Track A | 2026-05-31 19:02
+
+- **Status:** DONE
+- **Run:** `perceiverQ{2,4,8,16,32}-mae500-s42` (from `arch2-perceiver-q*-trainonly`, seed 42, train-only)
+- **Experiment:** [`diverse_classifier_heads_post_mae`](../../experiments/diverse_classifier_heads_post_mae.md)
+- **Hydra:** `experiment=track_a_diverse_arch2_perceiver`
+- **Ckpt:** [`checkpoints/track_a/perceiver_q_s42/`](../../checkpoints/track_a/perceiver_q_s42/) (~5.3 GB)
+- **Log:** [`logs/track_a/perceiver_q_s42/`](../../logs/track_a/perceiver_q_s42/) · [`manifest.txt`](../../logs/track_a/perceiver_q_s42/manifest.txt)
+- **W&B:** group `ft-mae-scaling` in `smth2smth-frame-ablation` — [Q2](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-perceiverQ2-mae500) · [Q4](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-perceiverQ4-mae500) · [Q8](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-perceiverQ8-mae500) · [Q16](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-perceiverQ16-mae500) · [Q32](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/s42-replay-v2-perceiverQ32-mae500)
+- **Metrics:** best ema holdout top1 Q2=54.31% Q4=53.61% Q8=54.05% Q16=53.91% Q32=54.01% (Q4 original diverse-heads run crashed at ep49)
+
+---
+
+## s42 W&B replay + mae150 resume | Track A | 2026-05-31 17:50
+
+- **W&B replay:** 10 merged log-replay runs in group `ft-mae-scaling`, names `meanpool-maeXXX-s42` — see [`wandb_replay_manifest.txt`](../../logs/track_a/ft_mae_scaling_s42/wandb_replay_manifest.txt) · script [`upload_ft_mae_scaling_s42_wandb.py`](../../scripts/upload_ft_mae_scaling_s42_wandb.py)
+- **mae150 resume:** **rouget** — [`mae150-ft-f4_20260525.log`](../../logs/track_a/mae150-ft-f4_20260525.log) · W&B [tiaanksc](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/tiaanksc) (`WANDB_RESUME=allow`) · resumed ep36/50
+
+---
+
+## FT MAE scaling s42 collection (mae*-ft-f4 → meanpool-mae*-s42) | Track A | 2026-05-31 17:27
+
+- **Status:** DONE (9/10 complete, 1 incomplete)
+- **Collector:** [`collect_ft_mae_scaling_s42.sh`](../../scripts/collect_ft_mae_scaling_s42.sh)
+- **Ckpt dir:** [`checkpoints/track_a/ft_mae_scaling_s42/`](../../checkpoints/track_a/ft_mae_scaling_s42/) (~9.7 GB)
+- **Logs:** [`logs/track_a/ft_mae_scaling_s42/`](../../logs/track_a/ft_mae_scaling_s42/) + [`manifest.txt`](../../logs/track_a/ft_mae_scaling_s42/manifest.txt)
+- **Metrics:** ep50–500 mean-pool honest val, seed 42; **mae150 incomplete @ ep38**
+
+---
+
+## meanpool-mae050-s44 on brochet | Track A | 2026-05-31 15:22
+
+- **Status:** RUNNING
+- **Run:** `meanpool-mae050-s44`
+- **Experiment:** [`experimental_cleanup`](../../experiments/experimental_cleanup.md)
+- **Hydra:** `experiment=track_a_videomae_official_ssv2_ft` `seed=44` `T=4`
+- **Log:** [`meanpool-mae050-s44_20260531.log`](../../logs/track_a/meanpool-mae050-s44_20260531.log) (on **brochet**)
+- **W&B:** [run](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/cnjvhknv) — group `ft-mae-scaling`
+- **Ckpt:** `checkpoints/track_a/videomaev2+ft/meanpool-mae050-s44.pt`
+- **Metrics:** stepping (ep50 SSL, honest val)
+
+---
+
+## FT MAE scaling fleet (seed 44) — launch | Track A | 2026-05-30 23:04
+
+- **Status:** RUNNING (14/14 healthy @ ~90s)
+- **Run:** `meanpool-mae{100..500}-s44` + `perceiverQ16-mae{100..500}-s44` — **skipped** `meanpool-mae050-s44` (14 GPUs)
+- **Experiment:** [`experimental_cleanup`](../../experiments/experimental_cleanup.md)
+- **Hydra:** same as s43, `seed=44`, honest val
+- **Log:** `logs/track_a/<run>_20260530.log` per host
+- **W&B:** group `ft-mae-scaling`, names `*-s44`
+- **Launcher:** [`launch_ft_mae_scaling_s44_fleet.sh`](../../scripts/launch_ft_mae_scaling_s44_fleet.sh)
+
+| Host | Run |
+|------|-----|
+| gardon | `meanpool-mae100-s44` |
+| gymnote | `meanpool-mae150-s44` |
+| labre | `meanpool-mae200-s44` |
+| lieu | `meanpool-mae250-s44` |
+| lotte | `meanpool-mae300-s44` |
+| mulet | `meanpool-mae350-s44` |
+| murene | `meanpool-mae400-s44` |
+| piranha | `meanpool-mae450-s44` |
+| raie | `meanpool-mae500-s44` |
+| requin | `perceiverQ16-mae100-s44` |
+| rouget | `perceiverQ16-mae200-s44` |
+| sole | `perceiverQ16-mae300-s44` |
+| thon | `perceiverQ16-mae400-s44` |
+| truite | `perceiverQ16-mae500-s44` |
+
+---
+
+## FT MAE scaling fleet (seed 43) — DONE + collected | Track A | 2026-05-30 23:00
+
+- **Status:** DONE (15/15)
+- **Collected on gymnote:** [`checkpoints/track_a/ft_mae_scaling_s43/`](../../checkpoints/track_a/ft_mae_scaling_s43/) (15× `.pt`, ~15 GB) · [`logs/track_a/ft_mae_scaling_s43/`](../../logs/track_a/ft_mae_scaling_s43/) + [`manifest.txt`](../../logs/track_a/ft_mae_scaling_s43/manifest.txt)
+- **Collector:** [`collect_ft_mae_scaling_s43.sh`](../../scripts/collect_ft_mae_scaling_s43.sh)
+- **Metrics (honest val top1):** mae050 **0.4519**, mae100 **0.4999**, mae150 **0.5185**, mae200 **0.5259**, mae250 **0.5318**, mae300 **0.5364**, mae350 **0.5294**, mae400 **0.5371**, mae450 **0.5362**, mae500 **0.5370**; perceiver mae100 **0.4729**, mae200 **0.4986**, mae300 **0.5125**, mae400 **0.5217**, mae500 **0.5207**
+
+---
+
+## FT MAE scaling fleet (seed 43) — overnight launch | Track A | 2026-05-30 02:28
+
+- **Status:** DONE
+- **Run:** `meanpool-mae{050..500}-s43` + `perceiverQ16-mae{100..500}-s43`
+- **Experiment:** [`experimental_cleanup`](../../experiments/experimental_cleanup.md)
+- **Hydra:** `track_a_videomae_official_ssv2_ft` / `track_a_diverse_arch2_perceiver`, `seed=43`, `T=4`, honest val (`train_dir=44993` only)
+- **Log:** `logs/track_a/<run>_20260530.log` per host (see map below)
+- **W&B:** [project](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation) · group `ft-mae-scaling`
+- **Ckpt:** `checkpoints/track_a/videomaev2+ft/<run>.pt`
+- **Metrics:** pending (50 ep, early-stop patience 15)
+
+---
+
+## FT MAE scaling fleet (seed 43) — coordinator map | Track A | 2026-05-30
+
+**Spec:** [`experimental_cleanup`](../../experiments/experimental_cleanup.md) · **Launcher:** [`launch_ft_mae_scaling_s43_fleet.sh`](../../scripts/launch_ft_mae_scaling_s43_fleet.sh) · **W&B:** project `smth2smth-frame-ablation`, group `ft-mae-scaling`
+
+Reference recipe: [`mae50-ft-f4_20260524.log`](../../logs/track_a/mae50-ft-f4_20260524.log) (`experiment=track_a_videomae_official_ssv2_ft`, seed **42** → this fleet uses seed **43**).
+
+| Host | Run | Head | SSL ep | W&B name | SSL file (on host) |
+|------|-----|------|--------|----------|-------------------|
+| gardon | `meanpool-mae050-s43` | meanpool | 50 | `meanpool-mae050-s43` | `…/pretrain/…_ep50.pt` |
+| gymnote | `meanpool-mae100-s43` | meanpool | 100 | `meanpool-mae100-s43` | `…/pretrain/…_ep100.pt` |
+| labre | `meanpool-mae150-s43` | meanpool | 150 | `meanpool-mae150-s43` | `…/pretrain/…_ep150.pt` |
+| lieu | `meanpool-mae200-s43` | meanpool | 200 | `meanpool-mae200-s43` | `…/pretrain/…_ep200.pt` |
+| lotte | `meanpool-mae250-s43` | meanpool | 250 | `meanpool-mae250-s43` | `…/pretrain/…_ep250.pt` |
+| mulet | `meanpool-mae300-s43` | meanpool | 300 | `meanpool-mae300-s43` | `…/pretrain/…_ep300.pt` |
+| murene | `meanpool-mae350-s43` | meanpool | 350 | `meanpool-mae350-s43` | `…/pretrain/…_ep350.pt` |
+| piranha | `meanpool-mae400-s43` | meanpool | 400 | `meanpool-mae400-s43` | `…/pretrain/…_ep400.pt` |
+| raie | `meanpool-mae450-s43` | meanpool | 450 | `meanpool-mae450-s43` | `…/pretrain/…_ep450.pt` |
+| requin | `meanpool-mae500-s43` | meanpool | 500 | `meanpool-mae500-s43` | `…/pretrain/…_ep500.pt` |
+| rouget | `perceiverQ16-mae100-s43` | perceiverQ16 | 100 | `perceiverQ16-mae100-s43` | `…/pretrain/…_ep100.pt` |
+| roussette | `perceiverQ16-mae200-s43` | perceiverQ16 | 200 | `perceiverQ16-mae200-s43` | `…/pretrain/…_ep200.pt` |
+| sole | `perceiverQ16-mae300-s43` | perceiverQ16 | 300 | `perceiverQ16-mae300-s43` | `…/pretrain/…_ep300.pt` |
+| thon | `perceiverQ16-mae400-s43` | perceiverQ16 | 400 | `perceiverQ16-mae400-s43` | `…/pretrain/…_ep400.pt` |
+| truite | `perceiverQ16-mae500-s43` | perceiverQ16 | 500 | `perceiverQ16-mae500-s43` | `…/pretrain/…_ep500.pt` |
+
+Hydra: mean-pool → `track_a_videomae_official_ssv2_ft`; Perceiver → `track_a_diverse_arch2_perceiver`. Canary logs: `logs/track_a/canary-<run>_20260530.log`.
+
+**Local canaries (gymnote, 2026-05-30):** both passed — push then `git pull` on fleet hosts before `launch`.
+
+| Canary | Log | W&B | Result |
+|--------|-----|-----|--------|
+| `meanpool-mae100-s43` | [`canary-meanpool-mae100-s43_20260530.log`](../../logs/track_a/canary-meanpool-mae100-s43_20260530.log) | [8wxjtabp](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/8wxjtabp) | OK — `init_from` ep100, group `ft-mae-scaling`, 32 steps |
+| `perceiverQ16-mae100-s43` | [`canary-perceiverQ16-mae100-s43_20260530.log`](../../logs/track_a/canary-perceiverQ16-mae100-s43_20260530.log) | [3cvm40t5](https://wandb.ai/romain-poggi-ecole-polytechnique/smth2smth-frame-ablation/runs/3cvm40t5) | OK — Perceiver head, same W&B group/config keys |
+
+Launcher (local only): [`canary_ft_mae_s43_local.sh`](../../scripts/canary_ft_mae_s43_local.sh). Overnight fleet: [`launch_ft_mae_scaling_s43_fleet.sh`](../../scripts/launch_ft_mae_scaling_s43_fleet.sh) after pull.
+
+---
+
 ## Round 3 — first 4-member ensemble (champion TTA) | Track A | 2026-05-27
 
 Members + individual public LB (champion TTA, all uploaded): **q16-s42 (seed123) 0.5678**, q16-s7 (seed7) 0.5655, q16-seed42 (seed42) 0.5579, mae500 mean-pool 0.5513. Cached champion-TTA logits (holdout-42 N=676 + test 6913) per member in ~3.5 min each on free GPUs → `outputs/ensemble/diverse_heads_r3/`; combined via `scripts/ensemble_diverse_heads_round3.py`.

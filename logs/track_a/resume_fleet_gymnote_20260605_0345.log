@@ -1,0 +1,65 @@
+STALE_RESTART ablette perceiverQ8-mae50-s42 stale=11536s
+=== RESUME ablette perceiverQ8-mae50-s42 rgs=103725 wandb=ec4la5do ===
+trainer_pid=393319 log=logs/track_a/perceiverQ8-mae50-s42_20260604.log
+STALE_RESTART anchois perceiverQ8-mae50-s43 stale=11544s
+=== RESUME anchois perceiverQ8-mae50-s43 rgs=93475 wandb=kn8m0eec ===
+trainer_pid=387929 log=logs/track_a/perceiverQ8-mae50-s43_20260604.log
+STALE_RESTART anguille perceiverQ8-mae50-s44 stale=11555s
+=== RESUME anguille perceiverQ8-mae50-s44 rgs=92300 wandb=k7j8mp3f ===
+trainer_pid=391644 log=logs/track_a/perceiverQ8-mae50-s44_20260604.log
+STALE_RESTART barbeau perceiverQ8-mae150-s42 stale=11564s
+=== RESUME barbeau perceiverQ8-mae150-s42 rgs=99375 wandb=wj8plqqd ===
+trainer_pid=389406 log=logs/track_a/perceiverQ8-mae150-s42_20260604.log
+STALE_RESTART barbue perceiverQ8-mae150-s43 stale=11573s
+=== RESUME barbue perceiverQ8-mae150-s43 rgs=97700 wandb=geuyxsxx ===
+trainer_pid=384357 log=logs/track_a/perceiverQ8-mae150-s43_20260604.log
+STALE_RESTART carrelet perceiverQ8-mae150-s44 stale=11630s
+=== RESUME carrelet perceiverQ8-mae150-s44 rgs=106875 wandb=h236oaie ===
+trainer_pid=386617 log=logs/track_a/perceiverQ8-mae150-s44_20260604.log
+STALE_RESTART gardon perceiverQ8-mae250-s42 stale=11588s
+=== RESUME gardon perceiverQ8-mae250-s42 rgs=88425 wandb=06opirr2 ===
+trainer_pid=383648 log=logs/track_a/perceiverQ8-mae250-s42_20260604.log
+STALE_RESTART labre perceiverQ8-mae250-s43 stale=11596s
+=== RESUME labre perceiverQ8-mae250-s43 rgs=100475 wandb=wnhdefv2 ===
+trainer_pid=385666 log=logs/track_a/perceiverQ8-mae250-s43_20260604.log
+STALE_RESTART lotte perceiverQ8-mae250-s44 stale=22863s
+=== RESUME lotte perceiverQ8-mae250-s44 rgs=49425 wandb=rg7vwobj ===
+trainer_pid=79110 log=logs/track_a/perceiverQ8-mae250-s44_20260604.log
+STALE_RESTART mulet perceiverQ8-mae350-s42 stale=11611s
+=== RESUME mulet perceiverQ8-mae350-s42 rgs=99075 wandb=aphf8m7s ===
+trainer_pid=390790 log=logs/track_a/perceiverQ8-mae350-s42_20260604.log
+STALE_RESTART murene perceiverQ8-mae350-s43 stale=11621s
+=== RESUME murene perceiverQ8-mae350-s43 rgs=107800 wandb=9byqdidr ===
+trainer_pid=386389 log=logs/track_a/perceiverQ8-mae350-s43_20260604.log
+STALE_RESTART piranha perceiverQ8-mae350-s44 stale=11627s
+=== RESUME piranha perceiverQ8-mae350-s44 rgs=95250 wandb=43oyc0ab ===
+trainer_pid=498420 log=logs/track_a/perceiverQ8-mae350-s44_20260604.log
+STALE_RESTART raie perceiverQ8-mae450-s42 stale=11639s
+=== RESUME raie perceiverQ8-mae450-s42 rgs=96225 wandb=j28do9jj ===
+trainer_pid=384628 log=logs/track_a/perceiverQ8-mae450-s42_20260604.log
+STALE_RESTART requin perceiverQ8-mae450-s43 stale=11738s
+=== RESUME requin perceiverQ8-mae450-s43 rgs=95625 wandb=u4yjevti ===
+trainer_pid=393627 log=logs/track_a/perceiverQ8-mae450-s43_20260604.log
+STALE_RESTART rouget perceiverQ8-mae450-s44 stale=11652s
+=== RESUME rouget perceiverQ8-mae450-s44 rgs=94350 wandb=cpfqyts2 ===
+trainer_pid=406691 log=logs/track_a/perceiverQ8-mae450-s44_20260604.log
+STALE_RESTART saumon perceiverQ8-mae100-s44 stale=11662s
+=== RESUME saumon perceiverQ8-mae100-s44 rgs=100775 wandb=zybojpeg ===
+trainer_pid=385155 log=logs/track_a/perceiverQ8-mae100-s44_20260604.log
+STALE_RESTART silure perceiverQ8-mae200-s44 stale=11669s
+=== RESUME silure perceiverQ8-mae200-s44 rgs=94750 wandb=q34m4cmr ===
+trainer_pid=575345 log=logs/track_a/perceiverQ8-mae200-s44_20260604.log
+STALE_RESTART sole perceiverQ8-mae300-s44 stale=11678s
+=== RESUME sole perceiverQ8-mae300-s44 rgs=86900 wandb=a7rk10f0 ===
+trainer_pid=400731 log=logs/track_a/perceiverQ8-mae300-s44_20260604.log
+STALE_RESTART thon perceiverQ8-mae400-s44 stale=11685s
+=== RESUME thon perceiverQ8-mae400-s44 rgs=101050 wandb=45j0bid4 ===
+trainer_pid=432710 log=logs/track_a/perceiverQ8-mae400-s44_20260604.log
+STALE_RESTART truite perceiverQ8-mae500-s44 stale=11693s
+=== RESUME truite perceiverQ8-mae500-s44 rgs=106000 wandb=icau6rug ===
+trainer_pid=556237 log=logs/track_a/perceiverQ8-mae500-s44_20260604.log
+SKIP_DONE lieu perceiverQ16-mae500-s43 ep=50
+SKIP_DONE brochet perceiverQ16-mae500-s44 ep=50
+SKIP_DONE requin DivSpaceTimeK6-mae500-s44 ep=50
+SKIP_DONE roussette DivSpaceTimeK9-mae500-s44 ep=50
+resume: ok=20 skip=4 fail=0
