@@ -26,11 +26,7 @@ smth2smth/
     config.yaml            # root composition
     data/, train/, model/, experiment/, track/
   data/                    # train/, val/, test/ (gitignored)
-  external/
-    prof_baseline/         # vendored read-only baseline
-  notebooks/               # exploration & error analysis (5 stubs)
-  report/
-    parity.md              # submission sanity check & comparison procedure
+  report/                  # LaTeX report + figures
   scripts/
     download_data.py
     run_track_a.py         # track-preset wrapper
@@ -43,9 +39,9 @@ smth2smth/
       engine/              # trainer, evaluator, metrics
       io/                  # checkpoint + submission IO
       utils/               # seed, splits
-    track_a/, track_b/     # track-specific overrides (currently empty)
+    track_a/, track_b/     # track-specific overrides
     pipelines/             # train, evaluate, submit (Hydra entrypoints)
-  tests/                   # pytest suite (81 tests)
+  tests/                   # pytest suite
   pyproject.toml           # uv + pytest + ruff config
 ```
 
@@ -373,39 +369,10 @@ Per-frame augmentation is applied **online** in `shared/data/transforms.py`. No 
 
 When/if offline augmentation becomes worthwhile (e.g. for very expensive transforms), the `dataset.augmented_dirs` config field is reserved for that hook.
 
-## Notebooks
-
-Five exploration notebooks under `notebooks/` consume the package and produce visual artifacts:
-
-| Notebook | Purpose |
-| --- | --- |
-| `01_dataset_overview.ipynb` | Class distribution, frames per video, video previews. |
-| `02_preprocessing_check.ipynb` | Raw vs transformed frames, tensor shape/dtype/range. |
-| `03_train_curves.ipynb` | Loss/top-1/top-5 across epochs and runs. |
-| `04_error_analysis.ipynb` | Confusion matrix, hardest examples (uses checkpoints). |
-| `05_track_comparison.ipynb` | Track A vs B summary + per-class delta. |
-
-Launch with the project's venv:
-
-```bash
-uv run jupyter lab
-```
-
-If you need a globally-discoverable kernel:
-
-```bash
-uv run python -m ipykernel install --user --name smth2smth --display-name "Python (smth2smth)"
-```
-
-Notebook conventions:
-- Code lives in `src/smth2smth/`. Notebooks **import** from it; they don't define logic.
-- Each notebook starts with `%load_ext autoreload` + `%autoreload 2` and adds `<repo>/src` to `sys.path`.
-- Restart-and-run-all before sharing.
-
 ## Testing & linting
 
 ```bash
-uv run pytest -q              # 81 tests, ~3 s on CPU
+uv run pytest -q              # ~3 s on CPU
 uv run pytest -m "not slow"   # skip the end-to-end smoke test
 uv run ruff check .
 uv run ruff format --check .
@@ -421,21 +388,9 @@ To compare two submissions (e.g. baseline vs ours):
 
 ```bash
 PYTHONPATH=src uv run python scripts/compare_submissions.py \
-    --baseline external/prof_baseline/submission.csv \
+    --baseline submissions/track_a.csv \
     --ours submissions/track_b.csv \
     --num-classes 33
-```
-
-See `report/parity.md` for the full sanity-check procedure.
-
-## Vendored baseline
-
-`external/prof_baseline/` is a **read-only** copy of the professor's challenge starter repo. Use it as a reference benchmark; do not modify it. To run the baseline:
-
-```bash
-cd external/prof_baseline
-uv sync
-python src/train.py experiment=baseline_pretrained
 ```
 
 ## Tracks results

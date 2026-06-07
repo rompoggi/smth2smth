@@ -52,8 +52,8 @@ outputs/
 runs/
 wandb/
 mlruns/
-# logs/
-# *.log
+logs/
+*.log
 
 # --- External baseline artifacts (do not commit baseline run outputs) ---
 external/**/outputs/

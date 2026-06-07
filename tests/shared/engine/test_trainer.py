@@ -223,7 +223,7 @@ def test_train_one_epoch_metrics_logger_receives_steps() -> None:
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     logged: list[tuple[int, dict[str, float]]] = []
 
-    def _logger(step: int, metrics: dict[str, float]) -> None:
+    def _callback(metrics: dict[str, float], step: int) -> None:
         logged.append((step, metrics))
 
     train_one_epoch(
@@ -232,11 +232,11 @@ def test_train_one_epoch_metrics_logger_receives_steps() -> None:
         loss_fn,
         optimizer,
         torch.device("cpu"),
-        epoch=2,
-        metrics_logger=_logger,
-        metrics_log_interval_steps=1,
+        log_interval_steps=1,
+        step_metrics_callback=_callback,
     )
     assert len(logged) == len(loader)
-    assert logged[0][0] == 2 * len(loader) + 1
+    assert logged[0][0] == 1
+    assert logged[-1][0] == len(loader)
     assert "train/loss" in logged[-1][1]
     assert "train/top1" in logged[-1][1]

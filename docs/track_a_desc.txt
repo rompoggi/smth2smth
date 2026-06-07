@@ -53,4 +53,4 @@ Each video_id must appear exactly once in the submission file.
 The order of rows does not matter.
 Submissions with missing or extra entries will be rejected.
 Class indices must match the provided class_to_idx.json mapping.
-Participants should note that only the early frames of each video are available, meaning that models must rely on partial temporal information to make accurate predictions. This makes the task inherently challenging and rewards approaches that effectively capture motion cues and anticipate future actions.
+Participants should note that only the early frames of each video are available, meaning that models must rely on partial temporal information to make accurate predictions. This makes the task inherently challenging and rewards approaches that effectively capture motion cues and anticipate future actions.  

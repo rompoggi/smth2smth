@@ -203,7 +203,7 @@ def test_eval_ema_on_runs_both_passes(
     """Legacy default (``eval_ema=True``) keeps both val + EMA val passes.
 
     Sanity-check: when EMA is enabled and ``eval_ema=True`` we get the
-    "ema val top1" line, i.e. nothing changed for callers who never
+    "ema holdout top1" line, i.e. nothing changed for callers who never
     touch the new knob.
     """
     checkpoint_path = tmp_path / "best_model.pt"
@@ -220,5 +220,5 @@ def test_eval_ema_on_runs_both_passes(
 
     assert "Epoch 1/1" in out
     assert "val loss" in out
-    assert "ema val top1" in out, "Default eval_ema=True must run the EMA pass:\n" + out
+    assert "ema holdout top1" in out, "Default eval_ema=True must run the EMA pass:\n" + out
     assert checkpoint_path.is_file()
