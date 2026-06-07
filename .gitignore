@@ -72,3 +72,5 @@ report/main.synctex*
 
 # --- Training Checkpoints ----
 checkpoints/*
+.claude/
+.cursor/
