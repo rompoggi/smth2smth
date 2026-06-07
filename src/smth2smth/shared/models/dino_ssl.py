@@ -143,8 +143,7 @@ class DinoLoss(nn.Module):
             for logits in teacher_logits_per_global
         ]
         student_log_softmax_per_view = [
-            F.log_softmax(logits / self.student_temp, dim=-1)
-            for logits in student_logits_per_view
+            F.log_softmax(logits / self.student_temp, dim=-1) for logits in student_logits_per_view
         ]
         total_loss = 0.0
         n_terms = 0
@@ -158,8 +157,7 @@ class DinoLoss(nn.Module):
                 n_terms += 1
         if n_terms == 0:
             raise RuntimeError(
-                "DinoLoss received no off-diagonal pairs; "
-                "are there at least two student views?"
+                "DinoLoss received no off-diagonal pairs; are there at least two student views?"
             )
         loss = total_loss / float(n_terms)
 

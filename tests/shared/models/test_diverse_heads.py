@@ -108,9 +108,7 @@ def test_temporal_identity_at_init(temporal_mode) -> None:
     ).eval()
     # Copy the plain backbone into the temporal model (shared keys only); the
     # temporal modules keep their identity init.
-    missing, unexpected = temporal.encoder.load_state_dict(
-        plain.encoder.state_dict(), strict=False
-    )
+    missing, unexpected = temporal.encoder.load_state_dict(plain.encoder.state_dict(), strict=False)
     # Every plain key must be consumed; only new temporal keys may be "missing".
     assert not unexpected
     assert all(_is_temporal_leaf(k) for k in missing), missing

@@ -5,11 +5,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 from PIL import Image
 
 from smth2smth.shared.data.ssv2_extended import (
     TARGET_CLASS_DIR_NAMES,
+    LocalFrameRef,
     build_class_count_table,
     collect_target_video_ids,
     compute_dhash,
@@ -20,7 +20,6 @@ from smth2smth.shared.data.ssv2_extended import (
     load_ssv2_records,
     map_template_to_local_folder,
     ssv2_clip_overlaps_local,
-    LocalFrameRef,
 )
 
 
@@ -50,7 +49,10 @@ def test_filter_records_matches_template(tmp_path: Path) -> None:
     records = load_ssv2_records(
         _write_json(
             tmp_path,
-            [{"id": "1", "template": "Closing [something]"}, {"id": "2", "template": "Throwing [something]"}],
+            [
+                {"id": "1", "template": "Closing [something]"},
+                {"id": "2", "template": "Throwing [something]"},
+            ],
         )
     )
     out = filter_records_to_target_classes(records, local_dirs)

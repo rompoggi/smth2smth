@@ -10,7 +10,10 @@ import numpy as np
 import torch
 
 from smth2smth.ensemble.combiners import sanitize_logits
-from smth2smth.ensemble.inference import TtaMode, collect_logits_and_probs_for_videos, collect_logits_for_videos
+from smth2smth.ensemble.inference import (
+    TtaMode,
+    collect_logits_for_videos,
+)
 from smth2smth.ensemble.optimize import combine_logits as combine_logits_scalar
 from smth2smth.pipelines.submit import _build_untrained_mask, _resolve_test_videos
 from smth2smth.shared.io.submission import write_submission_csv
@@ -170,11 +173,7 @@ def run_ensemble_submit_v2(
             prob_path = _test_prob_path(cache_dir, seed, tta_tag=tta_tag)
             if log_path.is_file() and not force:
                 logits = np.load(log_path)
-                probs = (
-                    np.load(prob_path)
-                    if prob_path.is_file()
-                    else None
-                )
+                probs = np.load(prob_path) if prob_path.is_file() else None
             else:
                 print(f"[submit] test {tta_tag} seed={seed} ...", flush=True)
                 logits_t = collect_logits_for_videos(
@@ -273,7 +272,9 @@ def run_ensemble_submit(
             logits = np.load(cache_path)
             print(f"[submit] loaded {cache_path.name} shape={logits.shape}")
         else:
-            print(f"[submit] computing test logits seed={seed} mode={test_mode.value} ...", flush=True)
+            print(
+                f"[submit] computing test logits seed={seed} mode={test_mode.value} ...", flush=True
+            )
             logits_t = collect_logits_for_videos(
                 ckpt,
                 samples,

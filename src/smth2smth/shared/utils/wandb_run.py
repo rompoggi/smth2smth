@@ -212,9 +212,7 @@ def log_epoch_summary(
                 _val_metric_block("honest_", val_holdout_stats, ema_stats=ema_holdout_stats)
             )
     if val_honest_stats is not None:
-        metrics.update(
-            _val_metric_block("honest_", val_honest_stats, ema_stats=ema_honest_stats)
-        )
+        metrics.update(_val_metric_block("honest_", val_honest_stats, ema_stats=ema_honest_stats))
     if head_diag:
         for key, value in head_diag.items():
             if value == value:  # skip NaN

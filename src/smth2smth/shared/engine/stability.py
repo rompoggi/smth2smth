@@ -27,13 +27,14 @@ resumed training keeps appending without truncating the header.
 
 from __future__ import annotations
 
+import contextlib
 import csv
 from pathlib import Path
 
 import torch
 import torch.nn as nn
 
-from smth2smth.shared.models.video_mae import HCRouter, sinkhorn_knopp
+from smth2smth.shared.models.video_mae import HCRouter
 
 
 class StabilityLogger:
@@ -161,8 +162,7 @@ class StabilityLogger:
                 n = m.shape[0]
                 m_max_abs.append(float(m.abs().max().item()))
                 off_mass = float(
-                    (m - torch.eye(n, device=m.device, dtype=m.dtype))
-                    .pow(2).sum().sqrt().item()
+                    (m - torch.eye(n, device=m.device, dtype=m.dtype)).pow(2).sum().sqrt().item()
                 )
                 m_off_mass.append(off_mass)
                 if router.is_mhc:
@@ -175,12 +175,16 @@ class StabilityLogger:
         lr = float(optimizer.param_groups[0]["lr"]) if optimizer.param_groups else 0.0
 
         row: list[float | int] = [
-            self._step, self._epoch, lr, float(loss_value), global_norm,
+            self._step,
+            self._epoch,
+            lr,
+            float(loss_value),
+            global_norm,
         ]
         if self.include_per_block:
             row.extend(per_block_norms)
         if self.include_hc_drift:
-            for ma, om in zip(m_max_abs, m_off_mass):
+            for ma, om in zip(m_max_abs, m_off_mass, strict=False):
                 row.append(ma)
                 row.append(om)
             if self._has_mhc:
@@ -193,7 +197,5 @@ class StabilityLogger:
             self._fh.close()
 
     def __del__(self) -> None:
-        try:
+        with contextlib.suppress(Exception):
             self.close()
-        except Exception:
-            pass

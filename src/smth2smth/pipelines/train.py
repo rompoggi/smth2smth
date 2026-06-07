@@ -34,8 +34,8 @@ from smth2smth.shared.engine import EpochStats, evaluate_epoch, train_one_epoch
 from smth2smth.shared.io.checkpoints import load_checkpoint, save_checkpoint
 from smth2smth.shared.models import build_model
 from smth2smth.shared.models.video_mae import (
-    VideoMAEViT,
     _VIT_VARIANTS,
+    VideoMAEViT,
     interpolate_pos_embed,
 )
 from smth2smth.shared.utils import (
@@ -60,11 +60,7 @@ CONFIGS_DIR = str(Path(__file__).resolve().parents[3] / "configs")
 
 def _epoch_progress_stamp(epoch_one_indexed: int, total_epochs: int) -> str:
     """Prefix epoch logs with an ISO timestamp on a coarse grid (every 50 epochs)."""
-    if (
-        epoch_one_indexed == 1
-        or epoch_one_indexed == total_epochs
-        or epoch_one_indexed % 50 == 0
-    ):
+    if epoch_one_indexed == 1 or epoch_one_indexed == total_epochs or epoch_one_indexed % 50 == 0:
         return f"[{datetime.now().isoformat(timespec='seconds')}] "
     return ""
 
@@ -177,9 +173,7 @@ def _collect_extra_train_samples(
     if not use_extra:
         return []
     if not train_extra_dir:
-        raise ValueError(
-            "dataset.use_extra=true requires dataset.train_extra_dir to be set."
-        )
+        raise ValueError("dataset.use_extra=true requires dataset.train_extra_dir to be set.")
     extra_dir = Path(str(train_extra_dir)).resolve()
     if not extra_dir.is_dir():
         raise FileNotFoundError(
@@ -189,7 +183,9 @@ def _collect_extra_train_samples(
     return collect_video_samples(extra_dir)
 
 
-def _split_trainable_params_head_vs_lora(model: nn.Module) -> tuple[list[nn.Parameter], list[nn.Parameter]]:
+def _split_trainable_params_head_vs_lora(
+    model: nn.Module,
+) -> tuple[list[nn.Parameter], list[nn.Parameter]]:
     """Partition trainable parameters into probe/head vs PEFT LoRA adapters.
 
     HuggingFace PEFT names all adapter weights with a ``lora_`` prefix in the
@@ -351,11 +347,7 @@ def _build_llrd_param_groups(
         # HC matrices are 2-D (n, n) so ``ndim<=1`` would not catch them, but
         # the doc treats them like LN gains — force ``no_decay`` for any
         # HC routing scalar.
-        no_decay = (
-            param.ndim <= 1
-            or name.endswith(".bias")
-            or _is_hc_scalar(name)
-        )
+        no_decay = param.ndim <= 1 or name.endswith(".bias") or _is_hc_scalar(name)
         key = (layer_id, no_decay)
         if key not in groups:
             scale = layer_decay ** (n_top - layer_id)
@@ -421,11 +413,7 @@ def _build_llrd_stabilized_param_groups(
     for name, param in model.named_parameters():
         if not param.requires_grad:
             continue
-        no_decay = (
-            param.ndim <= 1
-            or name.endswith(".bias")
-            or _is_hc_scalar(name)
-        )
+        no_decay = param.ndim <= 1 or name.endswith(".bias") or _is_hc_scalar(name)
         if _is_new_module_param(name):
             kind = "new"
             layer_key = 0
@@ -450,9 +438,7 @@ def _build_llrd_stabilized_param_groups(
             }
         groups[key]["params"].append(param)
     if not groups:
-        raise RuntimeError(
-            "Stabilized LLRD produced 0 trainable groups; check freeze_backbone."
-        )
+        raise RuntimeError("Stabilized LLRD produced 0 trainable groups; check freeze_backbone.")
     return [groups[k] for k in sorted(groups, key=lambda x: (x[0], x[1], x[2]))]
 
 
@@ -647,9 +633,7 @@ def run(cfg: DictConfig) -> Path | None:
                 from smth2smth.ensemble.holdout import apply_holdout_manifest
 
                 manifest_path = Path(str(holdout_manifest)).resolve()
-                val_for_train, val_samples = apply_holdout_manifest(
-                    val_samples_all, manifest_path
-                )
+                val_for_train, val_samples = apply_holdout_manifest(val_samples_all, manifest_path)
                 print(
                     f"[data] holdout_manifest={manifest_path} "
                     f"(frozen split; ignores dataset.seed for holdout)"
@@ -665,8 +649,7 @@ def run(cfg: DictConfig) -> Path | None:
                 )
             train_samples.extend(val_for_train)
             train_sources += (
-                f" + val_dir={len(val_for_train)} "
-                f"({1.0 - val_holdout_ratio:.0%} stratified)"
+                f" + val_dir={len(val_for_train)} ({1.0 - val_holdout_ratio:.0%} stratified)"
             )
             full_counts = label_counts(val_samples_all)
             hold_counts = label_counts(val_samples)
@@ -727,7 +710,9 @@ def run(cfg: DictConfig) -> Path | None:
     trained_class_indices: list[int] = sorted({int(label) for _, label in train_samples})
 
     class_boost_cfg = cfg.dataset.get("class_boosting")
-    class_boosting_enabled = class_boost_cfg is not None and bool(class_boost_cfg.get("enabled", False))
+    class_boosting_enabled = class_boost_cfg is not None and bool(
+        class_boost_cfg.get("enabled", False)
+    )
     if class_boosting_enabled:
         pair_for_boost = build_track_a_temporal_reversal_map()
         n_disk_rows = len(train_samples)
@@ -737,7 +722,11 @@ def run(cfg: DictConfig) -> Path | None:
             f"(deterministic paired-verb duplicates)"
         )
 
-    use_imagenet_norm = bool(cfg.model.get("pretrained", False)) if hasattr(cfg.model, "get") else bool(cfg.model.pretrained)
+    use_imagenet_norm = (
+        bool(cfg.model.get("pretrained", False))
+        if hasattr(cfg.model, "get")
+        else bool(cfg.model.pretrained)
+    )
     augment_cfg = cfg.get("augment") if hasattr(cfg, "get") else None
     train_transform = build_transforms(
         image_size=int(cfg.dataset.image_size),
@@ -765,7 +754,10 @@ def run(cfg: DictConfig) -> Path | None:
         tr_perm, tr_allow = build_time_reversal_table(
             train_dir=train_dir, num_classes=int(cfg.num_classes)
         )
-        print(f"[time-reversal] prob={time_reversal_prob}. " + describe_time_reversal_table(tr_perm, tr_allow))
+        print(
+            f"[time-reversal] prob={time_reversal_prob}. "
+            + describe_time_reversal_table(tr_perm, tr_allow)
+        )
 
     tr_aug_cfg = cfg.dataset.get("temporal_reversal_augment")
     temporal_reversal_map = None
@@ -919,9 +911,7 @@ def run(cfg: DictConfig) -> Path | None:
                     pe_key = "encoder.pos_embed"
                     if pe_key in trunk_state:
                         pe = trunk_state[pe_key]
-                        src_frames = int(
-                            cfg.model.get("interpolate_src_num_frames", num_frames)
-                        )
+                        src_frames = int(cfg.model.get("interpolate_src_num_frames", num_frames))
                         src_size = int(cfg.model.get("interpolate_src_image_size", 224))
                         dst_size = int(cfg.dataset.image_size)
                         if pe.shape[1] != model.encoder.num_tokens:
@@ -958,7 +948,9 @@ def run(cfg: DictConfig) -> Path | None:
                     f"backbone-missing={len(backbone_missing)}, unexpected={len(unexpected)}"
                 )
                 if backbone_missing:
-                    print(f"[init_from] backbone keys NOT covered by SSL: {backbone_missing[:8]}...")
+                    print(
+                        f"[init_from] backbone keys NOT covered by SSL: {backbone_missing[:8]}..."
+                    )
 
     # Diverse-head / temporal-arch init-time sanity print (Arch 1–4). No-op for
     # the mean-pool control. Runs after init_from so the identity-at-init check
@@ -1001,8 +993,7 @@ def run(cfg: DictConfig) -> Path | None:
     # Mutually exclusive with the LoRA two-group path; LoRA is not supported
     # by the dual-stream builder, so this is well-defined.
     is_dual_stream = (
-        hasattr(cfg, "model")
-        and str(cfg.model.get("name", "")) == "dual_stream_rgb_diff_tsm"
+        hasattr(cfg, "model") and str(cfg.model.get("name", "")) == "dual_stream_rgb_diff_tsm"
     )
     motion_lr_ratio_raw = cfg.training.get("motion_lr_ratio") if hasattr(cfg, "training") else None
     motion_lr_raw = cfg.training.get("motion_lr") if hasattr(cfg, "training") else None
@@ -1023,10 +1014,7 @@ def run(cfg: DictConfig) -> Path | None:
         eff_lora_lr = head_lr * lora_lr_ratio
 
     use_lora_group = (
-        lora_enabled
-        and bool(head_params)
-        and bool(lora_params)
-        and not use_dual_stream_groups
+        lora_enabled and bool(head_params) and bool(lora_params) and not use_dual_stream_groups
     )
     if lora_enabled and not lora_params:
         print(
@@ -1048,9 +1036,7 @@ def run(cfg: DictConfig) -> Path | None:
         cfg.training.get("new_module_warmup_epochs", 10) if hasattr(cfg, "training") else 10
     )
     use_stabilized_llrd = (
-        use_llrd
-        and new_module_lr_raw is not None
-        and float(new_module_lr_raw) > 0.0
+        use_llrd and new_module_lr_raw is not None and float(new_module_lr_raw) > 0.0
     )
     new_module_param_ids: set[int] = set()
 
@@ -1196,9 +1182,7 @@ def run(cfg: DictConfig) -> Path | None:
     use_cosine = bool(cfg.training.get("scheduler_cosine", False))
     scheduler_name = str(cfg.training.get("scheduler", "cosine" if use_cosine else "none")).lower()
     cosine_start_epoch = (
-        max(warmup_epochs, new_module_warmup_epochs)
-        if use_stabilized_llrd
-        else warmup_epochs
+        max(warmup_epochs, new_module_warmup_epochs) if use_stabilized_llrd else warmup_epochs
     )
     cosine_scheduler: torch.optim.lr_scheduler.LRScheduler | None = None
     sgdr_T0 = int(cfg.training.get("sgdr_T0", 30))
@@ -1242,9 +1226,7 @@ def run(cfg: DictConfig) -> Path | None:
     early_stopping_min_delta = float(cfg.training.get("early_stopping_min_delta", 0.0))
     stop_on_mlp_activity_raw = cfg.training.get("stop_on_mlp_activity_ratio")
     stop_on_mlp_activity_ratio: float | None = (
-        float(stop_on_mlp_activity_raw)
-        if stop_on_mlp_activity_raw is not None
-        else None
+        float(stop_on_mlp_activity_raw) if stop_on_mlp_activity_raw is not None else None
     )
     max_grad_norm_raw = cfg.training.get("max_grad_norm")
     max_grad_norm: float | None = (
@@ -1252,18 +1234,12 @@ def run(cfg: DictConfig) -> Path | None:
     )
     new_module_max_grad_norm_raw = cfg.training.get("new_module_max_grad_norm")
     new_module_max_grad_norm: float | None = (
-        float(new_module_max_grad_norm_raw)
-        if new_module_max_grad_norm_raw is not None
-        else None
+        float(new_module_max_grad_norm_raw) if new_module_max_grad_norm_raw is not None else None
     )
 
     amp_enabled = bool(cfg.training.get("amp", False)) and device.type == "cuda"
     amp_dtype_str = str(cfg.training.get("amp_dtype", "float16")).lower()
-    amp_dtype = (
-        torch.bfloat16
-        if amp_dtype_str in ("bf16", "bfloat16")
-        else torch.float16
-    )
+    amp_dtype = torch.bfloat16 if amp_dtype_str in ("bf16", "bfloat16") else torch.float16
     scaler: torch.amp.GradScaler | None = (
         torch.amp.GradScaler("cuda", enabled=True) if amp_enabled else None
     )
@@ -1321,9 +1297,7 @@ def run(cfg: DictConfig) -> Path | None:
             checkpoint_path.stem + ".last" + checkpoint_path.suffix
         )
 
-    def _save_last_checkpoint(
-        epoch_done: int, latest_val_top1: float | None
-    ) -> None:
+    def _save_last_checkpoint(epoch_done: int, latest_val_top1: float | None) -> None:
         """Persist the live model + optimizer state at the end of ``epoch_done``."""
         if not save_last_enabled:
             return
@@ -1466,6 +1440,7 @@ def run(cfg: DictConfig) -> Path | None:
     stability_logger = None
     if stability_log_path:
         from smth2smth.shared.engine.stability import StabilityLogger
+
         stability_logger = StabilityLogger(
             Path(str(stability_log_path)).resolve(),
             model=model,
@@ -1618,8 +1593,7 @@ def run(cfg: DictConfig) -> Path | None:
                 )
                 if honest_stats is not None:
                     val_line += (
-                        f" | val honest top1 {honest_stats.top1:.4f} "
-                        f"top5 {honest_stats.top5:.4f}"
+                        f" | val honest top1 {honest_stats.top1:.4f} top5 {honest_stats.top5:.4f}"
                     )
             else:
                 val_line = (
@@ -1652,11 +1626,7 @@ def run(cfg: DictConfig) -> Path | None:
             # Diverse-head failure-mode probes (Arch 1 MLP liveness / Arch 2
             # query collapse). Refreshed by the eval forward just run; no-op for
             # the mean-pool control and the temporal-only archs.
-            head_diag = (
-                model.head_diagnostics()
-                if hasattr(model, "head_diagnostics")
-                else {}
-            )
+            head_diag = model.head_diagnostics() if hasattr(model, "head_diagnostics") else {}
             if head_diag:
                 diag_str = ", ".join(f"{k.split('/')[-1]}={v:.4f}" for k, v in head_diag.items())
                 print(f"  [head-diag] {diag_str}")
@@ -1791,9 +1761,7 @@ def run(cfg: DictConfig) -> Path | None:
         print("Training finished without producing a checkpoint.")
     else:
         val_label = "holdout" if use_val_holdout else "honest"
-        print(
-            f"Done. Best val {val_label} top1: {best_top1:.4f}. Checkpoint: {best_path}"
-        )
+        print(f"Done. Best val {val_label} top1: {best_top1:.4f}. Checkpoint: {best_path}")
     return best_path
 
 

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from omegaconf import OmegaConf
-
 from types import SimpleNamespace
+
+from omegaconf import OmegaConf
 
 from smth2smth.shared.engine.wandb_run import WandbTracker
 from smth2smth.shared.utils.wandb_run import log_epoch_summary

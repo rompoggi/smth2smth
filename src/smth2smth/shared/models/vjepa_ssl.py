@@ -42,7 +42,6 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torchvision import models
 
 from smth2smth.shared.models.avanced_resnet50_tsm import (
@@ -70,9 +69,7 @@ class VJepaTrunk(nn.Module):
     def __init__(self, num_frames: int, shift_div: int = 8) -> None:
         super().__init__()
         if num_frames < 2:
-            raise ValueError(
-                f"num_frames must be >= 2 for V-JEPA SSL with TSM, got {num_frames}."
-            )
+            raise ValueError(f"num_frames must be >= 2 for V-JEPA SSL with TSM, got {num_frames}.")
         backbone = models.resnet50(weights=None)
         self.feature_dim = int(backbone.fc.in_features)
         backbone.fc = nn.Identity()
@@ -324,13 +321,10 @@ def vjepa_feature_loss(
         ValueError: On shape mismatch or unknown reduction.
     """
     if predicted.shape != teacher.shape:
-        raise ValueError(
-            f"predicted {tuple(predicted.shape)} != teacher {tuple(teacher.shape)}"
-        )
+        raise ValueError(f"predicted {tuple(predicted.shape)} != teacher {tuple(teacher.shape)}")
     if mask.shape != predicted.shape[:2]:
         raise ValueError(
-            f"mask {tuple(mask.shape)} incompatible with features "
-            f"{tuple(predicted.shape[:2])}"
+            f"mask {tuple(mask.shape)} incompatible with features {tuple(predicted.shape[:2])}"
         )
     if reduction not in {"mean", "sum"}:
         raise ValueError(f"reduction must be 'mean' or 'sum', got {reduction!r}.")

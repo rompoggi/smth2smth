@@ -134,9 +134,7 @@ def run(cfg: DictConfig) -> Path:
     print(f"[ssl] scanning frame paths from {train_dir}, {val_dir}, {test_dir}")
     frame_paths = collect_all_frame_paths([train_dir, val_dir, test_dir])
     if len(frame_paths) == 0:
-        raise SystemExit(
-            "No frames found for SSL pretraining; check dataset paths."
-        )
+        raise SystemExit("No frames found for SSL pretraining; check dataset paths.")
     max_frames = pcfg.get("max_frames")
     if max_frames is not None:
         frame_paths = frame_paths[: int(max_frames)]
@@ -208,9 +206,7 @@ def run(cfg: DictConfig) -> Path:
             global_views = [v.to(device, non_blocking=True) for v in batch["global_views"]]
             local_views = [v.to(device, non_blocking=True) for v in batch["local_views"]]
 
-            with torch.amp.autocast(
-                device_type="cuda", enabled=amp_enabled, dtype=torch.float16
-            ):
+            with torch.amp.autocast(device_type="cuda", enabled=amp_enabled, dtype=torch.float16):
                 # Teacher: only the 2 global views, no grad.
                 with torch.no_grad():
                     teacher_logits_per_global = [teacher(v) for v in global_views]

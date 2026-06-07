@@ -15,12 +15,14 @@ import math
 from pathlib import Path
 
 import hydra
-from PIL import Image
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from omegaconf import DictConfig, OmegaConf
+from PIL import Image
 from torch.utils.data import DataLoader
+from torchvision.transforms import Normalize
+from torchvision.transforms import functional as TF
 
 from smth2smth.pipelines.train import CONFIGS_DIR, _resolve_device
 from smth2smth.shared.data import VideoFrameDataset, build_transforms, collect_video_samples
@@ -30,8 +32,6 @@ from smth2smth.shared.data.video_dataset import (
     parse_class_index,
     pick_segment_frame_indices,
 )
-from torchvision.transforms import Normalize
-from torchvision.transforms import functional as TF
 from smth2smth.shared.io.checkpoints import cfg_from_checkpoint, load_checkpoint
 from smth2smth.shared.io.submission import (
     discover_all_test_videos,
@@ -140,9 +140,7 @@ def run(cfg: DictConfig) -> Path:
     # and averages the softmaxes. ResNet-50 + GAP is fully convolutional so
     # this is well-defined; the cost is a linear-in-len(scales) forward pass.
     tta_scales_cfg = cfg.training.get("tta_scales", None) if tta_enabled else None
-    tta_scales: list[float] = (
-        [float(s) for s in tta_scales_cfg] if tta_scales_cfg else [1.0]
-    )
+    tta_scales: list[float] = [float(s) for s in tta_scales_cfg] if tta_scales_cfg else [1.0]
 
     patch_size: int | None = None
     model_name = str(saved_cfg.model.get("name", "")) if hasattr(saved_cfg, "model") else ""
@@ -377,9 +375,7 @@ def _load_tta_video_views(
 
     views: list[torch.Tensor] = []
     for seg_idx in range(num_segment):
-        indices = pick_segment_frame_indices(
-            num_available, num_frames, seg_idx, num_segment
-        )
+        indices = pick_segment_frame_indices(num_available, num_frames, seg_idx, num_segment)
         raw_frames: list[Image.Image] = []
         for frame_index in indices:
             with Image.open(frame_paths[frame_index]) as image:
@@ -649,9 +645,7 @@ def _rescale_video(
         new_h = _round_spatial_to_patch_multiple(new_h, patch_size)
         new_w = _round_spatial_to_patch_multiple(new_w, patch_size)
     flat = video_batch.reshape(b * t, c, h, w)
-    flat = F.interpolate(
-        flat, size=(new_h, new_w), mode="bilinear", align_corners=False
-    )
+    flat = F.interpolate(flat, size=(new_h, new_w), mode="bilinear", align_corners=False)
     return flat.reshape(b, t, c, new_h, new_w)
 
 
@@ -768,9 +762,7 @@ def _build_logit_adjustment(
         unavailable.
     """
     if not train_dir.is_dir():
-        print(
-            f"[tta] logit-adjust disabled: train_dir not found ({train_dir})."
-        )
+        print(f"[tta] logit-adjust disabled: train_dir not found ({train_dir}).")
         return None
     samples = collect_video_samples(train_dir)
     counts = class_counts(samples, num_classes=num_classes)

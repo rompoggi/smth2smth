@@ -243,7 +243,9 @@ class VideoFrameDataset(Dataset):
         self,
         root_dir: str | Path,
         num_frames: int,
-        transform: Callable[[Image.Image | Sequence[Image.Image]], torch.Tensor | list[torch.Tensor]],
+        transform: Callable[
+            [Image.Image | Sequence[Image.Image]], torch.Tensor | list[torch.Tensor]
+        ],
         sample_list: list[VideoSampleRecord] | None = None,
         *,
         time_reversal_prob: float = 0.0,

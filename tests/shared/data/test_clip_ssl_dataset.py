@@ -99,9 +99,7 @@ class TestClipSSLDataset:
         _make_split_with_classes(train, n_classes=1, n_videos=1, n_frames=10)
         dirs = collect_all_video_dirs([train])
         transform = T.Compose([T.Resize((16, 16)), T.ToTensor()])
-        ds = ClipSSLDataset(
-            video_dirs=dirs, num_frames=4, transform=transform, temporal_jitter=1.0
-        )
+        ds = ClipSSLDataset(video_dirs=dirs, num_frames=4, transform=transform, temporal_jitter=1.0)
         for _ in range(5):
             sample = ds[0]
             assert sample.shape == (4, 3, 16, 16)

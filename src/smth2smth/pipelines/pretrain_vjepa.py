@@ -181,9 +181,7 @@ def run(cfg: DictConfig) -> Path:
             )
             masked_clip = apply_frame_mask(clip, mask)
 
-            with torch.amp.autocast(
-                device_type="cuda", enabled=amp_enabled, dtype=torch.float16
-            ):
+            with torch.amp.autocast(device_type="cuda", enabled=amp_enabled, dtype=torch.float16):
                 with torch.no_grad():
                     teacher_feats = teacher.encode(clip)  # (B, T, D)
                 predicted, _ = student(masked_clip)  # (B, T, D)
@@ -262,10 +260,7 @@ def run(cfg: DictConfig) -> Path:
             {"trunk_state_dict": trunk_state_dict, "epoch": epoch + 1},
             out_path,
         )
-        print(
-            f"[vjepa] wrote trunk checkpoint -> {out_path} "
-            f"({len(trunk_state_dict)} tensors)"
-        )
+        print(f"[vjepa] wrote trunk checkpoint -> {out_path} ({len(trunk_state_dict)} tensors)")
 
     _free_cuda_memory(reason="vjepa-pretrain-end")
     return out_path

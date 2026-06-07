@@ -75,9 +75,7 @@ class _FakeVJEPA2Backbone(nn.Module):
         hidden_states = None
         if output_hidden_states:
             # Distinct per-layer states so concatenation is not a no-op.
-            hidden_states = tuple(
-                feats + float(i) for i in range(self._num_hidden_states)
-            )
+            hidden_states = tuple(feats + float(i) for i in range(self._num_hidden_states))
         return _FakeOutput(last_hidden_state=feats, hidden_states=hidden_states)
 
 
@@ -283,9 +281,7 @@ class TestMultiBlockAttentiveProbe:
     def test_forward_returns_expected_shape(self) -> None:
         from smth2smth.track_b.vjepa2 import MultiBlockAttentiveProbe
 
-        head = MultiBlockAttentiveProbe(
-            feature_dim=64, num_classes=10, num_heads=16, depth=4
-        )
+        head = MultiBlockAttentiveProbe(feature_dim=64, num_classes=10, num_heads=16, depth=4)
         head.eval()
         tokens = torch.randn(3, 17, 64)
         with torch.no_grad():
@@ -295,9 +291,7 @@ class TestMultiBlockAttentiveProbe:
     def test_grads_flow_through_self_attn_blocks(self) -> None:
         from smth2smth.track_b.vjepa2 import MultiBlockAttentiveProbe
 
-        head = MultiBlockAttentiveProbe(
-            feature_dim=32, num_classes=5, num_heads=8, depth=2
-        )
+        head = MultiBlockAttentiveProbe(feature_dim=32, num_classes=5, num_heads=8, depth=2)
         head(torch.randn(2, 8, 32)).sum().backward()
         assert head.classifier.weight.grad is not None
         assert head.query.grad is not None
@@ -511,9 +505,7 @@ class TestVJEPA2SSv2FTProbe:
         # Unresolved rows are small-Gaussian, not a clean integer constant.
         assert not torch.allclose(w[1], torch.full_like(w[1], w[1][0].item()))
 
-    def test_forward_shape(
-        self, fake_transformers_ssv2ft: dict[int, str], tmp_path: Any
-    ) -> None:
+    def test_forward_shape(self, fake_transformers_ssv2ft: dict[int, str], tmp_path: Any) -> None:
         from smth2smth.track_b.vjepa2 import VJEPA2SSv2FTProbe
 
         label_dir = _make_local_class_dirs(
@@ -537,9 +529,7 @@ class TestVJEPA2SSv2FTProbe:
     ) -> None:
         from smth2smth.track_b.vjepa2 import VJEPA2SSv2FTProbe
 
-        label_dir = _make_local_class_dirs(
-            tmp_path, ["000_Approaching_something_with_your_camera"]
-        )
+        label_dir = _make_local_class_dirs(tmp_path, ["000_Approaching_something_with_your_camera"])
         probe = VJEPA2SSv2FTProbe(
             num_classes=4,
             hf_repo="stub-ssv2ft",
@@ -595,13 +585,13 @@ class TestRegistryIntegration:
                     "pretrained": True,
                     "num_classes": 4,
                     "hf_repo": "stub-vjepa2",
-                "head_type": "attentive",
-                "head_num_heads": 8,
-                "head_num_queries": 1,
-                "head_dropout": 0.0,
-                "freeze_backbone": True,
-                "lora_enabled": False,
-                "attn_implementation": "eager",
+                    "head_type": "attentive",
+                    "head_num_heads": 8,
+                    "head_num_queries": 1,
+                    "head_dropout": 0.0,
+                    "freeze_backbone": True,
+                    "lora_enabled": False,
+                    "attn_implementation": "eager",
                 },
             }
         )

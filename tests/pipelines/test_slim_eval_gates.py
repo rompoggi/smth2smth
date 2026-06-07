@@ -153,9 +153,9 @@ def test_eval_every_n_epochs_skips_intermediate_evals(
     assert "Epoch 1/3" in out and "val skipped" in out, (
         "Epoch 1 should be skipped under eval_every_n_epochs=2:\n" + out
     )
-    assert "Epoch 2/3 |" in out and "val loss" in out.split("Epoch 2/3 |", 1)[1].split(
-        "Epoch 3/3"
-    )[0], "Epoch 2 should run a full val pass:\n" + out
+    assert (
+        "Epoch 2/3 |" in out and "val loss" in out.split("Epoch 2/3 |", 1)[1].split("Epoch 3/3")[0]
+    ), "Epoch 2 should run a full val pass:\n" + out
     assert "Epoch 3/3 |" in out and "val loss" in out.split("Epoch 3/3 |", 1)[1], (
         "Epoch 3 (final) should always evaluate:\n" + out
     )
@@ -189,9 +189,7 @@ def test_eval_ema_off_skips_ema_pass_but_keeps_live(
     assert "Epoch 1/1" in out
     assert "val loss" in out, "Live val pass must still run:\n" + out
     assert "ema eval skipped" in out, "eval_ema=False should annotate the skip:\n" + out
-    assert "ema val top1" not in out, (
-        "eval_ema=False must not print the EMA val numbers:\n" + out
-    )
+    assert "ema val top1" not in out, "eval_ema=False must not print the EMA val numbers:\n" + out
     assert checkpoint_path.is_file()
 
 

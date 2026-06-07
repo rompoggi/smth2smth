@@ -50,7 +50,9 @@ def load_anchor_frames(video_dir: Path) -> list[Image.Image]:
     return frames
 
 
-def duplicate_anchors_to_dense(anchors: Sequence[Image.Image], num_frames: int = DENSE_FRAME_COUNT) -> list[Image.Image]:
+def duplicate_anchors_to_dense(
+    anchors: Sequence[Image.Image], num_frames: int = DENSE_FRAME_COUNT
+) -> list[Image.Image]:
     """Repeat anchors to ``num_frames`` using the dataloader linspace rule.
 
     Args:
@@ -130,7 +132,9 @@ def interpolate_anchors_to_dense(
 
     dense: list[Image.Image] = []
     for gap_idx in range(n_gaps):
-        segment = densify_gap(anchor_list[gap_idx], anchor_list[gap_idx + 1], interpolator, n_mid=n_mid)
+        segment = densify_gap(
+            anchor_list[gap_idx], anchor_list[gap_idx + 1], interpolator, n_mid=n_mid
+        )
         if gap_idx < n_gaps - 1:
             dense.extend(segment[:-1])
         else:
@@ -198,23 +202,23 @@ class FlowWarpInterpolator(FrameInterpolator):
 
         gray_a = cv2.cvtColor(a, cv2.COLOR_RGB2GRAY)
         gray_b = cv2.cvtColor(b, cv2.COLOR_RGB2GRAY)
-        flow_ab = cv2.calcOpticalFlowFarneback(
-            gray_a, gray_b, None, 0.5, 3, 15, 3, 5, 1.2, 0
-        )
-        flow_ba = cv2.calcOpticalFlowFarneback(
-            gray_b, gray_a, None, 0.5, 3, 15, 3, 5, 1.2, 0
-        )
+        flow_ab = cv2.calcOpticalFlowFarneback(gray_a, gray_b, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+        flow_ba = cv2.calcOpticalFlowFarneback(gray_b, gray_a, None, 0.5, 3, 15, 3, 5, 1.2, 0)
 
         h, w = a.shape[:2]
         grid_x, grid_y = np.meshgrid(np.arange(w, dtype=np.float32), np.arange(h, dtype=np.float32))
 
         map_a_x = grid_x + t * flow_ab[..., 0]
         map_a_y = grid_y + t * flow_ab[..., 1]
-        warped_a = cv2.remap(a, map_a_x, map_a_y, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+        warped_a = cv2.remap(
+            a, map_a_x, map_a_y, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE
+        )
 
         map_b_x = grid_x + (1.0 - t) * flow_ba[..., 0]
         map_b_y = grid_y + (1.0 - t) * flow_ba[..., 1]
-        warped_b = cv2.remap(b, map_b_x, map_b_y, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+        warped_b = cv2.remap(
+            b, map_b_x, map_b_y, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE
+        )
 
         out = (1.0 - t) * warped_a.astype(np.float32) + t * warped_b.astype(np.float32)
         return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))

@@ -73,9 +73,7 @@ def select_class_targets(
         template matches one of our local class folders. Clips that match no
         local class are dropped (we only want our 32-class subset).
     """
-    local_by_norm: dict[str, str] = {
-        normalize_class_name(d.name): d.name for d in local_class_dirs
-    }
+    local_by_norm: dict[str, str] = {normalize_class_name(d.name): d.name for d in local_class_dirs}
     targets: dict[str, str] = {}
     for video_id, template in ssv2_records:
         local_name = local_by_norm.get(normalize_class_name(template))
@@ -201,9 +199,7 @@ def main() -> int:
     parser.set_defaults(dry_run=True)
     args = parser.parse_args()
 
-    local_dirs = sorted(
-        p for p in args.local_classes_dir.resolve().iterdir() if p.is_dir()
-    )
+    local_dirs = sorted(p for p in args.local_classes_dir.resolve().iterdir() if p.is_dir())
     records = load_ssv2_records(args.ssv2_labels_json.resolve())
     targets = select_class_targets(local_dirs, records)
 

@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
 
 import torch
 import torch.nn as nn
@@ -94,9 +93,7 @@ def train_one_epoch(
     total_steps = len(data_loader)
     skip_batches = max(0, int(skip_batches))
     if skip_batches >= total_steps:
-        raise ValueError(
-            f"skip_batches={skip_batches} >= len(data_loader)={total_steps}"
-        )
+        raise ValueError(f"skip_batches={skip_batches} >= len(data_loader)={total_steps}")
     optimizer.zero_grad(set_to_none=True)
     for step_idx, (video_batch, labels) in enumerate(data_loader, start=1):
         if step_idx <= skip_batches:
@@ -110,10 +107,7 @@ def train_one_epoch(
             num_classes is not None
             and videomix_mode != "none"
             and torch.rand(1).item() < videomix_prob
-            and (
-                videomix_alpha > 0.0
-                or videomix_mode == "mixup_cutmix_switch"
-            )
+            and (videomix_alpha > 0.0 or videomix_mode == "mixup_cutmix_switch")
         )
         if use_videomix:
             video_batch, train_labels, mixed_labels = apply_video_mixing(
@@ -130,17 +124,13 @@ def train_one_epoch(
         with torch.amp.autocast(device_type="cuda", dtype=amp_dtype, enabled=use_amp):
             logits = model(video_batch)
             if mixed_labels is not None:
-                loss = _soft_target_cross_entropy(
-                    logits, mixed_labels, class_weights=class_weights
-                )
+                loss = _soft_target_cross_entropy(logits, mixed_labels, class_weights=class_weights)
             else:
                 if label_smoothing > 0.0:
                     smoothed = _one_hot_targets(
                         train_labels, num_classes=int(num_classes), smoothing=label_smoothing
                     )
-                    loss = _soft_target_cross_entropy(
-                        logits, smoothed, class_weights=class_weights
-                    )
+                    loss = _soft_target_cross_entropy(logits, smoothed, class_weights=class_weights)
                 else:
                     loss = loss_fn(logits, train_labels)
 
@@ -173,9 +163,7 @@ def train_one_epoch(
                 and new_module_max_grad_norm > 0.0
                 and new_module_param_ids
             ):
-                nm_params = [
-                    p for p in model.parameters() if id(p) in new_module_param_ids
-                ]
+                nm_params = [p for p in model.parameters() if id(p) in new_module_param_ids]
                 if nm_params:
                     torch.nn.utils.clip_grad_norm_(nm_params, new_module_max_grad_norm)
             if use_amp:

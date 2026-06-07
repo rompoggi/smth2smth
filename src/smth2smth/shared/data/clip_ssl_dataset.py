@@ -94,7 +94,9 @@ class ClipSSLDataset(Dataset):
         self,
         video_dirs: list[Path],
         num_frames: int,
-        transform: Callable[[Image.Image | Sequence[Image.Image]], torch.Tensor | list[torch.Tensor]],
+        transform: Callable[
+            [Image.Image | Sequence[Image.Image]], torch.Tensor | list[torch.Tensor]
+        ],
         temporal_jitter: float = 0.0,
         source_num_frames: int | None = None,
         temporal_expand_mode: str = "interpolation",
@@ -104,12 +106,12 @@ class ClipSSLDataset(Dataset):
         if num_frames <= 0:
             raise ValueError(f"num_frames must be > 0, got {num_frames}.")
         if not 0.0 <= temporal_jitter <= 1.0:
-            raise ValueError(
-                f"temporal_jitter must be in [0, 1], got {temporal_jitter}."
-            )
+            raise ValueError(f"temporal_jitter must be in [0, 1], got {temporal_jitter}.")
         self.video_dirs = [Path(p) for p in video_dirs]
         self.num_frames = int(num_frames)
-        self.source_num_frames = int(source_num_frames) if source_num_frames is not None else self.num_frames
+        self.source_num_frames = (
+            int(source_num_frames) if source_num_frames is not None else self.num_frames
+        )
         if self.source_num_frames <= 0:
             raise ValueError(f"source_num_frames must be > 0, got {self.source_num_frames}.")
         if self.num_frames < self.source_num_frames:
@@ -136,13 +138,14 @@ class ClipSSLDataset(Dataset):
             raise RuntimeError(f"Video folder {video_dir} has no frames.")
         indices = pick_frame_indices(len(frame_paths), self.source_num_frames)
 
-        if self.temporal_jitter > 0.0 and len(frame_paths) > self.source_num_frames:
-            if bool(torch.rand(1).item() < self.temporal_jitter):
-                shift = int(torch.randint(low=-1, high=2, size=(1,)).item())
-                if shift != 0:
-                    indices = [
-                        min(max(i + shift, 0), len(frame_paths) - 1) for i in indices
-                    ]
+        if (
+            self.temporal_jitter > 0.0
+            and len(frame_paths) > self.source_num_frames
+            and bool(torch.rand(1).item() < self.temporal_jitter)
+        ):
+            shift = int(torch.randint(low=-1, high=2, size=(1,)).item())
+            if shift != 0:
+                indices = [min(max(i + shift, 0), len(frame_paths) - 1) for i in indices]
 
         raw_frames: list[Image.Image] = []
         for frame_index in indices:

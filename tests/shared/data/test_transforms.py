@@ -101,7 +101,9 @@ def test_random_grayscale_makes_three_channels_identical_before_norm() -> None:
         "random_grayscale": True,
         "random_grayscale_prob": 1.0,
     }
-    pipe = build_transforms(image_size=32, is_training=True, use_imagenet_norm=False, augment=augment)
+    pipe = build_transforms(
+        image_size=32, is_training=True, use_imagenet_norm=False, augment=augment
+    )
     img = Image.new("RGB", (40, 40), color=(200, 50, 20))
     t = pipe(img)
     assert torch.allclose(t[0], t[1]) and torch.allclose(t[1], t[2])
@@ -116,12 +118,16 @@ def test_gaussian_blur_runs_and_changes_tensor() -> None:
         "gaussian_blur_radius_min": 2.0,
         "gaussian_blur_radius_max": 2.0,
     }
-    pipe = build_transforms(image_size=32, is_training=True, use_imagenet_norm=False, augment=augment)
+    pipe = build_transforms(
+        image_size=32, is_training=True, use_imagenet_norm=False, augment=augment
+    )
     img = Image.new("RGB", (40, 40), color=(0, 0, 0))
     img.putpixel((16, 16), (255, 255, 255))
     blurred = pipe(img)
     baseline_aug = {**augment, "gaussian_blur": False, "gaussian_blur_prob": 0.0}
-    base_pipe = build_transforms(image_size=32, is_training=True, use_imagenet_norm=False, augment=baseline_aug)
+    base_pipe = build_transforms(
+        image_size=32, is_training=True, use_imagenet_norm=False, augment=baseline_aug
+    )
     sharp = base_pipe(img)
     assert not torch.allclose(blurred, sharp)
 
@@ -138,8 +144,12 @@ def test_eval_disables_grayscale_and_blur() -> None:
         "gaussian_blur_radius_min": 3.0,
         "gaussian_blur_radius_max": 3.0,
     }
-    train_pipe = build_transforms(image_size=32, is_training=True, use_imagenet_norm=False, augment=augment)
-    eval_pipe = build_transforms(image_size=32, is_training=False, use_imagenet_norm=False, augment=augment)
+    train_pipe = build_transforms(
+        image_size=32, is_training=True, use_imagenet_norm=False, augment=augment
+    )
+    eval_pipe = build_transforms(
+        image_size=32, is_training=False, use_imagenet_norm=False, augment=augment
+    )
     image = Image.new("RGB", (48, 48), color=(160, 40, 200))
     tr = train_pipe(image)
     ev = eval_pipe(image)

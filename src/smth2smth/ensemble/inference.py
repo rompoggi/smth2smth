@@ -25,7 +25,7 @@ from smth2smth.shared.models.video_mae import interpolate_pos_embed
 from smth2smth.shared.utils.splits import VideoSample as VS
 
 
-class TtaMode(str, Enum):
+class TtaMode(str, Enum):  # noqa: UP042 - keep str-mixin for JSON value round-trip
     """How to run inference when caching logits."""
 
     NONE = "none"
@@ -43,11 +43,7 @@ def _tta_settings_from_checkpoint(
     if mode == TtaMode.CHAMPION:
         # Sweep winner: 3-scale + flip (scales875_flip ≡ scales3_flip on ViT 224).
         scales_cfg = saved_cfg.training.get("tta_scales", None)
-        scales = (
-            [float(s) for s in scales_cfg]
-            if scales_cfg
-            else [0.857, 1.0, 1.143]
-        )
+        scales = [float(s) for s in scales_cfg] if scales_cfg else [0.857, 1.0, 1.143]
         flip = bool(saved_cfg.training.get("tta_flip", True))
         return True, flip, scales, 1, 1, False
     if mode in (TtaMode.OFFICIAL_2X3, TtaMode.DENSE_2X3):
@@ -375,9 +371,7 @@ def _collect_holdout_dense_tta(
 
     num_classes = int(saved_cfg.model.num_classes)
     normalize = _eval_normalize(use_imagenet_norm)
-    flip_perm = (
-        _build_flip_class_permutation(train_dir, num_classes, device) if flip_tta else None
-    )
+    flip_perm = _build_flip_class_permutation(train_dir, num_classes, device) if flip_tta else None
     micro_batch = max(1, int(saved_cfg.training.get("batch_size", 8)))
 
     all_logits: list[torch.Tensor] = []
@@ -398,9 +392,7 @@ def _collect_holdout_dense_tta(
         for start in range(0, len(views), micro_batch):
             batch_views = views[start : start + micro_batch]
             video_batch = torch.stack(batch_views, dim=0).to(device, non_blocking=True)
-            logits = _logits_for_batch(
-                model, video_batch, untrained_mask, amp_infer=amp_infer
-            )
+            logits = _logits_for_batch(model, video_batch, untrained_mask, amp_infer=amp_infer)
             batch_probs = torch.softmax(logits, dim=1)
             for local_i, row in enumerate(logits):
                 view_logits = row
@@ -450,7 +442,6 @@ def collect_logits_and_probs_for_videos(
             device=device,
         )
         use_imagenet_norm = bool(saved_cfg.model.get("pretrained", False))
-        augment_cfg = saved_cfg.get("augment") if hasattr(saved_cfg, "get") else None
         holdout = samples
         logits, probs = _collect_holdout_dense_tta(
             model=model,

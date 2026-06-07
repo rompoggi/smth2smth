@@ -49,11 +49,7 @@ def build_videomae_head_model(spec: HeadSpec) -> VideoMAEViT:
 
 def count_trainable_head_params(model: nn.Module) -> int:
     """Count parameters in pool/classifier/temporal head modules only."""
-    return sum(
-        p.numel()
-        for name, p in model.named_parameters()
-        if _is_new_module_param(name)
-    )
+    return sum(p.numel() for name, p in model.named_parameters() if _is_new_module_param(name))
 
 
 def count_head_params_for_spec(spec: HeadSpec) -> int:

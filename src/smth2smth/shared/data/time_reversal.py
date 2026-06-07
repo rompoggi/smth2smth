@@ -141,10 +141,7 @@ def describe_table(perm: torch.Tensor, allow_mask: torch.Tensor) -> str:
     n_allowed = int(allow_mask.sum().item())
     if not pairs:
         return f"time-reversal: {n_allowed} class(es) allowed, no class-pair remap detected."
-    return (
-        f"time-reversal: {n_allowed} class(es) allowed; "
-        f"pair remaps = [{', '.join(pairs)}]."
-    )
+    return f"time-reversal: {n_allowed} class(es) allowed; pair remaps = [{', '.join(pairs)}]."
 
 
 __all__ = [

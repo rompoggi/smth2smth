@@ -69,9 +69,7 @@ def read_holdout_manifest(path: Path) -> dict[str, Any]:
     """Load a holdout manifest written by :func:`write_holdout_manifest`."""
     data = json.loads(path.read_text(encoding="utf-8"))
     if int(data.get("version", 0)) != MANIFEST_VERSION:
-        raise ValueError(
-            f"Unsupported holdout manifest version {data.get('version')!r} in {path}"
-        )
+        raise ValueError(f"Unsupported holdout manifest version {data.get('version')!r} in {path}")
     return data
 
 
@@ -143,7 +141,11 @@ def class_distribution_report(
     val_c = label_counts(val_samples)
     hold_c = label_counts(holdout_samples)
     val_train_c = label_counts(
-        [(vd, lab) for vd, lab in val_samples if sample_key(vd) not in {sample_key(h) for h, _ in holdout_samples}]
+        [
+            (vd, lab)
+            for vd, lab in val_samples
+            if sample_key(vd) not in {sample_key(h) for h, _ in holdout_samples}
+        ]
     )
 
     all_labels = sorted(set(train_c) | set(val_c))
@@ -224,7 +226,9 @@ def build_and_write_holdout_clean(
     # Round-trip check: manifest reproduces the same holdout set.
     output_path = output_path.resolve()
     tmp = output_path.with_suffix(".tmp.json")
-    write_holdout_manifest(holdout, tmp, meta={"split_seed": split_seed, "holdout_ratio": holdout_ratio})
+    write_holdout_manifest(
+        holdout, tmp, meta={"split_seed": split_seed, "holdout_ratio": holdout_ratio}
+    )
     _, holdout2 = apply_holdout_manifest(val_samples, tmp)
     keys1 = {sample_key(vd) for vd, _ in holdout}
     keys2 = {sample_key(vd) for vd, _ in holdout2}

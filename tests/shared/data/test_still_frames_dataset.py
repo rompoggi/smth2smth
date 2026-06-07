@@ -14,7 +14,9 @@ from smth2smth.shared.data import (
 )
 
 
-def _make_split_with_classes(root: Path, n_classes: int = 2, n_videos: int = 2, n_frames: int = 3) -> None:
+def _make_split_with_classes(
+    root: Path, n_classes: int = 2, n_videos: int = 2, n_frames: int = 3
+) -> None:
     for c in range(n_classes):
         for v in range(n_videos):
             video_dir = root / f"{c:03d}_class" / f"video_{c}_{v}"

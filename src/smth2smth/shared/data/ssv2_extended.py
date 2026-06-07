@@ -13,15 +13,14 @@ Pipeline stages (see ``scripts/build_extended_train.py``):
 from __future__ import annotations
 
 import json
-from collections import Counter, defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 from PIL import Image
 
 from smth2smth.shared.data import parse_class_index
-from smth2smth.shared.data.video_dataset import pick_frame_indices, _list_frame_paths
+from smth2smth.shared.data.video_dataset import _list_frame_paths, pick_frame_indices
 from smth2smth.track_b.zero_shot import normalize_class_name
 
 # Our on-disk 32-class subset (folder names under data/train). Class index 27 is
@@ -138,11 +137,7 @@ def local_class_dirs(root: Path) -> list[Path]:
     """Sorted ``NNN_Class`` folders under ``root`` that are in our target set."""
     if not root.is_dir():
         return []
-    return sorted(
-        p
-        for p in root.iterdir()
-        if p.is_dir() and p.name in TARGET_CLASS_DIR_NAMES
-    )
+    return sorted(p for p in root.iterdir() if p.is_dir() and p.name in TARGET_CLASS_DIR_NAMES)
 
 
 def map_template_to_local_folder(template: str, local_dirs: list[Path]) -> str | None:
@@ -153,9 +148,7 @@ def map_template_to_local_folder(template: str, local_dirs: list[Path]) -> str |
         return local_by_norm[norm]
     # Filesystem-truncated folder names (e.g. 015_…_but_something_).
     matches = [
-        name
-        for ln, name in local_by_norm.items()
-        if norm == ln or norm.startswith(ln + " ")
+        name for ln, name in local_by_norm.items() if norm == ln or norm.startswith(ln + " ")
     ]
     return matches[0] if len(matches) == 1 else None
 

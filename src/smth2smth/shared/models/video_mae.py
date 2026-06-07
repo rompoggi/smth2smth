@@ -119,7 +119,8 @@ class PatchEmbed3D(nn.Module):
         self.n_w = img_size // patch_size
         self.num_tokens = self.n_t * self.n_h * self.n_w
         self.proj = nn.Conv3d(
-            3, embed_dim,
+            3,
+            embed_dim,
             kernel_size=(tube_t, patch_size, patch_size),
             stride=(tube_t, patch_size, patch_size),
         )
@@ -130,8 +131,8 @@ class PatchEmbed3D(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: (B, T, C, H, W) → (B, num_tokens, embed_dim)
         B, T, C, H, W = x.shape
-        x = x.permute(0, 2, 1, 3, 4)        # (B, C, T, H, W)
-        x = self.proj(x)                     # (B, D, n_t, n_h, n_w)
+        x = x.permute(0, 2, 1, 3, 4)  # (B, C, T, H, W)
+        x = self.proj(x)  # (B, D, n_t, n_h, n_w)
         return x.flatten(2).transpose(1, 2)  # (B, n_t*n_h*n_w, D)
 
 
@@ -474,10 +475,16 @@ class HCTransformerBlock(nn.Module):
         self.mlp = MLP(dim, mlp_ratio)
         self.drop_path = DropPath(drop_path)
         self.attn_router = HCRouter(
-            n, variant=variant, sk_iters=sk_iters, sk_tau=sk_tau,
+            n,
+            variant=variant,
+            sk_iters=sk_iters,
+            sk_tau=sk_tau,
         )
         self.mlp_router = HCRouter(
-            n, variant=variant, sk_iters=sk_iters, sk_tau=sk_tau,
+            n,
+            variant=variant,
+            sk_iters=sk_iters,
+            sk_tau=sk_tau,
         )
 
     def _attn_sublayer(self, v: torch.Tensor) -> torch.Tensor:
@@ -539,13 +546,11 @@ class VideoMAEEncoder(nn.Module):
         super().__init__()
         if residual_variant not in {"prenorm", "shc", "mhc"}:
             raise ValueError(
-                f"residual_variant must be 'prenorm', 'shc' or 'mhc', got "
-                f"{residual_variant!r}."
+                f"residual_variant must be 'prenorm', 'shc' or 'mhc', got {residual_variant!r}."
             )
         if temporal_mode not in {"none", "divided_st", "aim_reuse"}:
             raise ValueError(
-                f"temporal_mode must be 'none', 'divided_st' or 'aim_reuse', "
-                f"got {temporal_mode!r}."
+                f"temporal_mode must be 'none', 'divided_st' or 'aim_reuse', got {temporal_mode!r}."
             )
         if temporal_mode != "none" and residual_variant != "prenorm":
             raise ValueError(
@@ -585,15 +590,17 @@ class VideoMAEEncoder(nn.Module):
             for i in range(depth):
                 if i >= temporal_start and temporal_mode == "divided_st":
                     blocks.append(
-                        DividedSpaceTimeBlock(
-                            embed_dim, num_heads, mlp_ratio, dpr[i], n_t=n_t
-                        )
+                        DividedSpaceTimeBlock(embed_dim, num_heads, mlp_ratio, dpr[i], n_t=n_t)
                     )
                 elif i >= temporal_start and temporal_mode == "aim_reuse":
                     blocks.append(
                         AIMReuseBlock(
-                            embed_dim, num_heads, mlp_ratio, dpr[i],
-                            n_t=n_t, bottleneck=self.aim_bottleneck,
+                            embed_dim,
+                            num_heads,
+                            mlp_ratio,
+                            dpr[i],
+                            n_t=n_t,
+                            bottleneck=self.aim_bottleneck,
                         )
                     )
                 else:
@@ -607,10 +614,12 @@ class VideoMAEEncoder(nn.Module):
                 sk_iters=hc_sk_iters,
                 sk_tau=hc_sk_tau,
             )
-            self.blocks = nn.ModuleList([
-                HCTransformerBlock(embed_dim, num_heads, mlp_ratio, dpr[i], **hc_kwargs)
-                for i in range(depth)
-            ])
+            self.blocks = nn.ModuleList(
+                [
+                    HCTransformerBlock(embed_dim, num_heads, mlp_ratio, dpr[i], **hc_kwargs)
+                    for i in range(depth)
+                ]
+            )
             # alpha_out: read weights to collapse H back to a single stream.
             # Identity init = e_0 (one-hot at index 0) ⇒ exit equals stream 0,
             # which under M=I and alpha_pre/beta=e_0 is exactly the Pre-Norm output.
@@ -652,9 +661,7 @@ class VideoMAEEncoder(nn.Module):
         """Return ``pos_embed`` resized to match the spatial grid of ``x``."""
         _, _, _, h, _w = x.shape
         n_tokens = (
-            (self.num_frames // self.tube_t)
-            * (h // self.patch_size)
-            * (_w // self.patch_size)
+            (self.num_frames // self.tube_t) * (h // self.patch_size) * (_w // self.patch_size)
         )
         if n_tokens == self.pos_embed.shape[1]:
             return self.pos_embed
@@ -684,7 +691,8 @@ class VideoMAEEncoder(nn.Module):
 
         if ids_keep is not None:
             tokens = torch.gather(
-                tokens, 1,
+                tokens,
+                1,
                 ids_keep.unsqueeze(-1).expand(-1, -1, tokens.shape[-1]),
             )
 
@@ -724,9 +732,7 @@ class AttentiveProbeHead(nn.Module):
     def __init__(self, embed_dim: int, num_heads: int = 4) -> None:
         super().__init__()
         if embed_dim % num_heads != 0:
-            raise ValueError(
-                f"embed_dim={embed_dim} must be divisible by num_heads={num_heads}."
-            )
+            raise ValueError(f"embed_dim={embed_dim} must be divisible by num_heads={num_heads}.")
         self.query = nn.Parameter(torch.zeros(1, 1, embed_dim))
         self.attn = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
         self.norm = nn.LayerNorm(embed_dim)
@@ -734,9 +740,9 @@ class AttentiveProbeHead(nn.Module):
 
     def forward(self, tokens: torch.Tensor) -> torch.Tensor:
         """tokens: (B, N, D) → (B, D) pooled feature."""
-        q = self.query.expand(tokens.size(0), -1, -1)     # (B, 1, D)
+        q = self.query.expand(tokens.size(0), -1, -1)  # (B, 1, D)
         out, _ = self.attn(q, tokens, tokens, need_weights=False)
-        return self.norm(out.squeeze(1))                   # (B, D)
+        return self.norm(out.squeeze(1))  # (B, D)
 
 
 class CrossAttnPoolHead(nn.Module):
@@ -774,9 +780,7 @@ class CrossAttnPoolHead(nn.Module):
     ) -> None:
         super().__init__()
         if dim % num_heads != 0:
-            raise ValueError(
-                f"dim={dim} must be divisible by num_heads={num_heads}."
-            )
+            raise ValueError(f"dim={dim} must be divisible by num_heads={num_heads}.")
         if num_queries < 1:
             raise ValueError(f"num_queries must be >= 1, got {num_queries}.")
         self.num_queries = int(num_queries)
@@ -801,20 +805,18 @@ class CrossAttnPoolHead(nn.Module):
     def forward(self, tokens: torch.Tensor) -> torch.Tensor:
         """tokens: (B, N, D) → (B, D) pooled feature."""
         B = tokens.size(0)
-        q = self.norm_q(self.queries.expand(B, -1, -1))    # (B, Q, D)
-        kv = self.norm_kv(tokens)                          # (B, N, D)
-        z, _ = self.attn(q, kv, kv, need_weights=False)    # (B, Q, D)
-        z = z + q                                          # residual on query
+        q = self.norm_q(self.queries.expand(B, -1, -1))  # (B, Q, D)
+        kv = self.norm_kv(tokens)  # (B, N, D)
+        z, _ = self.attn(q, kv, kv, need_weights=False)  # (B, Q, D)
+        z = z + q  # residual on query
         mlp_out = self.mlp(self.norm2(z))
         if not self.training:
             # Arch-1 failure-mode probe (eval-only to avoid a per-step sync).
             denom = z.norm(dim=-1).mean().clamp_min(1e-6)
-            self.last_mlp_activity_ratio = float(
-                (mlp_out.norm(dim=-1).mean() / denom).item()
-            )
+            self.last_mlp_activity_ratio = float((mlp_out.norm(dim=-1).mean() / denom).item())
         z = z + mlp_out
-        z = self.norm_out(z)                               # (B, Q, D)
-        return z.mean(dim=1)                               # (B, D)
+        z = self.norm_out(z)  # (B, Q, D)
+        return z.mean(dim=1)  # (B, D)
 
     @torch.no_grad()
     def query_pairwise_cosine(self) -> float:
@@ -826,7 +828,7 @@ class CrossAttnPoolHead(nn.Module):
         if self.num_queries < 2:
             return 0.0
         q = F.normalize(self.norm_q(self.queries.squeeze(0)), dim=-1)  # (Q, D)
-        sim = q @ q.t()                                                # (Q, Q)
+        sim = q @ q.t()  # (Q, Q)
         eye = torch.eye(self.num_queries, device=q.device, dtype=q.dtype)
         off = (sim - eye).abs().sum()
         return float(off.item() / (self.num_queries * (self.num_queries - 1)))
@@ -925,11 +927,11 @@ class VideoMAEViT(nn.Module):
         # x: (B, T, C, H, W)
         features = self.encoder(x)  # (B, N, D) — already layer-normed
         if self.attn_pool is not None:
-            pooled = self.attn_pool(features)   # (B, D)
+            pooled = self.attn_pool(features)  # (B, D)
         elif self.pool_head is not None:
-            pooled = self.pool_head(features)   # (B, D)
+            pooled = self.pool_head(features)  # (B, D)
         else:
-            pooled = features.mean(dim=1)       # (B, D)
+            pooled = features.mean(dim=1)  # (B, D)
         return self.classifier(self.dropout(pooled))
 
     def head_diagnostics(self) -> dict[str, float]:
@@ -955,8 +957,8 @@ class VideoMAEViT(nn.Module):
 # ── ViT variant table ──────────────────────────────────────────────────────────
 
 _VIT_VARIANTS: dict[str, dict] = {
-    "vit_s": dict(embed_dim=384,  depth=12, num_heads=6),
-    "vit_b": dict(embed_dim=768,  depth=12, num_heads=12),
+    "vit_s": dict(embed_dim=384, depth=12, num_heads=6),
+    "vit_b": dict(embed_dim=768, depth=12, num_heads=12),
     "vit_l": dict(embed_dim=1024, depth=24, num_heads=16),
 }
 
@@ -1028,21 +1030,21 @@ def make_tube_mask(
 
     # Per-sample random spatial permutation → same mask replicated across time
     noise = torch.rand(batch_size, n_spatial, device=device)
-    ids_spatial = noise.argsort(dim=1)                         # (B, n_spatial)
-    ids_keep_spatial = ids_spatial[:, :n_keep_spatial]         # (B, n_keep_spatial)
-    ids_mask_spatial = ids_spatial[:, n_keep_spatial:]         # (B, n_mask_spatial)
+    ids_spatial = noise.argsort(dim=1)  # (B, n_spatial)
+    ids_keep_spatial = ids_spatial[:, :n_keep_spatial]  # (B, n_keep_spatial)
+    ids_mask_spatial = ids_spatial[:, n_keep_spatial:]  # (B, n_mask_spatial)
 
     # Expand across temporal dimension: token idx = t * n_spatial + spatial_idx
-    t_offsets = torch.arange(n_t, device=device) * n_spatial   # (n_t,)
+    t_offsets = torch.arange(n_t, device=device) * n_spatial  # (n_t,)
 
     # (B, n_keep_spatial, 1) + (1, 1, n_t) → (B, n_keep_spatial, n_t) → (B, n_t*n_keep_spatial)
-    ids_keep = (
-        ids_keep_spatial.unsqueeze(-1) + t_offsets.view(1, 1, n_t)
-    ).reshape(batch_size, n_t * n_keep_spatial)
+    ids_keep = (ids_keep_spatial.unsqueeze(-1) + t_offsets.view(1, 1, n_t)).reshape(
+        batch_size, n_t * n_keep_spatial
+    )
 
-    ids_mask = (
-        ids_mask_spatial.unsqueeze(-1) + t_offsets.view(1, 1, n_t)
-    ).reshape(batch_size, n_t * n_mask_spatial)
+    ids_mask = (ids_mask_spatial.unsqueeze(-1) + t_offsets.view(1, 1, n_t)).reshape(
+        batch_size, n_t * n_mask_spatial
+    )
 
     # Sort so token order matches positional embedding order
     ids_keep = ids_keep.sort(dim=1).values
@@ -1069,10 +1071,10 @@ def patchify(
     n_w = W // patch_size
     cube_dim = C * tube_t * patch_size * patch_size  # 3*2*16*16 = 1536
 
-    x = clips.permute(0, 2, 1, 3, 4)              # (B, C, T, H, W)
+    x = clips.permute(0, 2, 1, 3, 4)  # (B, C, T, H, W)
     x = x.reshape(B, C, n_t, tube_t, n_h, patch_size, n_w, patch_size)
-    x = x.permute(0, 2, 4, 6, 1, 3, 5, 7)         # (B, n_t, n_h, n_w, C, tube_t, ph, pw)
-    x = x.reshape(B, n_t * n_h * n_w, cube_dim)   # (B, N, cube_dim)
+    x = x.permute(0, 2, 4, 6, 1, 3, 5, 7)  # (B, n_t, n_h, n_w, C, tube_t, ph, pw)
+    x = x.reshape(B, n_t * n_h * n_w, cube_dim)  # (B, N, cube_dim)
     return x
 
 
@@ -1105,10 +1107,12 @@ class VideoMAEDecoder(nn.Module):
         self.mask_token = nn.Parameter(torch.zeros(1, 1, d))
         self.decoder_pos_embed = nn.Parameter(torch.zeros(1, num_tokens, d))
         dpr = [0.0] * self.DECODER_DEPTH
-        self.blocks = nn.ModuleList([
-            TransformerBlock(d, self.DECODER_HEADS, mlp_ratio=4.0, drop_path=dpr[i])
-            for i in range(self.DECODER_DEPTH)
-        ])
+        self.blocks = nn.ModuleList(
+            [
+                TransformerBlock(d, self.DECODER_HEADS, mlp_ratio=4.0, drop_path=dpr[i])
+                for i in range(self.DECODER_DEPTH)
+            ]
+        )
         self.norm = nn.LayerNorm(d)
         cube_dim = 3 * tube_t * patch_size * patch_size
         self.head = nn.Linear(d, cube_dim)
@@ -1160,11 +1164,7 @@ class VideoMAEDecoder(nn.Module):
         # Build the full canvas: visible_tokens at ids_keep, mask_token elsewhere.
         # Under autocast, `tokens` may be fp16/bf16 while parameters stay fp32; align dtypes
         # (and device) for scatter_ / addition.
-        full = (
-            self.mask_token.to(device=tokens.device, dtype=tokens.dtype)
-            .expand(B, N, -1)
-            .clone()
-        )
+        full = self.mask_token.to(device=tokens.device, dtype=tokens.dtype).expand(B, N, -1).clone()
         idx_v = ids_keep.unsqueeze(-1).expand(-1, -1, d)
         full.scatter_(1, idx_v, tokens)
 
@@ -1184,7 +1184,7 @@ class VideoMAEDecoder(nn.Module):
 
         if ids_decoder_kept is None:
             idx_m = ids_mask.unsqueeze(-1).expand(-1, -1, d)
-            full = torch.gather(full, 1, idx_m)   # (B, n_masked, d)
+            full = torch.gather(full, 1, idx_m)  # (B, n_masked, d)
 
         return self.head(full), ids_predict
 
@@ -1266,13 +1266,20 @@ class VideoMAEPretrainModel(nn.Module):
         """
         if ids_keep is None:
             ids_keep, ids_mask = make_tube_mask(
-                x.shape[0], self.n_t, self.n_h, self.n_w,
-                self.mask_ratio, device=x.device,
+                x.shape[0],
+                self.n_t,
+                self.n_h,
+                self.n_w,
+                self.mask_ratio,
+                device=x.device,
             )
         ids_decoder_kept: torch.Tensor | None = None
         if self.dual_masking:
             ids_decoder_kept = make_running_cell_mask(
-                x.shape[0], self.n_t, self.n_h, self.n_w,
+                x.shape[0],
+                self.n_t,
+                self.n_h,
+                self.n_w,
                 keep_ratio=self.decoder_keep_ratio,
                 cell_h=self.decoder_cell_h,
                 cell_w=self.decoder_cell_w,

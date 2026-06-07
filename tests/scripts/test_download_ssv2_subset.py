@@ -36,9 +36,9 @@ def test_select_class_targets_matches_by_normalized_template(mod, tmp_path):
         (tmp_path / name).mkdir()
     local_dirs = sorted(p for p in tmp_path.iterdir() if p.is_dir())
     records = [
-        ("100", "Closing [something]"),          # -> 000_Closing_something
+        ("100", "Closing [something]"),  # -> 000_Closing_something
         ("101", "Covering [something] with [something]"),  # -> 001_...
-        ("102", "Throwing [something]"),          # no local class -> dropped
+        ("102", "Throwing [something]"),  # no local class -> dropped
     ]
     targets = mod.select_class_targets(local_dirs, records)
     assert targets == {

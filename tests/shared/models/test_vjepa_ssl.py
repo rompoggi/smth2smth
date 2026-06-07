@@ -143,8 +143,7 @@ class TestVJepaForwardAndLoss:
         assert torch.isfinite(loss)
         loss.backward()
         assert any(
-            p.grad is not None and float(p.grad.abs().sum()) > 0.0
-            for p in model.parameters()
+            p.grad is not None and float(p.grad.abs().sum()) > 0.0 for p in model.parameters()
         )
 
     def test_apply_frame_mask_zeroes_correct_positions(self) -> None:
@@ -180,9 +179,7 @@ class TestVJepaForwardAndLoss:
 
         loss = vjepa_feature_loss(predicted, teacher, mask)
         assert torch.isfinite(loss)
-        assert float(loss) > 0.0, (
-            "Loss collapsed to 0 -- the fp16 saturation regression is back."
-        )
+        assert float(loss) > 0.0, "Loss collapsed to 0 -- the fp16 saturation regression is back."
         # And gradient must flow.
         loss.backward()
         assert predicted.grad is not None
@@ -192,9 +189,7 @@ class TestVJepaForwardAndLoss:
 class TestMaskSampling:
     def test_make_frame_mask_respects_bounds(self) -> None:
         torch.manual_seed(0)
-        mask = make_frame_mask(
-            batch_size=32, num_frames=4, mask_prob=0.5, min_mask=1, max_mask=2
-        )
+        mask = make_frame_mask(batch_size=32, num_frames=4, mask_prob=0.5, min_mask=1, max_mask=2)
         per_clip = mask.sum(dim=1)
         assert int(per_clip.min().item()) >= 1
         assert int(per_clip.max().item()) <= 2

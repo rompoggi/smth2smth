@@ -41,7 +41,11 @@ def metrics_from_logits(logits: np.ndarray, labels: np.ndarray) -> tuple[float, 
     ce = float(F.cross_entropy(x, y, reduction="mean").item())
     top1 = float((x.argmax(dim=1) == y).float().mean().item() * 100.0)
     top5 = float(
-        (x.topk(min(5, x.shape[1]), dim=1).indices == y.unsqueeze(1)).any(dim=1).float().mean().item()
+        (x.topk(min(5, x.shape[1]), dim=1).indices == y.unsqueeze(1))
+        .any(dim=1)
+        .float()
+        .mean()
+        .item()
         * 100.0
     )
     return top1, top5, ce
@@ -72,7 +76,6 @@ def optimize_mix_weights(
         raise ValueError("At least one logit array required.")
     stacked = np.stack(logit_arrays, axis=0).astype(np.float64)  # (M, N, C)
     labels = np.asarray(labels, dtype=np.int64)
-    n_classes = stacked.shape[2]
 
     def loss_raw(w: np.ndarray) -> float:
         combined = np.tensordot(w, stacked, axes=(0, 0))  # (N, C)

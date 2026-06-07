@@ -19,11 +19,11 @@ src/smth2smth/
 
 Outside `src/`:
 
-- `configs/` — Hydra YAML grouped by `data`, `train`, `model`, `experiment`, `track`.
-- `external/prof_baseline/` — vendored read-only baseline.
-- `notebooks/` — exploration & error analysis (consumes `shared/`).
+- `configs/` — Hydra YAML grouped by `data`, `train`, `model`, `augment`, `pretrain`, `test`, `experiment`, `track`.
 - `scripts/` — track-preset wrappers and dev tools.
 - `tests/` — pytest suite mirroring `src/smth2smth/` layout.
+- `report/` — LaTeX report (the scientific narrative and per-run logbook).
+- `submissions/` — every Kaggle submission CSV produced.
 
 ## Module dependency graph
 
@@ -157,7 +157,7 @@ defaults:
 Each group can be overridden from the CLI:
 
 ```bash
-python -m smth2smth.pipelines.train experiment=cnn_lstm track=b model.pretrained=true
+python -m smth2smth.pipelines.train experiment=baseline_pretrained track=b model=cnn_lstm
 ```
 
 Effective overrides land in the merged `cfg`, which is passed end-to-end to `run()`.
@@ -180,13 +180,3 @@ tests/
 ```
 
 The smoke test is marked `@pytest.mark.slow`. Skip with `pytest -m 'not slow'`.
-
-## Vendored baseline
-
-`external/prof_baseline/` is a frozen copy of the professor's starter repo, kept exclusively for reference and side-by-side comparisons. Rules:
-
-- Treat as **read-only**. Do not edit or move files inside it.
-- Do not import from it in first-party code.
-- Run it (when needed) with its own `uv sync` from inside `external/prof_baseline/`.
-
-The comparison procedure is documented in `report/parity.md`.

@@ -12,6 +12,7 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
+from omegaconf import OmegaConf
 from torch.utils.data import DataLoader, Dataset
 
 from smth2smth.pipelines.submit import (
@@ -20,7 +21,6 @@ from smth2smth.pipelines.submit import (
     _videomae_logits_batch,
 )
 from smth2smth.shared.models import build_model
-from omegaconf import OmegaConf
 
 
 class _ConstLogitsModel(nn.Module):

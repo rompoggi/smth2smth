@@ -282,9 +282,7 @@ class MultiBlockAttentiveProbe(nn.Module):
     ) -> None:
         super().__init__()
         if feature_dim % num_heads != 0:
-            raise ValueError(
-                f"num_heads={num_heads} does not divide feature_dim={feature_dim}."
-            )
+            raise ValueError(f"num_heads={num_heads} does not divide feature_dim={feature_dim}.")
         if depth < 1:
             raise ValueError(f"depth must be >= 1, got {depth}.")
         encoder_layer = nn.TransformerEncoderLayer(
@@ -452,11 +450,7 @@ class VJEPA2Probe(nn.Module):
         backbone = AutoModel.from_pretrained(self.hf_repo, **load_kwargs)
 
         if self.lora_enabled:
-            tm = (
-                list(lora_target_modules)
-                if lora_target_modules is not None
-                else None
-            )
+            tm = list(lora_target_modules) if lora_target_modules is not None else None
             self.backbone = _try_apply_peft_lora(
                 backbone,
                 r=int(lora_r),
@@ -623,9 +617,7 @@ def _load_local_to_ssv2_idx(
             f"{unmatched!r}. Fix the folder names or extend the matcher."
         )
     if not mapping:
-        raise RuntimeError(
-            f"Empty local→SSv2 mapping derived from {label_source_dir!s}."
-        )
+        raise RuntimeError(f"Empty local→SSv2 mapping derived from {label_source_dir!s}.")
     idx_tensor = torch.full((num_classes,), -1, dtype=torch.long)
     for local_idx, ssv2_idx in mapping.items():
         if 0 <= local_idx < num_classes:
@@ -733,7 +725,9 @@ class VJEPA2SSv2FTProbe(nn.Module):
                 resolved = idx_tensor >= 0
                 if resolved.any():
                     src = idx_tensor[resolved]
-                    new_head.weight.data[resolved] = model.classifier.weight.data.index_select(0, src)
+                    new_head.weight.data[resolved] = model.classifier.weight.data.index_select(
+                        0, src
+                    )
                     new_head.bias.data[resolved] = model.classifier.bias.data.index_select(0, src)
         else:
             self.register_buffer(
@@ -754,7 +748,11 @@ class VJEPA2SSv2FTProbe(nn.Module):
                 param.requires_grad = False
 
         if self.lora_enabled:
-            tm = list(lora_target_modules) if lora_target_modules is not None else list(_DEFAULT_LORA_TARGETS)
+            tm = (
+                list(lora_target_modules)
+                if lora_target_modules is not None
+                else list(_DEFAULT_LORA_TARGETS)
+            )
             model.vjepa2 = _try_apply_peft_lora(
                 model.vjepa2,
                 r=int(lora_r),

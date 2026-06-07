@@ -72,9 +72,7 @@ def _trunk_state_dict(model: nn.Module, *, use_resnet: bool) -> dict[str, torch.
             out_key = rel if use_resnet else f"encoder.{rel}"
             trunk[out_key] = value
         if not trunk:
-            raise RuntimeError(
-                f"No tensors with prefix {prefix!r} in AveragedModel state_dict."
-            )
+            raise RuntimeError(f"No tensors with prefix {prefix!r} in AveragedModel state_dict.")
         return trunk
     if use_resnet:
         return {k: v for k, v in model.backbone.state_dict().items()}
@@ -217,7 +215,7 @@ def run(cfg: DictConfig) -> Path:
         ssl_roots = [train_dir, val_dir, test_dir]
         print(f"[videomae] SSL roots: train + val + test ({len(ssl_roots)} dirs)")
     else:
-        print(f"[videomae] SSL roots: train + test only (val excluded)")
+        print("[videomae] SSL roots: train + test only (val excluded)")
     video_dirs = collect_all_video_dirs(ssl_roots)
     if len(video_dirs) == 0:
         raise SystemExit("No video folders found for VideoMAE pretraining; check dataset paths.")
@@ -256,9 +254,7 @@ def run(cfg: DictConfig) -> Path:
         drop_last=True,
     )
     if int(cfg.training.num_workers) > 0:
-        loader_kwargs["persistent_workers"] = bool(
-            cfg.training.get("persistent_workers", False)
-        )
+        loader_kwargs["persistent_workers"] = bool(cfg.training.get("persistent_workers", False))
         loader_kwargs["prefetch_factor"] = int(cfg.training.get("prefetch_factor", 2))
     loader = DataLoader(dataset, **loader_kwargs)
 
@@ -366,9 +362,7 @@ def run(cfg: DictConfig) -> Path:
         ) -> torch.Tensor:
             return ema_decay * avg_param + (1.0 - ema_decay) * model_param
 
-        ema_model = torch.optim.swa_utils.AveragedModel(
-            model, avg_fn=_ema_avg_fn, use_buffers=True
-        )
+        ema_model = torch.optim.swa_utils.AveragedModel(model, avg_fn=_ema_avg_fn, use_buffers=True)
         print(f"[videomae] EMA enabled (decay={ema_decay:g}).")
 
     milestone_epochs = sorted(
@@ -383,12 +377,9 @@ def run(cfg: DictConfig) -> Path:
             import wandb
         except ImportError as exc:
             raise SystemExit(
-                "pretrain.wandb_enabled=true but wandb is not installed. "
-                "Run: uv add wandb"
+                "pretrain.wandb_enabled=true but wandb is not installed. Run: uv add wandb"
             ) from exc
-        augment_summary = active_augment_summary(
-            augment_cfg if augment_cfg is not None else None
-        )
+        augment_summary = active_augment_summary(augment_cfg if augment_cfg is not None else None)
         wandb_config = {
             "experiment": str(cfg.get("experiment", "videomae_pretrain")),
             "seed": int(cfg.seed),
@@ -467,10 +458,7 @@ def run(cfg: DictConfig) -> Path:
         if mask_schedule and not use_resnet:
             model.mask_ratio = _cosine_mask_ratio(epoch, epochs, mask_start, mask_end)
             if epoch == 0 or epoch == epochs - 1 or (epoch + 1) % 50 == 0:
-                print(
-                    f"[videomae] {_now()} epoch {epoch + 1}: "
-                    f"mask_ratio={model.mask_ratio:.4f}"
-                )
+                print(f"[videomae] {_now()} epoch {epoch + 1}: mask_ratio={model.mask_ratio:.4f}")
 
         epoch_loss = 0.0
         n_batches = 0
@@ -505,9 +493,8 @@ def run(cfg: DictConfig) -> Path:
             else:
                 scaled_loss.backward()
 
-            is_accum_step = (
-                (batch_idx + 1) % grad_accum_steps == 0
-                or (batch_idx + 1) == len(loader)
+            is_accum_step = (batch_idx + 1) % grad_accum_steps == 0 or (batch_idx + 1) == len(
+                loader
             )
             if is_accum_step:
                 if scaler is not None:

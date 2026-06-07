@@ -252,7 +252,9 @@ def collect_test_logits_from_checkpoint(
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     src = p.add_mutually_exclusive_group(required=True)
     src.add_argument(
         "--logits",
@@ -388,9 +390,7 @@ def _prepare_matrix(
             raise ValueError("--sort-rows=reference requires --reference-logits")
         ref = drop_class_columns(reference_raw, exclude)
         if ref.shape[0] != scaled.shape[0]:
-            raise ValueError(
-                f"reference rows {ref.shape[0]} != logits rows {scaled.shape[0]}"
-            )
+            raise ValueError(f"reference rows {ref.shape[0]} != logits rows {scaled.shape[0]}")
         ref_scaled = scale_matrix(ref, scale)
         row_idx = row_sort_order(ref_scaled, "reference")
         ylabel = f"Test clip (order from reference, N={scaled.shape[0]})"

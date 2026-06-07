@@ -89,16 +89,12 @@ def compute_sample_weights(
         ValueError: On unknown ``policy``.
     """
     if policy not in _VALID_SAMPLER_POLICIES:
-        raise ValueError(
-            f"policy must be one of {sorted(_VALID_SAMPLER_POLICIES)}, got {policy!r}"
-        )
+        raise ValueError(f"policy must be one of {sorted(_VALID_SAMPLER_POLICIES)}, got {policy!r}")
     n_per_class = class_counts(samples, num_classes=num_classes)
     if policy == "none":
         return torch.ones(len(samples), dtype=torch.float32)
     factors = _class_factors(n_per_class, policy=policy)
-    weights = torch.tensor(
-        [factors[int(sample[1])] for sample in samples], dtype=torch.float32
-    )
+    weights = torch.tensor([factors[int(sample[1])] for sample in samples], dtype=torch.float32)
     return weights
 
 
@@ -129,9 +125,7 @@ def compute_class_weights(
         ValueError: On unknown ``policy`` or invalid ``beta``.
     """
     if policy not in _VALID_LOSS_POLICIES:
-        raise ValueError(
-            f"policy must be one of {sorted(_VALID_LOSS_POLICIES)}, got {policy!r}"
-        )
+        raise ValueError(f"policy must be one of {sorted(_VALID_LOSS_POLICIES)}, got {policy!r}")
     if policy == "none":
         return None
     if not 0.0 < beta < 1.0:
