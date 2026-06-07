@@ -491,26 +491,7 @@ confidence heatmap), `scripts/download_ssv2_subset_4frame.py` (build the Track-B
 
 ---
 
-## 10. Results
-
-Full numbers, ablations, and the per-run logbook are in `report/` (Track A:
-`report/track_a.tex`; Track B: `report/track_b.tex`). Headline figures:
-
-| Track | Approach | Score | Source |
-| --- | --- | --- | --- |
-| A | TSM-ResNet50 from-scratch baseline | ~37% Top-1 (Kaggle) | report |
-| A | VideoMAE SSL pretrain + finetune (champion) | **55.13% Top-1 (Kaggle LB)** | `mae500-ft-f4-val90-holdout` |
-| B | V-JEPA 2 ViT-L SSv2 **zero-shot** (no training) | ~45% Top-1 (Kaggle) | report §zero-shot |
-| B | V-JEPA 2 ViT-L LoRA finetune | 68.09% Top-1 (Kaggle) | report logbook (Run 5) |
-| B | V-JEPA 2 SSv2-finetuned + LoRA r16 (best) | see `report/track_b.tex` + `submissions/track_b_ssv2ft_lora16f_*` | — |
-
-The exact prediction file behind every entry is in `submissions/` (named after
-its experiment). Ensembling across same-backbone members added only ~+0.2 pt;
-backbone/architecture diversity was the bigger lever.
-
----
-
-## 11. Testing, linting, troubleshooting
+## 10. Testing, linting, troubleshooting
 
 ```bash
 uv run pytest -q                 # full suite: 284 tests
