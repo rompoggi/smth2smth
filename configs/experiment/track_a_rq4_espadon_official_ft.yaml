@@ -1,4 +1,0 @@
-# @package _global_
-# Deprecated alias — use ``experiment=track_a_mae25_ft``.
-defaults:
-  - track_a_mae25_ft

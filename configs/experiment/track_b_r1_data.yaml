@@ -1,4 +1,0 @@
-# @package _global_
-# Shared frozen holdout for Track B round-1 grid (see configs/data/holdout_clean.yaml).
-defaults:
-  - override /data: holdout_clean

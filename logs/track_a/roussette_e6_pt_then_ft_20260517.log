@@ -1,4 +1,0 @@
-[e6-chain] 2026-05-17T03:25:27+02:00 waiting for MAE pretrain pid=14749
-[e6-chain] 2026-05-17T04:20:27+02:00 pretrain process exited; checking log and encoder
-[e6-chain] 2026-05-17T04:20:27+02:00 starting champion FT @256
-[e6-chain] 2026-05-17T04:20:27+02:00 FT started pid=56190 log=/Data/romain.poggi/smth2smth/logs/roussette_e6_ft_champion_256_20260517.log

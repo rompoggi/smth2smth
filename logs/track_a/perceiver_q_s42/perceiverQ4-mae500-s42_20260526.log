@@ -1,3 +1,0 @@
-# no local or wandb output.log for run_id=yfms3io3
-# metrics replay uses W&B history via upload_perceiver_q_s42_wandb.py --q=yfms3io3
-# log_source: wandb output.log run_id=yfms3io3

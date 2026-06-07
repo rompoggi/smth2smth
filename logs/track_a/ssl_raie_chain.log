@@ -1,4 +1,0 @@
-[2026-05-16T01:23:29+02:00] [chain] watching pretrain pid=465320 (uv wrapper)
-[2026-05-16T05:03:29+02:00] [chain] pretrain process exited
-[2026-05-16T05:03:29+02:00] [chain] encoder ok (88189468 bytes); launching Phase 2 fine-tune
-[2026-05-16T05:03:29+02:00] [chain] fine-tune launched, pid=510359, log=logs/ssl_raie_finetune.log

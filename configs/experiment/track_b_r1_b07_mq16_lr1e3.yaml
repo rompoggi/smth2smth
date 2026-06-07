@@ -1,9 +1,0 @@
-# @package _global_
-# Exp 1 — multi-query Q=16, probe LR 1e-3 (custom AttentiveProbe).
-defaults:
-  - track_b_r1_data
-  - track_b_r1_probe_base
-
-training:
-  checkpoint_path: checkpoints/track_b/r1_b07_mq16_lr1e3.pt
-  wandb_name: r1_b07_mq16_lr1e3

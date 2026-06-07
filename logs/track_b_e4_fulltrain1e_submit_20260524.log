@@ -1,5 +1,0 @@
-  submission_output: ${hydra:runtime.cwd}/submissions/track_b_vitl_ema9998_fulltrain1e_20260524.csv
-  submission_output: ${hydra:runtime.cwd}/submissions/track_b_vitl_ema9998_fulltrain1e_notta_20260524.csv
-[submit] masking 1 never-trained class index/indices: [27]
-[submit] inference autocast fp16 enabled (matches training.amp).
-Wrote 6913 rows to /Data/thomas.turkieh/smth2smth/submissions/track_b_vitl_ema9998_fulltrain1e_notta_20260524.csv

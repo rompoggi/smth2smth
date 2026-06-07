@@ -1,15 +1,0 @@
-[ensemble] 2026-05-28T21:21:05+02:00 start cache (e3 only; e1_cycle+e4 reused)
-[cache] holdout N=676 split_seed=42
-[cache] test N=6913
-[cache] skip e1_cycle_fulltrain1e (cached)
-[cache] e3_vitg384 <- vjepa2_vitg384_ssv2ft_lora16f.pt ...
-Loading weights:   0%|          | 0/908 [00:00<?, ?it/s]Loading weights:  75%|███████▍  | 679/908 [00:00<00:00, 6778.19it/s]Loading weights: 100%|██████████| 908/908 [00:00<00:00, 7669.19it/s]
-[map] prefix-matched our class 015 ('015_Pretending_to_pour_something_out_of_something_but_something_') to SSv2 idx 70 ('Pretending to pour [something] out of [something], but [something] is empty')
-[ssv2ft] head-slice: resolved 32/33 local class indices (32 folder matches)
-[submit] masking 1 never-trained class index/indices: [27]
-[finish] 2026-05-28T21:22:48+02:00 waiting for e3 logits...
-[cache] wrote logits_holdout_e3_vitg384_none.npy torch.Size([676, 33])
-Loading weights:   0%|          | 0/908 [00:00<?, ?it/s]Loading weights: 100%|██████████| 908/908 [00:00<00:00, 15417.24it/s]
-[map] prefix-matched our class 015 ('015_Pretending_to_pour_something_out_of_something_but_something_') to SSv2 idx 70 ('Pretending to pour [something] out of [something], but [something] is empty')
-[ssv2ft] head-slice: resolved 32/33 local class indices (32 folder matches)
-[submit] masking 1 never-trained class index/indices: [27]
